@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Launcher Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Barlow+Condensed:wght@400;500;600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+/* Layout: interactive phone on the left, controls + build notes on the right; one column on phones. */
+:root {
+  --bg: #f1f0ec; --surface: #ffffff; --ink: #1b1a17; --muted: #615d55; --line: #dcd8cf; --accent: #94560f; --chip: #e7e3da;
+  --f-display: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #131210; --surface: #1c1b18; --ink: #ece9e2; --muted: #a29d92; --line: #2f2d28; --accent: #e3a759; --chip: #26241f; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #131210; --surface: #1c1b18; --ink: #ece9e2; --muted: #a29d92; --line: #2f2d28; --accent: #e3a759; --chip: #26241f; color-scheme: dark }
+
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--f-body); padding-inline: 16px; padding-block: 28px 56px; }
+.wrap { max-width: 1080px; margin: 0 auto; display: grid; gap: 28px; }
+header h1 { font: 700 clamp(30px, 5vw, 44px)/1.05 var(--f-display); margin: 0; letter-spacing: -0.015em; text-wrap: balance; }
+header p { margin: 8px 0 0; color: var(--muted); max-width: 64ch; }
+.main { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 44px; align-items: start; }
+@media (max-width: 840px) { .main { grid-template-columns: minmax(0, 1fr); } .stage { justify-self: center; } }
+
+/* ================= phone ================= */
+.stage { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); }
+@media (max-width: 840px) { .stage { position: static; } }
+.ph { width: 320px; max-width: 100%; aspect-ratio: 320 / 680; background: #0a0a0a; border-radius: 46px; padding: 10px; box-shadow: 0 34px 70px -24px rgba(0,0,0,.5), inset 0 0 0 2px #2a2a2a; }
+.screen {
+  --t: #fafafa; --t2: rgba(250,250,250,.66); --acc: #ffb36b; --shadow: 0 1px 10px rgba(0,0,0,.35);
+  --lf: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif; --lw: 500; --ls: -0.01em;
+  position: relative; width: 100%; height: 100%; border-radius: 37px; overflow: hidden; color: var(--t);
+  background: #222 center / cover no-repeat; user-select: none; -webkit-user-select: none;
+  font-family: var(--lf); text-shadow: var(--shadow);
+}
+.status { position: absolute; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; padding: 11px 24px 0; font: 600 12px var(--f-body); font-variant-numeric: tabular-nums; z-index: 6; pointer-events: none; }
+.home { position: absolute; inset: 0; padding: 50px 46px 40px 24px; touch-action: none; display: flex; flex-direction: column; }
+.clock { font-weight: var(--lw); font-size: 54px; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.date { color: var(--t2); font-size: 14px; margin-top: 6px; }
+.date b { color: var(--acc); font-weight: inherit; }
+
+.widgets { display: grid; gap: 12px; margin-top: 22px; }
+.widget { display: grid; gap: 1px; }
+.widget .lbl { font: 600 10.5px var(--f-body); letter-spacing: .1em; text-transform: uppercase; color: var(--acc); }
+.widget .val { font-size: 15px; line-height: 1.3; }
+.widget .sub { font-size: 13px; color: var(--t2); }
+.widget .row { display: flex; gap: 10px; align-items: baseline; }
+.widget button { font: 600 12px var(--f-body); color: var(--t); background: none; border: 1px solid var(--t2); border-radius: 999px; padding: 2px 10px; cursor: pointer; text-shadow: none; }
+
+.favs { list-style: none; margin: auto 0 0; padding: 0; display: grid; gap: 9px; }
+.app { cursor: pointer; display: block; width: fit-content; max-width: 100%; }
+.favs .app + .app { margin-top: 2px; }
+.app .name { font-size: var(--fs, 30px); font-weight: var(--lw); letter-spacing: var(--ls); line-height: 1.12; display: inline-flex; align-items: center; gap: 8px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--acc); box-shadow: none; flex: none; }
+.preview { font-family: var(--f-body); font-size: 13px; line-height: 1.3; padding-block: 2px; color: var(--t2); margin-top: 3px; max-width: 220px; touch-action: none; transition: transform .2s, opacity .2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.preview b { color: var(--t); font-weight: 600; }
+.app.pressed .name { opacity: .55; }
+
+.az { position: absolute; right: 4px; top: 150px; bottom: 70px; width: 30px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; touch-action: none; z-index: 4; cursor: ns-resize; }
+.az span { font: 600 9.5px/1 var(--f-body); color: var(--t2); pointer-events: none; }
+.az span.empty { opacity: .3; }
+.az span.on { color: var(--acc); transform: scale(1.5); }
+.pop { position: absolute; right: 52px; font-size: 64px; font-weight: 600; color: var(--acc); line-height: 1; z-index: 7; pointer-events: none; opacity: 0; transition: opacity .15s; }
+.pop.on { opacity: 1; }
+
+.drawer { position: absolute; inset: 0; padding: 48px 46px 50px 24px; overflow-y: auto; z-index: 3; touch-action: pan-y; scrollbar-width: none;
+  background: linear-gradient(rgba(0,0,0,var(--scrimA, .45)), rgba(0,0,0,var(--scrimA, .45))); opacity: 0; pointer-events: none; transition: opacity .2s; }
+.drawer::-webkit-scrollbar { display: none; }
+.drawer { -webkit-mask-image: linear-gradient(transparent 30px, #000 64px, #000 calc(100% - 44px), transparent calc(100% - 20px)); mask-image: linear-gradient(transparent 30px, #000 64px, #000 calc(100% - 44px), transparent calc(100% - 20px)); }
+.drawer.on { opacity: 1; pointer-events: auto; }
+.drawer h4 { margin: 18px 0 4px; font: 600 12px var(--f-body); letter-spacing: .1em; color: var(--acc); }
+.drawer .app .name { --fs: 24px; }
+.drawer ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+
+.overlay { position: absolute; inset: 0; z-index: 8; opacity: 0; pointer-events: none; transition: opacity .2s; }
+.overlay.on { opacity: 1; pointer-events: auto; }
+.search.on, .shade.on { backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+.home { transition: opacity .2s; }
+.screen.drawer-open .home { opacity: 0; }
+
+.search { background: rgba(0,0,0,.6); padding: 52px 22px 0; color: #fafafa; }
+.search input { width: 100%; box-sizing: border-box; font: 500 22px var(--lf); color: #fff; background: rgba(255,255,255,.1); border: 0; border-radius: 14px; padding: 12px 14px; outline: none; }
+.search input::placeholder { color: rgba(255,255,255,.5); }
+.search ul { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 4px; }
+.search li { font-size: 22px; padding: 6px 2px; cursor: pointer; }
+.search li.web { font: 15px var(--f-body); color: rgba(255,255,255,.7); }
+
+.shade { background: rgba(14,15,17,.9); padding: 46px 12px 0; color: #f2f2f2; text-shadow: none; transform: translateY(-20px); transition: opacity .2s, transform .25s; }
+.shade.on { transform: none; }
+.shade .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+.shade .tile { height: 46px; border-radius: 16px; background: rgba(255,255,255,.1); display: grid; place-items: center; font: 600 10px var(--f-body); }
+.shade .tile.on { background: var(--acc); color: #111; }
+.shade .card { background: rgba(255,255,255,.08); border-radius: 18px; padding: 12px 14px; margin-bottom: 6px; font: 13px/1.35 var(--f-body); }
+.shade .card b { display: block; font-size: 12px; color: rgba(255,255,255,.6); font-weight: 600; margin-bottom: 2px; }
+.shade .note { font: 11px var(--f-body); color: rgba(255,255,255,.45); text-align: center; margin-top: 10px; }
+
+.sheet { position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 9; background: #1d1e20; color: #f2f2f2; text-shadow: none; border-radius: 26px; padding: 18px 8px 8px; transform: translateY(110%); transition: transform .25s cubic-bezier(.2,.9,.3,1); }
+.sheet.on { transform: none; }
+.sheet h3 { margin: 0 14px 8px; font: 500 22px var(--lf); }
+.sheet button.act { display: block; width: 100%; text-align: left; font: 500 15px var(--f-body); color: inherit; background: none; border: 0; border-radius: 14px; padding: 12px 14px; cursor: pointer; }
+.sheet button.act:hover { background: rgba(255,255,255,.06); }
+.sheet input { width: calc(100% - 28px); margin: 0 14px 8px; box-sizing: border-box; font: 500 18px var(--lf); color: #fff; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.2); border-radius: 12px; padding: 10px 12px; outline: none; }
+.sheet .acts { display: flex; gap: 8px; padding: 0 14px 8px; }
+.sheet .acts button { flex: 1; font: 600 14px var(--f-body); border: 0; border-radius: 12px; padding: 11px; cursor: pointer; background: rgba(255,255,255,.08); color: #fff; }
+.sheet .acts button.go { background: var(--acc); color: #111; }
+.scrim { position: absolute; inset: 0; background: rgba(0,0,0,.35); z-index: 8; opacity: 0; pointer-events: none; transition: opacity .2s; }
+.scrim.on { opacity: 1; pointer-events: auto; }
+
+.appview { background: var(--acc); color: #111; text-shadow: none; display: grid; place-items: center; text-align: center; padding: 24px; }
+.appview .n { font-size: 34px; font-weight: 600; }
+.appview p { font: 13px var(--f-body); opacity: .7; margin: 6px 0 0; }
+
+.off { position: absolute; inset: 0; background: #000; z-index: 20; display: grid; place-items: center; opacity: 0; pointer-events: none; transition: opacity .3s; text-shadow: none; }
+.off.on { opacity: 1; pointer-events: auto; }
+.off p { color: rgba(255,255,255,.3); font: 12px var(--f-body); margin: 0; text-align: center; }
+.off button { margin-top: 12px; font: 13px var(--f-body); color: rgba(255,255,255,.7); background: none; border: 1px solid rgba(255,255,255,.25); border-radius: 999px; padding: 7px 14px; cursor: pointer; }
+
+.nav { position: absolute; left: 0; right: 0; bottom: 0; height: 28px; display: grid; place-items: center; z-index: 12; cursor: pointer; background: none; border: 0; padding: 0; }
+.nav i { width: 110px; height: 4px; border-radius: 4px; background: var(--t); opacity: .8; }
+.toast { position: absolute; left: 50%; bottom: 44px; transform: translate(-50%, 8px); background: rgba(20,20,20,.9); color: #fff; text-shadow: none; font: 13px var(--f-body); padding: 8px 14px; border-radius: 999px; z-index: 30; opacity: 0; transition: .2s; pointer-events: none; white-space: nowrap; }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+.ph button:focus-visible, .ctl button:focus-visible, .ctl label:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ================= side panel ================= */
+.side { display: grid; gap: 34px; min-width: 0; }
+.side section { display: grid; gap: 12px; }
+.side h2 { font: 700 22px/1.2 var(--f-display); margin: 0; letter-spacing: -0.01em; }
+.eyebrow { font: 600 11px var(--f-body); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+.try { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-width: 64ch; }
+.try li { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 12px; }
+.try b { font: 600 14px var(--f-display); }
+.ctl { display: grid; gap: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+.ctl .grp { display: grid; gap: 8px; }
+.ctl .lab { font: 600 12px var(--f-body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.walls { display: flex; flex-wrap: wrap; gap: 8px; }
+.walls button, .walls label { width: 46px; height: 46px; border-radius: 12px; border: 2px solid transparent; cursor: pointer; background: center / cover; padding: 0; }
+.walls button[aria-pressed="true"] { border-color: var(--ink); }
+.walls label { display: grid; place-items: center; background: var(--chip); color: var(--muted); font: 600 11px var(--f-body); text-align: center; line-height: 1.1; }
+.walls input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.seg { display: inline-flex; flex-wrap: wrap; background: var(--chip); border-radius: 10px; padding: 3px; gap: 3px; }
+.seg button { font: 500 14px var(--f-body); border: 0; background: transparent; color: var(--muted); padding: 6px 12px; border-radius: 8px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.swatches { display: flex; flex-wrap: wrap; gap: 14px; font: 13px var(--f-body); color: var(--muted); }
+.swatches span { display: inline-flex; align-items: center; gap: 6px; }
+.swatches i { width: 18px; height: 18px; border-radius: 5px; border: 1px solid var(--line); display: inline-block; }
+.hidden-list { display: flex; flex-wrap: wrap; gap: 6px; font-size: 14px; color: var(--muted); }
+.hidden-list button { font: 500 13px var(--f-body); border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 999px; padding: 4px 10px; cursor: pointer; }
+.tbl { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px 9px 0; border-bottom: 1px solid var(--line); }
+th { font: 600 11px var(--f-body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+td:first-child { font-weight: 600; white-space: nowrap; }
+code { font: 12.5px var(--f-mono); background: var(--chip); padding: 1px 5px; border-radius: 5px; overflow-wrap: anywhere; }
+.qs { margin: 0; padding-left: 20px; display: grid; gap: 6px; max-width: 64ch; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0s !important; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Launcher Prototype</h1>
+    <p>Favourite apps as plain type on the wallpaper, a couple of widgets above them, and every other app one slide away on the A–Z strip. Everything on the phone works: try the gestures listed on the right.</p>
+  </header>
+
+  <div class="main">
+    <div class="stage">
+      <div class="ph">
+        <div class="screen" id="screen">
+          <div class="status"><span id="sbTime">9:41</span><span>5G ▪ 82%</span></div>
+
+          <div class="home" id="home">
+            <div class="clock" id="clock">9:41</div>
+            <div class="date"><span id="date">Sunday 11 October</span> · <b>14°</b> light rain</div>
+            <div class="widgets">
+              <div class="widget">
+                <span class="lbl">Calendar</span>
+                <span class="val">Tomorrow 09:30 · Dentist</span>
+              </div>
+              <div class="widget">
+                <span class="lbl">Spotify</span>
+                <div class="row"><span class="val" id="track">Holocene</span><button type="button" id="playBtn">Pause</button></div>
+                <span class="sub">Bon Iver</span>
+              </div>
+            </div>
+            <ul class="favs" id="favs"></ul>
+          </div>
+
+          <div class="drawer" id="drawer"></div>
+          <div class="az" id="az" aria-label="Alphabet scroller"></div>
+          <div class="pop" id="pop">A</div>
+
+          <div class="overlay search" id="search">
+            <input id="q" type="text" placeholder="Search apps" autocomplete="off" aria-label="Search apps">
+            <ul id="results"></ul>
+          </div>
+
+          <div class="overlay shade" id="shade">
+            <div class="tiles">
+              <div class="tile on">Wi-Fi</div><div class="tile on">Bluetooth</div><div class="tile">Torch</div><div class="tile on">Screen off</div>
+            </div>
+            <div id="shadeCards"></div>
+            <div class="note">This is Android's own notification shade. The launcher only opens it.</div>
+          </div>
+
+          <div class="overlay appview" id="appview"><div><div class="n" id="appName">App</div><p>Tap the bar at the bottom to go home</p></div></div>
+
+          <div class="scrim" id="scrim"></div>
+          <div class="sheet" id="sheet" role="dialog"></div>
+
+          <div class="off" id="off"><div><p>Screen off via Power Bubble</p><button type="button" id="wake">Double-tap to wake</button></div></div>
+          <button class="nav" id="nav" type="button" aria-label="Home"><i></i></button>
+          <div class="toast" id="toast"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="side">
+      <section>
+        <span class="eyebrow">Try it on the phone</span>
+        <ul class="try">
+          <li><b>Tap a name</b><span>Opens the app. The bar at the bottom takes you home.</span></li>
+          <li><b>Slide the A–Z</b><span>Drag along the letters on the right edge to jump through every app.</span></li>
+          <li><b>Swipe a preview</b><span>Swipe a message preview sideways to dismiss the notification.</span></li>
+          <li><b>Hold a name</b><span>Rename it, hide it, or add or remove it from favourites.</span></li>
+          <li><b>Swipe up</b><span>Search apps. Press Enter to open the top result.</span></li>
+          <li><b>Swipe down</b><span>Opens the notification shade.</span></li>
+          <li><b>Double-tap</b><span>Double-tap empty space to turn the screen off with Power Bubble.</span></li>
+        </ul>
+      </section>
+
+      <section class="ctl" aria-label="Prototype settings">
+        <div class="grp">
+          <span class="lab">Wallpaper</span>
+          <div class="walls" id="walls">
+            <label for="upload" title="Use your own photo">Your<br>photo<input id="upload" type="file" accept="image/*"></label>
+          </div>
+        </div>
+        <div class="grp">
+          <span class="lab">Colours taken from the wallpaper</span>
+          <div class="swatches" id="swatches"></div>
+        </div>
+        <div class="grp">
+          <span class="lab">Typeface</span>
+          <div class="seg" id="faces">
+            <button type="button" data-face="grotesk" aria-pressed="true">Grotesk</button>
+            <button type="button" data-face="serif" aria-pressed="false">Serif</button>
+            <button type="button" data-face="condensed" aria-pressed="false">Condensed</button>
+          </div>
+        </div>
+        <div class="grp">
+          <span class="lab">Text size</span>
+          <div class="seg" id="sizes">
+            <button type="button" data-size="26" aria-pressed="false">Small</button>
+            <button type="button" data-size="30" aria-pressed="true">Medium</button>
+            <button type="button" data-size="35" aria-pressed="false">Large</button>
+          </div>
+        </div>
+        <div class="grp">
+          <span class="lab">Hidden apps</span>
+          <div class="hidden-list" id="hiddenList"></div>
+        </div>
+      </section>
+
+      <section>
+        <span class="eyebrow">Building it</span>
+        <h2>How each piece maps to Android</h2>
+        <div class="tbl"><table>
+          <thead><tr><th>Feature</th><th>Android</th></tr></thead>
+          <tbody>
+            <tr><td>App list, A–Z</td><td><code>LauncherApps.getActivityList()</code> plus a callback for installs and removals. Compose <code>LazyColumn</code> with a custom drag strip.</td></tr>
+            <tr><td>Message previews</td><td>A <code>NotificationListenerService</code> that you grant notification access. Swiping a preview calls <code>cancelNotification(key)</code>.</td></tr>
+            <tr><td>Widgets</td><td><code>AppWidgetHost</code>. Adding one goes through the system widget picker or <code>bindAppWidgetIdIfAllowed</code>.</td></tr>
+            <tr><td>Double-tap</td><td>Sends Power Bubble's screen-off intent, so the launcher needs no accessibility service of its own.</td></tr>
+            <tr><td>Swipe down</td><td>Opens the real notification shade, via the status bar service or Power Bubble's <code>GLOBAL_ACTION_NOTIFICATIONS</code>.</td></tr>
+            <tr><td>Hide, rename</td><td>Stored by the launcher itself (DataStore or Room). Hidden apps stay installed and searchable.</td></tr>
+            <tr><td>Wallpaper colours</td><td><code>WallpaperManager.getWallpaperColors()</code> gives the main colours and a "supports dark text" hint. This page does the same analysis in the browser.</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <section>
+        <span class="eyebrow">Still to decide</span>
+        <ul class="qs">
+          <li>Should hidden apps show up in search, or disappear completely?</li>
+          <li>Widgets above the list (as here) or below it, closer to your thumb?</li>
+          <li>Should letting go of the A–Z strip over a name open that app (like Niagara), or keep the list open?</li>
+          <li>Anything for the clock and weather line: tap to open Clock, Weather, Calendar?</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const screen = $('screen');
+
+  // ---------- data ----------
+  const ALL = ['1Password','Authenticator','Banking','Bandcamp','Calculator','Calendar','Camera','Chrome','Clock','Contacts','Docs','Drive','Duolingo','Files','Fitness','Gmail','Google','Home','Keep','Kindle','Maps','Messages','Netflix','News','Phone','Photos','Pocket Casts','Power Bubble','Settings','Signal','Slack','Spotify','Strava','Translate','Uber','Weather','WhatsApp','YouTube','Zoom'];
+  let favs = ['Phone','Messages','WhatsApp','Camera','Spotify','Maps'];
+  const hidden = new Set(['Authenticator']);
+  const renamed = { 'Pocket Casts': 'Podcasts' };
+  const notifs = {
+    Messages: [{ from: 'Sam', text: 'are we still on for 7?' }],
+    WhatsApp: [{ from: 'Family', text: 'Mum: photos from Sunday' }, { from: 'Jo', text: 'haha yes' }],
+    Gmail: [{ from: 'Courier', text: 'Your parcel is out for delivery' }],
+  };
+  const label = id => renamed[id] || id;
+  const letterOf = id => { const c = label(id)[0].toUpperCase(); return /[A-Z]/.test(c) ? c : '#'; };
+  const visibleApps = () => ALL.filter(a => !hidden.has(a)).sort((a, b) => label(a).localeCompare(label(b)));
+  const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  // ---------- rendering ----------
+  function appHTML(id, withPreview) {
+    const n = notifs[id];
+    const dot = n && n.length ? '<i class="dot"></i>' : '';
+    const prev = withPreview && n && n.length
+      ? `<div class="preview" data-id="${esc(id)}"><b>${esc(n[0].from)}</b> ${esc(n[0].text)}${n.length > 1 ? ` · +${n.length - 1}` : ''}</div>` : '';
+    return `<li class="app" data-id="${esc(id)}"><span class="name">${esc(label(id))}${dot}</span>${prev}</li>`;
+  }
+  function renderFavs() { $('favs').innerHTML = favs.filter(a => !hidden.has(a)).map(a => appHTML(a, true)).join(''); }
+  function renderDrawer() {
+    const groups = {};
+    visibleApps().forEach(a => (groups[letterOf(a)] ||= []).push(a));
+    $('drawer').innerHTML = Object.keys(groups).map(L => `<h4 id="sec-${L}">${L}</h4><ul>${groups[L].map(a => appHTML(a, false)).join('')}</ul>`).join('');
+    const letters = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
+    $('az').innerHTML = letters.map(L => `<span data-l="${L}" class="${groups[L] ? '' : 'empty'}">${L}</span>`).join('');
+  }
+  function renderShade() {
+    const cards = Object.entries(notifs).flatMap(([app, list]) => list.map(n => `<div class="card"><b>${esc(label(app))} · ${esc(n.from)}</b>${esc(n.text)}</div>`));
+    $('shadeCards').innerHTML = cards.join('') || '<div class="card">No notifications</div>';
+  }
+  function renderHidden() {
+    const list = [...hidden];
+    $('hiddenList').innerHTML = list.length ? list.map(a => `<button type="button" data-unhide="${esc(a)}">Unhide ${esc(label(a))}</button>`).join('') : 'None. Hold an app name to hide it.';
+  }
+  function renderAll() { renderFavs(); renderDrawer(); renderShade(); renderHidden(); }
+
+  // ---------- overlays ----------
+  let toastT;
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 2000); }
+  const show = (id, on = true) => { $(id).classList.toggle('on', on); if (id === 'drawer') screen.classList.toggle('drawer-open', on); };
+  function goHome() { ['drawer', 'search', 'shade', 'appview', 'scrim'].forEach(id => show(id, false)); closeSheet(); $('q').blur(); }
+  function openApp(id) { goHome(); $('appName').textContent = label(id); show('appview'); }
+  function openSearch() { goHome(); $('q').value = ''; renderResults(); show('search'); setTimeout(() => $('q').focus({ preventScroll: true }), 50); }
+  function openShade() { goHome(); renderShade(); show('shade'); }
+  function screenOff() { goHome(); show('off'); }
+
+  $('nav').addEventListener('click', goHome);
+  $('wake').addEventListener('click', () => show('off', false));
+  $('off').addEventListener('dblclick', () => show('off', false));
+  $('shade').addEventListener('click', () => show('shade', false));
+  $('playBtn').addEventListener('click', e => { e.stopPropagation(); e.target.textContent = e.target.textContent === 'Pause' ? 'Play' : 'Pause'; });
+  $('playBtn').addEventListener('pointerdown', e => e.stopPropagation());
+
+  // ---------- search ----------
+  function renderResults() {
+    const q = $('q').value.trim().toLowerCase();
+    const pool = ALL.filter(a => !hidden.has(a) || q.length > 1).sort((a, b) => label(a).localeCompare(label(b)));
+    const hits = q ? pool.filter(a => label(a).toLowerCase().includes(q) || a.toLowerCase().includes(q)).slice(0, 7) : favs.slice(0, 5);
+    $('results').innerHTML = hits.map(a => `<li data-open="${esc(a)}">${esc(label(a))}</li>`).join('') + (q ? `<li class="web">Search the web for “${esc(q)}”</li>` : '');
+  }
+  $('q').addEventListener('input', renderResults);
+  $('q').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { const first = $('results').querySelector('[data-open]'); if (first) openApp(first.dataset.open); }
+    if (e.key === 'Escape') goHome();
+  });
+  $('results').addEventListener('click', e => {
+    const li = e.target.closest('li'); if (!li) return;
+    if (li.dataset.open) openApp(li.dataset.open); else { goHome(); toast('Opens your browser'); }
+  });
+  $('search').addEventListener('click', e => { if (e.target.id === 'search') goHome(); });
+
+  // ---------- context sheet ----------
+  const sheet = $('sheet');
+  function openSheet(id) {
+    const isFav = favs.includes(id);
+    sheet.innerHTML = `<h3>${esc(label(id))}</h3>
+      <button class="act" type="button" data-a="fav">${isFav ? 'Remove from favourites' : 'Add to favourites'}</button>
+      <button class="act" type="button" data-a="rename">Rename</button>
+      <button class="act" type="button" data-a="hide">Hide</button>
+      <button class="act" type="button" data-a="info">App info</button>`;
+    sheet.dataset.id = id;
+    show('scrim'); sheet.classList.add('on');
+  }
+  function closeSheet() { sheet.classList.remove('on'); show('scrim', false); }
+  $('scrim').addEventListener('click', closeSheet);
+  sheet.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const id = sheet.dataset.id;
+    if (b.dataset.a === 'fav') {
+      favs = favs.includes(id) ? favs.filter(f => f !== id) : [...favs, id];
+      toast(favs.includes(id) ? `${label(id)} added to favourites` : `${label(id)} removed from favourites`);
+      closeSheet(); renderAll();
+    } else if (b.dataset.a === 'hide') {
+      hidden.add(id); toast(`${label(id)} hidden`); closeSheet(); renderAll();
+    } else if (b.dataset.a === 'info') {
+      closeSheet(); toast('Opens Android’s App info');
+    } else if (b.dataset.a === 'rename') {
+      sheet.innerHTML = `<h3>Rename</h3><input id="rn" type="text" value="${esc(label(id))}" aria-label="New name">
+        <div class="acts"><button type="button" data-a="reset">Use “${esc(id)}”</button><button type="button" class="go" data-a="save">Save</button></div>`;
+      const rn = $('rn'); rn.focus(); rn.select();
+      rn.addEventListener('keydown', ev => { if (ev.key === 'Enter') sheet.querySelector('[data-a="save"]').click(); });
+    } else if (b.dataset.a === 'save') {
+      const v = $('rn').value.trim(); if (v && v !== id) renamed[id] = v; else delete renamed[id];
+      closeSheet(); renderAll();
+    } else if (b.dataset.a === 'reset') {
+      delete renamed[id]; closeSheet(); renderAll();
+    }
+  });
+  $('hiddenList').addEventListener('click', e => {
+    const b = e.target.closest('[data-unhide]'); if (!b) return;
+    hidden.delete(b.dataset.unhide); renderAll(); toast(`${label(b.dataset.unhide)} is back in the list`);
+  });
+
+  // ---------- taps, holds and swipes ----------
+  let g = null, lastTap = 0;
+  screen.addEventListener('pointerdown', e => {
+    if (e.target.closest('.az, .preview, .sheet, .search, .shade, .appview, .off, .nav, .scrim, button, input')) return;
+    const app = e.target.closest('.app');
+    g = { x: e.clientX, y: e.clientY, app, inDrawer: !!e.target.closest('.drawer'), moved: false, long: false };
+    if (app) {
+      app.classList.add('pressed');
+      g.timer = setTimeout(() => { g.long = true; app.classList.remove('pressed'); navigator.vibrate?.(15); openSheet(app.dataset.id); }, 480);
+    }
+  });
+  screen.addEventListener('pointermove', e => {
+    if (!g || g.moved) return;
+    if (Math.hypot(e.clientX - g.x, e.clientY - g.y) > 9) { g.moved = true; clearTimeout(g.timer); g.app?.classList.remove('pressed'); }
+  });
+  screen.addEventListener('pointerup', e => {
+    if (!g) return;
+    clearTimeout(g.timer); g.app?.classList.remove('pressed');
+    const dx = e.clientX - g.x, dy = e.clientY - g.y;
+    if (g.long) { /* sheet already open */ }
+    else if (!g.moved) {
+      if (g.app) openApp(g.app.dataset.id);
+      else if (!g.inDrawer) {
+        const now = Date.now();
+        if (now - lastTap < 330) { lastTap = 0; screenOff(); } else lastTap = now;
+      } else goHome();
+    } else if (!g.inDrawer && Math.abs(dy) > 50 && Math.abs(dy) > Math.abs(dx)) {
+      dy < 0 ? openSearch() : openShade();
+    }
+    g = null;
+  });
+  screen.addEventListener('pointercancel', () => { if (g) { clearTimeout(g.timer); g.app?.classList.remove('pressed'); } g = null; });
+  screen.addEventListener('contextmenu', e => e.preventDefault());
+
+  // Swipe a notification preview sideways to dismiss it
+  $('favs').addEventListener('pointerdown', e => {
+    const p = e.target.closest('.preview'); if (!p) return;
+    e.stopPropagation(); p.setPointerCapture(e.pointerId);
+    const x0 = e.clientX; let dx = 0;
+    p.style.transition = 'none';
+    const move = ev => { dx = ev.clientX - x0; p.style.transform = `translateX(${dx}px)`; p.style.opacity = String(1 - Math.min(Math.abs(dx) / 160, .8)); };
+    const up = () => {
+      p.removeEventListener('pointermove', move); p.removeEventListener('pointerup', up); p.removeEventListener('pointercancel', up);
+      p.style.transition = '';
+      const id = p.dataset.id;
+      if (Math.abs(dx) > 70) {
+        p.style.transform = `translateX(${dx > 0 ? 240 : -240}px)`; p.style.opacity = '0';
+        setTimeout(() => { notifs[id].shift(); if (!notifs[id].length) delete notifs[id]; renderAll(); }, 180);
+      } else if (Math.abs(dx) < 6) { openApp(id); }
+      else { p.style.transform = ''; p.style.opacity = ''; }
+    };
+    p.addEventListener('pointermove', move); p.addEventListener('pointerup', up); p.addEventListener('pointercancel', up);
+  });
+
+  // ---------- A–Z strip ----------
+  const az = $('az'), pop = $('pop'), drawer = $('drawer');
+  function scrub(e) {
+    const r = az.getBoundingClientRect(), sr = screen.getBoundingClientRect();
+    const spans = [...az.children];
+    const i = Math.max(0, Math.min(spans.length - 1, Math.floor((e.clientY - r.top) / r.height * spans.length)));
+    spans.forEach((s, j) => s.classList.toggle('on', j === i));
+    const L = spans[i].dataset.l;
+    pop.textContent = L; pop.style.top = (e.clientY - sr.top - 32) + 'px'; pop.classList.add('on');
+    // jump to this letter, or the nearest one after it that has apps
+    const sec = $('sec-' + L) || spans.slice(i).map(s => $('sec-' + s.dataset.l)).find(Boolean);
+    if (sec) drawer.scrollTop = sec.offsetTop - 44;
+  }
+  az.addEventListener('pointerdown', e => {
+    az.setPointerCapture(e.pointerId);
+    ['search', 'shade', 'appview'].forEach(id => show(id, false));
+    show('drawer'); scrub(e);
+    const move = ev => scrub(ev);
+    const up = () => {
+      pop.classList.remove('on'); [...az.children].forEach(s => s.classList.remove('on'));
+      az.removeEventListener('pointermove', move); az.removeEventListener('pointerup', up); az.removeEventListener('pointercancel', up);
+    };
+    az.addEventListener('pointermove', move); az.addEventListener('pointerup', up); az.addEventListener('pointercancel', up);
+  });
+
+  // ---------- wallpapers and colour extraction ----------
+  const WALLS = {
+    dusk:  { base: '#2a1b3d', blobs: [[.85, .12, .7, '#f08a4b'], [.1, .55, .6, '#7b3f8c'], [.6, .95, .7, '#1b2a5c']] },
+    fjord: { base: '#0c1d24', blobs: [[.2, .1, .7, '#2f7f86'], [.9, .6, .6, '#173f63'], [.3, .95, .6, '#0f3b33']] },
+    dune:  { base: '#e9dccb', blobs: [[.8, .15, .7, '#f6c99a'], [.1, .7, .7, '#d9b99a'], [.7, .95, .5, '#c98e64']] },
+    moss:  { base: '#1c2a17', blobs: [[.15, .15, .7, '#6d8b3b'], [.85, .55, .6, '#2e4a24'], [.5, 1, .6, '#a4a83f']] },
+    mono:  { base: '#d9d9d6', blobs: [[.5, .2, .8, '#f4f4f2'], [.2, .9, .7, '#9a9a96']] },
+  };
+  const W = 180, H = 380;
+  const canvas = document.createElement('canvas'); canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+  function paintPreset(p, c = ctx, w = W, h = H) {
+    c.fillStyle = p.base; c.fillRect(0, 0, w, h);
+    p.blobs.forEach(([x, y, r, col]) => {
+      const gr = c.createRadialGradient(x * w, y * h, 0, x * w, y * h, r * Math.max(w, h));
+      gr.addColorStop(0, col); gr.addColorStop(1, col + '00');
+      c.fillStyle = gr; c.fillRect(0, 0, w, h);
+    });
+  }
+  function rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2;
+    if (mx === mn) return [0, 0, l];
+    const d = mx - mn, s = l > .5 ? d / (2 - mx - mn) : d / (mx + mn);
+    const h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return [h * 60, s, l];
+  }
+  const lum = (r, g, b) => { const f = v => (v /= 255) <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; return .2126 * f(r) + .7152 * f(g) + .0722 * f(b); };
+
+  // Same idea as WallpaperManager.getWallpaperColors(): find the main colour, the most vivid
+  // colour, and whether dark text reads better. Text sits mostly in the lower two thirds.
+  function analyse() {
+    const d = ctx.getImageData(0, 0, W, H).data;
+    let L = 0, n = 0, best = null, bestScore = -1, sr = 0, sg = 0, sb = 0;
+    for (let y = Math.floor(H * .3); y < H; y += 4) for (let x = 0; x < W; x += 4) {
+      const i = (y * W + x) * 4, r = d[i], gg = d[i + 1], b = d[i + 2];
+      L += lum(r, gg, b); n++; sr += r; sg += gg; sb += b;
+      const [h, s, l] = rgbToHsl(r, gg, b), score = s * (1 - Math.abs(l - .5) * 1.6);
+      if (score > bestScore) { bestScore = score; best = [h, s, l]; }
+    }
+    const avgL = L / n, darkText = avgL > .4;
+    const [h, s] = best, sat = Math.round(Math.max(.35, Math.min(.85, s)) * 100);
+    const accent = darkText ? `hsl(${h | 0} ${sat}% 30%)` : `hsl(${h | 0} ${sat}% 72%)`;
+    const primary = `rgb(${sr / n | 0} ${sg / n | 0} ${sb / n | 0})`;
+    screen.style.setProperty('--t', darkText ? '#141414' : '#fafafa');
+    screen.style.setProperty('--t2', darkText ? 'rgba(20,20,20,.68)' : 'rgba(250,250,250,.7)');
+    screen.style.setProperty('--acc', accent);
+    screen.style.setProperty('--shadow', darkText ? 'none' : '0 1px 10px rgba(0,0,0,.35)');
+    screen.style.setProperty('--scrimA', darkText ? '0' : '.45');
+    drawer.style.background = darkText ? 'rgba(255,255,255,.6)' : '';
+    $('swatches').innerHTML = `<span><i style="background:${primary}"></i>Main</span><span><i style="background:${accent}"></i>Accent</span><span><i style="background:${darkText ? '#141414' : '#fafafa'}"></i>${darkText ? 'Dark text' : 'Light text'}</span>`;
+  }
+  function apply() { screen.style.backgroundImage = `url(${canvas.toDataURL('image/jpeg', .9)})`; analyse(); }
+  function usePreset(key) {
+    paintPreset(WALLS[key]); apply();
+    [...$('walls').querySelectorAll('button')].forEach(b => b.setAttribute('aria-pressed', String(b.dataset.w === key)));
+  }
+  // swatch buttons
+  const wallsEl = $('walls'), uploadLabel = wallsEl.querySelector('label');
+  Object.keys(WALLS).forEach(k => {
+    const c = document.createElement('canvas'); c.width = 46; c.height = 46; paintPreset(WALLS[k], c.getContext('2d'), 46, 46);
+    const b = document.createElement('button'); b.type = 'button'; b.dataset.w = k; b.title = k[0].toUpperCase() + k.slice(1);
+    b.setAttribute('aria-label', b.title + ' wallpaper'); b.style.backgroundImage = `url(${c.toDataURL()})`;
+    b.addEventListener('click', () => usePreset(k));
+    wallsEl.insertBefore(b, uploadLabel);
+  });
+  $('upload').addEventListener('change', e => {
+    const f = e.target.files[0]; if (!f) return;
+    const img = new Image();
+    img.onload = () => {
+      const s = Math.max(W / img.width, H / img.height), w = img.width * s, h = img.height * s;
+      ctx.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
+      apply(); URL.revokeObjectURL(img.src);
+      [...wallsEl.querySelectorAll('button')].forEach(b => b.setAttribute('aria-pressed', 'false'));
+    };
+    img.src = URL.createObjectURL(f);
+  });
+
+  // ---------- typeface and size ----------
+  const FACES = {
+    grotesk: ['"Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif', 500, '-0.01em'],
+    serif: ['"Fraunces", Georgia, serif', 400, '-0.01em'],
+    condensed: ['"Barlow Condensed", "Arial Narrow", sans-serif', 500, '0.005em'],
+  };
+  $('faces').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const [f, w, ls] = FACES[b.dataset.face];
+    screen.style.setProperty('--lf', f); screen.style.setProperty('--lw', w); screen.style.setProperty('--ls', ls);
+    [...$('faces').children].forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  });
+  $('sizes').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    screen.style.setProperty('--fs', b.dataset.size + 'px');
+    [...$('sizes').children].forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  });
+
+  // ---------- clock ----------
+  function tick() {
+    const d = new Date();
+    const t = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(/\s?[AP]M/i, '');
+    $('clock').textContent = t; $('sbTime').textContent = t;
+    $('date').textContent = d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
+  }
+  tick(); setInterval(tick, 15000);
+
+  renderAll();
+  usePreset('dusk');
+})();
+</script>
+</body>
+</html>
