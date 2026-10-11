@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.peteroomen.launcher.HomeUiState
 import io.github.peteroomen.launcher.R
+import io.github.peteroomen.launcher.data.ListStyle
 import io.github.peteroomen.launcher.indexLetter
 import io.github.peteroomen.launcher.model.FavOps
 
@@ -182,20 +183,16 @@ fun AllAppsOverlay(
         onHighlight(highlighted)
     }
     val bars = WindowInsets.systemBars.asPaddingValues()
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(if (palette.glass) palette.scrim.copy(alpha = palette.scrim.alpha * 0.5f) else palette.scrim)
-            .pointerInput(Unit) { detectTapGestures { onDismiss() } },
-    ) {
+    val sheet = state.appearance.listStyle == ListStyle.PANEL
+    ListContainer(sheet, onDismiss) {
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 start = 24.dp,
                 end = 48.dp,
-                top = bars.calculateTopPadding() + 24.dp,
-                bottom = bars.calculateBottomPadding() + 120.dp,
+                top = if (sheet) 16.dp else bars.calculateTopPadding() + 24.dp,
+                bottom = bars.calculateBottomPadding() + if (sheet) 24.dp else 120.dp,
             ),
         ) {
             items(rows, key = { if (it is ListRow.Header) "#h${it.letter}" else (it as ListRow.App).key }) { row ->
@@ -212,6 +209,7 @@ fun AllAppsOverlay(
                         appearance = state.appearance,
                         highlighted = row.key == highlighted,
                         modifier = Modifier
+                            .fillMaxWidth()
                             .onGloballyPositioned {
                                 val top = it.positionInRoot().y
                                 rowBounds[row.key] = top..(top + it.size.height)
@@ -262,32 +260,16 @@ fun SearchOverlay(
     val focus = remember { FocusRequester() }
     val results = remember(query, state) { searchApps(state, query) }
     LaunchedEffect(Unit) { focus.requestFocus() }
-    // Flat mode: full screen over a dark scrim, light text. Glass mode: a glass panel 80% of the screen tall.
-    val glass = palette.glass
-    val ink = if (glass) palette.text else Color.White
-    val listPalette = if (glass) palette.copy(shadow = null) else palette.copy(text = Color.White, darkText = false)
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(if (glass) Color.Black.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.6f))
-            .pointerInput(Unit) { detectTapGestures { onDismiss() } }
-            .imePadding(),
-    ) {
+    // Same container as the A–Z list: straight on the wallpaper, or a sheet from the bottom
+    val sheet = state.appearance.listStyle == ListStyle.PANEL
+    val ink = palette.text
+    val listPalette = if (sheet) palette.copy(shadow = null) else palette
+    ListContainer(sheet, onDismiss) {
         Column(
-            if (glass) {
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.8f)
-                    .navigationBarsPadding()
-                    .padding(10.dp)
-                    .glass(RoundedCornerShape(28.dp), palette, rim = 1.5.dp)
-                    .pointerInput(Unit) { detectTapGestures { } } // taps inside the panel don't close it
-                    .padding(horizontal = 18.dp, vertical = 18.dp)
+            if (sheet) {
+                Modifier.navigationBarsPadding().padding(horizontal = 22.dp, vertical = 20.dp)
             } else {
-                Modifier
-                    .statusBarsPadding()
-                    .padding(horizontal = 22.dp, vertical = 24.dp)
+                Modifier.statusBarsPadding().padding(horizontal = 22.dp, vertical = 24.dp)
             },
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
@@ -349,4 +331,35 @@ private fun SearchResult(key: String, state: HomeUiState, onLaunch: (String) -> 
             )
             .padding(vertical = 6.dp),
     )
+}
+
+/**
+ * Where search and the A–Z list sit. As a [sheet]: a panel filling the bottom 80% of the screen,
+ * edge to edge with only the top corners rounded (glass when liquid glass is on), with a light dim
+ * above it. Otherwise: nothing at all, the wallpaper is the background. Tapping outside the
+ * content closes it.
+ */
+@Composable
+fun ListContainer(sheet: Boolean, onDismiss: () -> Unit, content: @Composable () -> Unit) {
+    val palette = LocalPalette.current
+    Box(
+        Modifier
+            .fillMaxSize()
+            .then(if (sheet) Modifier.background(Color.Black.copy(alpha = 0.2f)) else Modifier)
+            .pointerInput(Unit) { detectTapGestures { onDismiss() } }
+            .imePadding(),
+    ) {
+        if (sheet) {
+            Box(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.8f)
+                    .panel(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), palette.scrim, rim = 1.5.dp)
+                    .pointerInput(Unit) { detectTapGestures { } }, // taps on the sheet itself don't close it
+            ) { content() }
+        } else {
+            content()
+        }
+    }
 }

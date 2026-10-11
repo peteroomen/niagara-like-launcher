@@ -143,4 +143,7 @@
     <string name="glass_pick_photo">Pick wallpaper photo instead</string>
     <string name="glass_bend">Bend edges</string>
     <string name="glass_bend_summary">The edges of glass panels bend the wallpaper like a lens, fading into the frosted middle.</string>
+    <string name="list_style">Search and app list</string>
+    <string name="list_style_panel">Panel from the bottom</string>
+    <string name="list_style_wallpaper">Wallpaper only</string>
 </resources>

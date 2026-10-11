@@ -61,6 +61,7 @@ import io.github.peteroomen.launcher.data.FavouritesLayout
 import io.github.peteroomen.launcher.data.IconShape
 import io.github.peteroomen.launcher.data.IconStyle
 import io.github.peteroomen.launcher.data.LauncherFont
+import io.github.peteroomen.launcher.data.ListStyle
 import io.github.peteroomen.launcher.data.TextShadow
 import io.github.peteroomen.launcher.data.TextTone
 import io.github.peteroomen.launcher.system.SystemActions
@@ -180,6 +181,9 @@ private fun SettingsScreen(vm: LauncherViewModel) {
             Accent.PINK to R.string.accent_pink, Accent.VIOLET to R.string.accent_violet, Accent.BLUE to R.string.accent_blue,
             Accent.TEAL to R.string.accent_teal, Accent.GREEN to R.string.accent_green, Accent.MONO to R.string.accent_mono,
         )) { set(a.copy(accent = it)) }
+        Chips(stringResource(R.string.list_style), a.listStyle, listOf(
+            ListStyle.PANEL to R.string.list_style_panel, ListStyle.WALLPAPER to R.string.list_style_wallpaper,
+        )) { set(a.copy(listStyle = it)) }
         Chips(stringResource(R.string.font), a.font, listOf(
             LauncherFont.SYSTEM to R.string.font_system, LauncherFont.CONDENSED to R.string.font_condensed,
             LauncherFont.SERIF to R.string.font_serif, LauncherFont.MONO to R.string.font_mono,

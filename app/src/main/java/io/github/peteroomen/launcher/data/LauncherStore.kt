@@ -21,6 +21,8 @@ enum class LauncherFont { SYSTEM, CONDENSED, SERIF, MONO }
 enum class ClockSize(val sp: Int) { SMALL(44), MEDIUM(56), LARGE(72) }
 enum class ClockWeight { LIGHT, REGULAR, BOLD }
 enum class FavouritesLayout { COLUMN, PIE }
+/** How search and the A–Z list are shown: straight on the wallpaper, or on a sheet from the bottom. */
+enum class ListStyle { WALLPAPER, PANEL }
 /** Something behind the text to lift it off busy wallpapers. */
 enum class Backdrop { NONE, LEFT_FADE, DIM }
 
@@ -47,6 +49,7 @@ data class Appearance(
     val glass: Boolean = false,
     /** With glass: bend the wallpaper at panel edges like a lens (Android 13+). */
     val glassBend: Boolean = true,
+    val listStyle: ListStyle = ListStyle.PANEL,
     /** Keep the home screen upright even when the phone is turned sideways. */
     val lockPortrait: Boolean = true,
 )
@@ -96,6 +99,7 @@ class LauncherStore(private val context: Context) {
                 lockPortrait = p[LOCK_PORTRAIT] ?: d.lockPortrait,
                 glass = p[GLASS] ?: d.glass,
                 glassBend = p[GLASS_BEND] ?: d.glassBend,
+                listStyle = p.enumOf(LIST_STYLE, d.listStyle),
             ),
             seeded = p[SEEDED] ?: false,
         )
@@ -121,6 +125,7 @@ class LauncherStore(private val context: Context) {
         p[LOCK_PORTRAIT] = a.lockPortrait
         p[GLASS] = a.glass
         p[GLASS_BEND] = a.glassBend
+        p[LIST_STYLE] = a.listStyle.name
         p[SEEDED] = s.seeded
     }
 
@@ -143,6 +148,7 @@ class LauncherStore(private val context: Context) {
         val LOCK_PORTRAIT = booleanPreferencesKey("lock_portrait")
         val GLASS = booleanPreferencesKey("glass")
         val GLASS_BEND = booleanPreferencesKey("glass_bend")
+        val LIST_STYLE = stringPreferencesKey("list_style")
         val SEEDED = booleanPreferencesKey("seeded")
     }
 }

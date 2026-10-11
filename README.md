@@ -17,6 +17,8 @@ The design came from the interactive prototype in [`prototype/index.html`](proto
 - **Notification dots:** on icons and folders, respecting each app's dot setting.
 - **Widgets:** the next calendar event within a week, and a music player card with album art, progress, and previous, play/pause and next buttons.
 - **A–Z strip:** drag along the right edge to jump through every app, listed with icons. Slide left onto a name and let go to open it.
+- **Search and app list style** (setting): a panel from the bottom (80% tall, edge to edge, rounded top corners; glass with liquid glass on), or wallpaper only (no background, the rest of the home screen fades away while it's open). Both search and the A–Z list use the same style.
+- **Full-width rows:** favourites, the A–Z list and search results can be tapped anywhere along their line.
 - **Clock:** tap the time to open the Clock app, or the date for your calendar.
 - **Gestures:**
   - Double-tap empty space to turn the screen off (needs [Power Bubble](https://github.com/peteroomen/power-bubble)).

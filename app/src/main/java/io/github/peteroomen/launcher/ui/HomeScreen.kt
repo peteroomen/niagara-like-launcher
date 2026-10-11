@@ -8,6 +8,7 @@ import android.content.pm.ActivityInfo
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -44,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -65,6 +67,7 @@ import io.github.peteroomen.launcher.HomeUiState
 import io.github.peteroomen.launcher.LauncherViewModel
 import io.github.peteroomen.launcher.data.Backdrop
 import io.github.peteroomen.launcher.data.FavouritesLayout
+import io.github.peteroomen.launcher.data.ListStyle
 import io.github.peteroomen.launcher.indexLetter
 import io.github.peteroomen.launcher.model.Fav
 import io.github.peteroomen.launcher.model.Pie
@@ -110,7 +113,11 @@ fun HomeScreen(vm: LauncherViewModel) {
     val haptics = LocalHapticFeedback.current
     LaunchedEffect(pie?.hit) { if (pie != null) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
     // With liquid glass, the wallpaper itself blurs behind search, the A–Z list and the pie
-    WallpaperBlur(on = state.appearance.glass && (overlay != Overlay.NONE || pie != null))
+    // (Only behind the sheet: "wallpaper only" lists show the wallpaper as it is)
+    val sheetLists = state.appearance.listStyle == ListStyle.PANEL
+    WallpaperBlur(on = state.appearance.glass && ((overlay != Overlay.NONE && sheetLists) || pie != null))
+    // With "wallpaper only" lists, the rest of the home screen steps aside while they're open
+    val homeAlpha by animateFloatAsState(if (overlay != Overlay.NONE && !sheetLists) 0f else 1f, label = "home")
 
     fun goHome() {
         overlay = Overlay.NONE
@@ -170,6 +177,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                 Column(
                     Modifier
                         .fillMaxSize()
+                        .graphicsLayer { alpha = homeAlpha }
                         .systemBarsPadding()
                         .padding(start = 24.dp, end = 48.dp, top = 28.dp, bottom = 16.dp),
                 ) {
@@ -312,13 +320,14 @@ private fun Favourites(
     onLaunch: (String) -> Unit,
     onMenu: (MenuTarget) -> Unit,
 ) {
-    Column(Modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    // Rows run the full width, so a favourite can be tapped anywhere along its line (right thumb too)
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         state.favs.forEach { fav ->
             when (fav) {
                 is Fav.App -> FavouriteApp(
                     key = fav.key,
                     state = state,
-                    modifier = Modifier.pressable(state.label(fav.key), { onLaunch(fav.key) }, { onMenu(MenuTarget.App(fav.key)) }),
+                    modifier = Modifier.fillMaxWidth().pressable(state.label(fav.key), { onLaunch(fav.key) }, { onMenu(MenuTarget.App(fav.key)) }),
                 )
                 is Fav.Folder -> FolderEntry(
                     folder = fav,
@@ -327,7 +336,7 @@ private fun Favourites(
                     onClose = onCloseFolder,
                     onLaunch = onLaunch,
                     onAppLongClick = { onMenu(MenuTarget.App(it)) },
-                    modifier = Modifier.pressable(folderLabel(fav), { onToggleFolder(fav.id) }, { onMenu(MenuTarget.Folder(fav.id)) }),
+                    modifier = Modifier.fillMaxWidth().pressable(folderLabel(fav), { onToggleFolder(fav.id) }, { onMenu(MenuTarget.Folder(fav.id)) }),
                 )
             }
         }

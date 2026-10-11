@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -115,6 +116,7 @@ fun Modifier.pressable(label: String, onClick: () -> Unit, onLongClick: () -> Un
             alpha = if (pressed) 0.55f else 1f
             scaleX = if (pressed) 0.94f else 1f
             scaleY = scaleX
+            transformOrigin = TransformOrigin(0f, 0.5f) // full-width rows shrink towards their icon
         }
         .combinedClickable(
             interactionSource = interaction,
