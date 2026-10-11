@@ -8,7 +8,7 @@ Design stage. The interactive prototype is in [`prototype/index.html`](prototype
 
 ## Planned features
 
-- Favourites list with an A–Z strip for all other apps
+- Favourites list with folders, and an A–Z strip for all other apps
 - Widgets above the list
 - Notification previews under app names, swipe to dismiss
 - Gestures: double-tap to turn the screen off (via [Power Bubble](https://github.com/peteroomen/power-bubble)), swipe down for notifications, swipe up to search

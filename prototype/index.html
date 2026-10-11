@@ -44,7 +44,8 @@ header p { margin: 8px 0 0; color: var(--muted); max-width: 64ch; }
 .date { color: var(--t2); font-size: 14px; margin-top: 6px; }
 .date b { color: var(--acc); font-weight: inherit; }
 
-.widgets { display: grid; gap: 12px; margin-top: 22px; }
+.widgets { display: grid; gap: 12px; margin-top: 22px; max-height: 220px; overflow: hidden; transition: opacity .2s, max-height .25s, margin .25s; }
+.screen.folder-open .widgets { max-height: 0; margin-top: 0; opacity: 0; pointer-events: none; }
 .widget { display: grid; gap: 1px; }
 .widget .lbl { font: 600 10.5px var(--f-body); letter-spacing: .1em; text-transform: uppercase; color: var(--acc); }
 .widget .val { font-size: 15px; line-height: 1.3; }
@@ -55,11 +56,16 @@ header p { margin: 8px 0 0; color: var(--muted); max-width: 64ch; }
 .favs { list-style: none; margin: auto 0 0; padding: 0; display: grid; gap: 9px; }
 .app { cursor: pointer; display: block; width: fit-content; max-width: 100%; }
 .favs .app + .app { margin-top: 2px; }
-.app .name { font-size: var(--fs, 30px); font-weight: var(--lw); letter-spacing: var(--ls); line-height: 1.12; display: inline-flex; align-items: center; gap: 8px; }
+.app .name, .fhead { font-size: var(--fs, 30px); font-weight: var(--lw); letter-spacing: var(--ls); line-height: 1.12; display: inline-flex; align-items: center; gap: 8px; }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--acc); box-shadow: none; flex: none; }
 .preview { font-family: var(--f-body); font-size: 13px; line-height: 1.3; padding-block: 2px; color: var(--t2); margin-top: 3px; max-width: 220px; touch-action: none; transition: transform .2s, opacity .2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .preview b { color: var(--t); font-weight: 600; }
-.app.pressed .name { opacity: .55; }
+.app.pressed .name, .fhead.pressed { opacity: .55; }
+.fhead { cursor: pointer; }
+.fhead .count { font: 600 12px var(--f-body); color: var(--t2); align-self: flex-start; margin: 4px 0 0 -4px; letter-spacing: 0; }
+.folder.open > .fhead { color: var(--acc); }
+.fsub { list-style: none; margin: 6px 0 4px 2px; padding: 0 0 0 14px; display: grid; gap: 4px; border-left: 1px solid var(--t2); }
+.fsub .app .name { --fs: 22px; }
 
 .az { position: absolute; right: 4px; top: 150px; bottom: 70px; width: 30px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; touch-action: none; z-index: 4; cursor: ns-resize; }
 .az span { font: 600 9.5px/1 var(--f-body); color: var(--t2); pointer-events: none; }
@@ -228,7 +234,9 @@ code { font: 12.5px var(--f-mono); background: var(--chip); padding: 1px 5px; bo
           <li><b>Tap a name</b><span>Opens the app. The bar at the bottom takes you home.</span></li>
           <li><b>Slide the A–Z</b><span>Drag along the letters on the right edge to jump through every app.</span></li>
           <li><b>Swipe a preview</b><span>Swipe a message preview sideways to dismiss the notification.</span></li>
-          <li><b>Hold a name</b><span>Rename it, hide it, or add or remove it from favourites.</span></li>
+          <li><b>Tap a folder</b><span>Travel and Work open in place, with the widgets tucked away to make room. Tap it again, or empty space, to close it.</span></li>
+          <li><b>Hold a name</b><span>Rename it, hide it, put it in a folder or a new one, or add or remove it from favourites.</span></li>
+          <li><b>Hold a folder</b><span>Rename it, ungroup it, or remove it from favourites.</span></li>
           <li><b>Swipe up</b><span>Search apps. Press Enter to open the top result.</span></li>
           <li><b>Swipe down</b><span>Opens the notification shade.</span></li>
           <li><b>Double-tap</b><span>Double-tap empty space to turn the screen off with Power Bubble.</span></li>
@@ -279,6 +287,7 @@ code { font: 12.5px var(--f-mono); background: var(--chip); padding: 1px 5px; bo
             <tr><td>Widgets</td><td><code>AppWidgetHost</code>. Adding one goes through the system widget picker or <code>bindAppWidgetIdIfAllowed</code>.</td></tr>
             <tr><td>Double-tap</td><td>Sends Power Bubble's screen-off intent, so the launcher needs no accessibility service of its own.</td></tr>
             <tr><td>Swipe down</td><td>Opens the real notification shade, via the status bar service or Power Bubble's <code>GLOBAL_ACTION_NOTIFICATIONS</code>.</td></tr>
+            <tr><td>Folders</td><td>Only the launcher knows about them. Each folder is a saved name plus a list of apps, in DataStore or Room.</td></tr>
             <tr><td>Hide, rename</td><td>Stored by the launcher itself (DataStore or Room). Hidden apps stay installed and searchable.</td></tr>
             <tr><td>Wallpaper colours</td><td><code>WallpaperManager.getWallpaperColors()</code> gives the main colours and a "supports dark text" hint. This page does the same analysis in the browser.</td></tr>
           </tbody>
@@ -291,6 +300,7 @@ code { font: 12.5px var(--f-mono); background: var(--chip); padding: 1px 5px; bo
           <li>Should hidden apps show up in search, or disappear completely?</li>
           <li>Widgets above the list (as here) or below it, closer to your thumb?</li>
           <li>Should letting go of the A–Z strip over a name open that app (like Niagara), or keep the list open?</li>
+          <li>Folders open in place here. Would you rather they open as a pop-up list over the wallpaper?</li>
           <li>Anything for the clock and weather line: tap to open Clock, Weather, Calendar?</li>
         </ul>
       </section>
@@ -305,7 +315,22 @@ code { font: 12.5px var(--f-mono); background: var(--chip); padding: 1px 5px; bo
 
   // ---------- data ----------
   const ALL = ['1Password','Authenticator','Banking','Bandcamp','Calculator','Calendar','Camera','Chrome','Clock','Contacts','Docs','Drive','Duolingo','Files','Fitness','Gmail','Google','Home','Keep','Kindle','Maps','Messages','Netflix','News','Phone','Photos','Pocket Casts','Power Bubble','Settings','Signal','Slack','Spotify','Strava','Translate','Uber','Weather','WhatsApp','YouTube','Zoom'];
-  let favs = ['Phone','Messages','WhatsApp','Camera','Spotify','Maps'];
+  // Favourites hold app ids and folders: { folder, name, apps }
+  let favs = ['Phone', 'Messages', 'WhatsApp',
+    { folder: 'f1', name: 'Travel', apps: ['Maps', 'Uber', 'Translate', 'Weather'] },
+    'Camera', 'Spotify',
+    { folder: 'f2', name: 'Work', apps: ['Gmail', 'Slack', 'Docs', 'Zoom'] }];
+  let openFolder = null, folderSeq = 3;
+  const isFolder = x => typeof x === 'object';
+  const favIds = () => favs.flatMap(x => isFolder(x) ? x.apps : [x]);
+  const folderOf = id => favs.find(x => isFolder(x) && x.apps.includes(id));
+  const folderById = fid => favs.find(x => isFolder(x) && x.folder === fid);
+  // Take an app out of wherever it sits in favourites; folders left empty disappear
+  function detach(id) {
+    favs = favs.filter(x => x !== id);
+    favs.forEach(x => { if (isFolder(x)) x.apps = x.apps.filter(a => a !== id); });
+    favs = favs.filter(x => !isFolder(x) || x.apps.length);
+  }
   const hidden = new Set(['Authenticator']);
   const renamed = { 'Pocket Casts': 'Podcasts' };
   const notifs = {
@@ -326,7 +351,18 @@ code { font: 12.5px var(--f-mono); background: var(--chip); padding: 1px 5px; bo
       ? `<div class="preview" data-id="${esc(id)}"><b>${esc(n[0].from)}</b> ${esc(n[0].text)}${n.length > 1 ? ` · +${n.length - 1}` : ''}</div>` : '';
     return `<li class="app" data-id="${esc(id)}"><span class="name">${esc(label(id))}${dot}</span>${prev}</li>`;
   }
-  function renderFavs() { $('favs').innerHTML = favs.filter(a => !hidden.has(a)).map(a => appHTML(a, true)).join(''); }
+  function folderHTML(f) {
+    const apps = f.apps.filter(a => !hidden.has(a));
+    const dot = apps.some(a => notifs[a]?.length) ? '<i class="dot"></i>' : '';
+    const open = openFolder === f.folder;
+    return `<li class="folder${open ? ' open' : ''}" data-folder="${f.folder}"><span class="name fhead">${esc(f.name)}<span class="count">${apps.length}</span>${dot}</span>`
+      + (open ? `<ul class="fsub">${apps.map(a => appHTML(a, false)).join('')}</ul>` : '') + '</li>';
+  }
+  function renderFavs() {
+    $('favs').innerHTML = favs.map(x => isFolder(x) ? folderHTML(x) : hidden.has(x) ? '' : appHTML(x, true)).join('');
+    screen.classList.toggle('folder-open', !!openFolder);
+  }
+  function toggleFolder(fid) { openFolder = openFolder === fid ? null : fid; renderFavs(); }
   function renderDrawer() {
     const groups = {};
     visibleApps().forEach(a => (groups[letterOf(a)] ||= []).push(a));
@@ -348,7 +384,7 @@ code { font: 12.5px var(--f-mono); background: var(--chip); padding: 1px 5px; bo
   let toastT;
   function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 2000); }
   const show = (id, on = true) => { $(id).classList.toggle('on', on); if (id === 'drawer') screen.classList.toggle('drawer-open', on); };
-  function goHome() { ['drawer', 'search', 'shade', 'appview', 'scrim'].forEach(id => show(id, false)); closeSheet(); $('q').blur(); }
+  function goHome() { if (openFolder) { openFolder = null; renderFavs(); } ['drawer', 'search', 'shade', 'appview', 'scrim'].forEach(id => show(id, false)); closeSheet(); $('q').blur(); }
   function openApp(id) { goHome(); $('appName').textContent = label(id); show('appview'); }
   function openSearch() { goHome(); $('q').value = ''; renderResults(); show('search'); setTimeout(() => $('q').focus({ preventScroll: true }), 50); }
   function openShade() { goHome(); renderShade(); show('shade'); }
@@ -365,7 +401,7 @@ code { font: 12.5px var(--f-mono); background: var(--chip); padding: 1px 5px; bo
   function renderResults() {
     const q = $('q').value.trim().toLowerCase();
     const pool = ALL.filter(a => !hidden.has(a) || q.length > 1).sort((a, b) => label(a).localeCompare(label(b)));
-    const hits = q ? pool.filter(a => label(a).toLowerCase().includes(q) || a.toLowerCase().includes(q)).slice(0, 7) : favs.slice(0, 5);
+    const hits = q ? pool.filter(a => label(a).toLowerCase().includes(q) || a.toLowerCase().includes(q)).slice(0, 7) : favIds().slice(0, 5);
     $('results').innerHTML = hits.map(a => `<li data-open="${esc(a)}">${esc(label(a))}</li>`).join('') + (q ? `<li class="web">Search the web for “${esc(q)}”</li>` : '');
   }
   $('q').addEventListener('input', renderResults);
@@ -381,39 +417,90 @@ code { font: 12.5px var(--f-mono); background: var(--chip); padding: 1px 5px; bo
 
   // ---------- context sheet ----------
   const sheet = $('sheet');
+  function sheetOpen(html) { sheet.innerHTML = html; show('scrim'); sheet.classList.add('on'); }
   function openSheet(id) {
-    const isFav = favs.includes(id);
-    sheet.innerHTML = `<h3>${esc(label(id))}</h3>
+    const f = folderOf(id), isFav = favIds().includes(id);
+    sheet.dataset.id = id; delete sheet.dataset.folder;
+    sheetOpen(`<h3>${esc(label(id))}</h3>
+      ${f ? `<button class="act" type="button" data-a="unfold">Move out of ${esc(f.name)}</button>` : ''}
+      <button class="act" type="button" data-a="tofolder">${f ? 'Move to another folder' : 'Add to folder'}</button>
       <button class="act" type="button" data-a="fav">${isFav ? 'Remove from favourites' : 'Add to favourites'}</button>
       <button class="act" type="button" data-a="rename">Rename</button>
       <button class="act" type="button" data-a="hide">Hide</button>
-      <button class="act" type="button" data-a="info">App info</button>`;
-    sheet.dataset.id = id;
-    show('scrim'); sheet.classList.add('on');
+      <button class="act" type="button" data-a="info">App info</button>`);
+  }
+  function openFolderSheet(fid) {
+    const f = folderById(fid);
+    sheet.dataset.folder = fid; delete sheet.dataset.id;
+    sheetOpen(`<h3>${esc(f.name)}</h3>
+      <button class="act" type="button" data-a="frename">Rename folder</button>
+      <button class="act" type="button" data-a="ungroup">Ungroup</button>
+      <button class="act" type="button" data-a="fremove">Remove from favourites</button>`);
+  }
+  function nameForm(title, value, saveAction, extra = '') {
+    sheet.innerHTML = `<h3>${title}</h3><input id="rn" type="text" value="${esc(value)}" placeholder="Name" aria-label="Name">
+      <div class="acts">${extra}<button type="button" class="go" data-a="${saveAction}">Save</button></div>`;
+    const rn = $('rn'); rn.focus(); rn.select();
+    rn.addEventListener('keydown', ev => { if (ev.key === 'Enter') sheet.querySelector(`[data-a="${saveAction}"]`).click(); });
   }
   function closeSheet() { sheet.classList.remove('on'); show('scrim', false); }
   $('scrim').addEventListener('click', closeSheet);
   sheet.addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
-    const id = sheet.dataset.id;
-    if (b.dataset.a === 'fav') {
-      favs = favs.includes(id) ? favs.filter(f => f !== id) : [...favs, id];
-      toast(favs.includes(id) ? `${label(id)} added to favourites` : `${label(id)} removed from favourites`);
-      closeSheet(); renderAll();
-    } else if (b.dataset.a === 'hide') {
-      hidden.add(id); toast(`${label(id)} hidden`); closeSheet(); renderAll();
-    } else if (b.dataset.a === 'info') {
+    const id = sheet.dataset.id, fid = sheet.dataset.folder, a = b.dataset.a;
+    const done = msg => { closeSheet(); renderAll(); if (msg) toast(msg); };
+    if (a === 'fav') {
+      if (favIds().includes(id)) { detach(id); done(`${label(id)} removed from favourites`); }
+      else { favs.push(id); done(`${label(id)} added to favourites`); }
+    } else if (a === 'unfold') {
+      const f = folderOf(id), at = favs.indexOf(f);
+      detach(id);
+      const i = favs.indexOf(f);
+      favs.splice(i === -1 ? at : i + 1, 0, id);
+      done(`${label(id)} moved out of ${f.name}`);
+    } else if (a === 'tofolder') {
+      const others = favs.filter(x => isFolder(x) && x !== folderOf(id));
+      sheet.innerHTML = `<h3>Put ${esc(label(id))} in</h3>`
+        + others.map(f => `<button class="act" type="button" data-a="into" data-f="${f.folder}">${esc(f.name)}</button>`).join('')
+        + '<button class="act" type="button" data-a="newfolder">New folder</button>';
+    } else if (a === 'into') {
+      const f = folderById(b.dataset.f);
+      detach(id); f.apps.push(id); openFolder = f.folder;
+      done(`${label(id)} added to ${f.name}`);
+    } else if (a === 'newfolder') {
+      nameForm('New folder', '', 'create');
+    } else if (a === 'create') {
+      const name = $('rn').value.trim() || 'Folder';
+      const top = favs.indexOf(id), f = { folder: 'f' + folderSeq++, name, apps: [id] };
+      detach(id);
+      favs.splice(top >= 0 ? top : favs.length, 0, f); // the folder takes the app's place
+      openFolder = f.folder;
+      done(`Folder “${name}” created`);
+    } else if (a === 'frename') {
+      nameForm('Rename folder', folderById(fid).name, 'fsave');
+    } else if (a === 'fsave') {
+      const v = $('rn').value.trim(); if (v) folderById(fid).name = v; done();
+    } else if (a === 'ungroup') {
+      const f = folderById(fid);
+      favs.splice(favs.indexOf(f), 1, ...f.apps);
+      if (openFolder === fid) openFolder = null;
+      done(`${f.name} ungrouped`);
+    } else if (a === 'fremove') {
+      const f = folderById(fid);
+      favs = favs.filter(x => x !== f);
+      if (openFolder === fid) openFolder = null;
+      done(`${f.name} removed from favourites`);
+    } else if (a === 'hide') {
+      hidden.add(id); done(`${label(id)} hidden`);
+    } else if (a === 'info') {
       closeSheet(); toast('Opens Android’s App info');
-    } else if (b.dataset.a === 'rename') {
-      sheet.innerHTML = `<h3>Rename</h3><input id="rn" type="text" value="${esc(label(id))}" aria-label="New name">
-        <div class="acts"><button type="button" data-a="reset">Use “${esc(id)}”</button><button type="button" class="go" data-a="save">Save</button></div>`;
-      const rn = $('rn'); rn.focus(); rn.select();
-      rn.addEventListener('keydown', ev => { if (ev.key === 'Enter') sheet.querySelector('[data-a="save"]').click(); });
-    } else if (b.dataset.a === 'save') {
+    } else if (a === 'rename') {
+      nameForm('Rename', label(id), 'save', `<button type="button" data-a="reset">Use “${esc(id)}”</button>`);
+    } else if (a === 'save') {
       const v = $('rn').value.trim(); if (v && v !== id) renamed[id] = v; else delete renamed[id];
-      closeSheet(); renderAll();
-    } else if (b.dataset.a === 'reset') {
-      delete renamed[id]; closeSheet(); renderAll();
+      done();
+    } else if (a === 'reset') {
+      delete renamed[id]; done();
     }
   });
   $('hiddenList').addEventListener('click', e => {
@@ -426,24 +513,32 @@ code { font: 12.5px var(--f-mono); background: var(--chip); padding: 1px 5px; bo
   screen.addEventListener('pointerdown', e => {
     if (e.target.closest('.az, .preview, .sheet, .search, .shade, .appview, .off, .nav, .scrim, button, input')) return;
     const app = e.target.closest('.app');
-    g = { x: e.clientX, y: e.clientY, app, inDrawer: !!e.target.closest('.drawer'), moved: false, long: false };
-    if (app) {
-      app.classList.add('pressed');
-      g.timer = setTimeout(() => { g.long = true; app.classList.remove('pressed'); navigator.vibrate?.(15); openSheet(app.dataset.id); }, 480);
+    const head = !app && e.target.closest('.fhead');
+    const fold = head ? head.closest('.folder').dataset.folder : null;
+    const el = app || head;
+    g = { x: e.clientX, y: e.clientY, app, fold, el, inDrawer: !!e.target.closest('.drawer'), moved: false, long: false };
+    if (el) {
+      el.classList.add('pressed');
+      g.timer = setTimeout(() => {
+        g.long = true; el.classList.remove('pressed'); navigator.vibrate?.(15);
+        app ? openSheet(app.dataset.id) : openFolderSheet(fold);
+      }, 480);
     }
   });
   screen.addEventListener('pointermove', e => {
     if (!g || g.moved) return;
-    if (Math.hypot(e.clientX - g.x, e.clientY - g.y) > 9) { g.moved = true; clearTimeout(g.timer); g.app?.classList.remove('pressed'); }
+    if (Math.hypot(e.clientX - g.x, e.clientY - g.y) > 9) { g.moved = true; clearTimeout(g.timer); g.el?.classList.remove('pressed'); }
   });
   screen.addEventListener('pointerup', e => {
     if (!g) return;
-    clearTimeout(g.timer); g.app?.classList.remove('pressed');
+    clearTimeout(g.timer); g.el?.classList.remove('pressed');
     const dx = e.clientX - g.x, dy = e.clientY - g.y;
     if (g.long) { /* sheet already open */ }
     else if (!g.moved) {
       if (g.app) openApp(g.app.dataset.id);
+      else if (g.fold) toggleFolder(g.fold);
       else if (!g.inDrawer) {
+        if (openFolder) { openFolder = null; renderFavs(); }
         const now = Date.now();
         if (now - lastTap < 330) { lastTap = 0; screenOff(); } else lastTap = now;
       } else goHome();
@@ -452,7 +547,7 @@ code { font: 12.5px var(--f-mono); background: var(--chip); padding: 1px 5px; bo
     }
     g = null;
   });
-  screen.addEventListener('pointercancel', () => { if (g) { clearTimeout(g.timer); g.app?.classList.remove('pressed'); } g = null; });
+  screen.addEventListener('pointercancel', () => { if (g) { clearTimeout(g.timer); g.el?.classList.remove('pressed'); } g = null; });
   screen.addEventListener('contextmenu', e => e.preventDefault());
 
   // Swipe a notification preview sideways to dismiss it
