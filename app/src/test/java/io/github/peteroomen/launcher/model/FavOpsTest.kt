@@ -97,6 +97,17 @@ class FavOpsTest {
         assertEquals(listOf(Fav.App("camera"), Fav.App("secret"), Fav.App("phone"), travel), result)
     }
 
+    @Test fun createFolderTakesAppsFromWhereverTheyWere() {
+        val result = FavOps.createFolder(favs, "Mixed", listOf("camera", "maps"))
+        assertEquals(listOf(Fav.App("phone"), travel.copy(apps = listOf("uber")), Fav.Folder("f2", "Mixed", listOf("camera", "maps"))), result)
+        assertEquals(favs, FavOps.createFolder(favs, "Empty", emptyList()))
+    }
+
+    @Test fun droppingAnAppOnAnotherMakesAFolderInItsPlace() {
+        val result = FavOps.mergeIntoNewFolder(favs, "camera", "phone", "Folder")
+        assertEquals(listOf(Fav.Folder("f2", "Folder", listOf("phone", "camera")), travel), result)
+    }
+
     @Test fun jsonRoundTrip() {
         assertEquals(favs, FavJson.decode(FavJson.encode(favs)))
         assertEquals(emptyList<Fav>(), FavJson.decode("not json"))

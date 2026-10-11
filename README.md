@@ -7,11 +7,12 @@ The design came from the interactive prototype in [`prototype/index.html`](proto
 ## Features
 
 - **Favourites:** a column of icons centred on the left. Names are optional. Folders show their first four apps and open as a row beside the folder.
-- **Pie mode** (setting): no column. Hold anywhere on empty space and your first 8 favourites appear in a ring around your finger. Slide towards one and let go to open it, or let go in the middle for the home menu.
-- **Edit favourites:** tick apps on and off, and drag the handles to reorder. It's in the hold menus for apps and for empty space.
+- **Pie mode** (setting): no column. Hold anywhere on empty space and your first 8 favourites (apps or folders) appear in a ring around your finger. Slide towards one and let go to open it, or let go in the middle for the home menu. Slide onto a folder and its apps fan out in an arc beyond it; keep going outward and sweep along the arc to pick one.
+- **Edit favourites:** tick apps on and off and drag the handles to reorder. Each folder's apps are listed under it, with buttons to move one out or remove it; tap a folder to rename it. Drop an app on a folder to add it, or on another app to make a new folder, or use **New folder** to name one and tick its apps. It's in the hold menus for apps and for empty space.
 - **Icons:** themed (the app's monochrome icon tinted with wallpaper colours, Android 13+), colour or greyscale. Three sizes and three shapes (rounded, circle, square).
 - **Readability:** text shadow from off to strong, an optional fade or dim behind the text, and text colour from the wallpaper or forced light or dark.
 - **Look:** accent colour (from the wallpaper or a fixed colour), font (system, condensed, serif, mono), and clock size and weight.
+- **Liquid glass** (setting): icon tiles, folders, the music card, folder rows, the pie and the search panel (80% of the screen tall) become glass, with a bright rim, a sheen and a gradient fill. The wallpaper blurs behind search, the A–Z list and the pie on phones that support window blur.
 - **Portrait lock:** the home screen stays upright by default; turn it off in settings.
 - **Notification dots:** on icons and folders, respecting each app's dot setting.
 - **Widgets:** the next calendar event within a week, and a music player card with album art, progress, and previous, play/pause and next buttons.

@@ -43,6 +43,8 @@ data class Appearance(
     val clockSize: ClockSize = ClockSize.MEDIUM,
     val clockWeight: ClockWeight = ClockWeight.LIGHT,
     val backdrop: Backdrop = Backdrop.NONE,
+    /** Panels (icon tiles, folders, music card, search, pie) drawn as liquid glass. */
+    val glass: Boolean = false,
     /** Keep the home screen upright even when the phone is turned sideways. */
     val lockPortrait: Boolean = true,
 )
@@ -90,6 +92,7 @@ class LauncherStore(private val context: Context) {
                 clockWeight = p.enumOf(CLOCK_WEIGHT, d.clockWeight),
                 backdrop = p.enumOf(BACKDROP, d.backdrop),
                 lockPortrait = p[LOCK_PORTRAIT] ?: d.lockPortrait,
+                glass = p[GLASS] ?: d.glass,
             ),
             seeded = p[SEEDED] ?: false,
         )
@@ -113,6 +116,7 @@ class LauncherStore(private val context: Context) {
         p[CLOCK_WEIGHT] = a.clockWeight.name
         p[BACKDROP] = a.backdrop.name
         p[LOCK_PORTRAIT] = a.lockPortrait
+        p[GLASS] = a.glass
         p[SEEDED] = s.seeded
     }
 
@@ -133,6 +137,7 @@ class LauncherStore(private val context: Context) {
         val CLOCK_WEIGHT = stringPreferencesKey("clock_weight")
         val BACKDROP = stringPreferencesKey("backdrop")
         val LOCK_PORTRAIT = booleanPreferencesKey("lock_portrait")
+        val GLASS = booleanPreferencesKey("glass")
         val SEEDED = booleanPreferencesKey("seeded")
     }
 }

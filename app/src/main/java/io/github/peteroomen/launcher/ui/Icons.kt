@@ -73,8 +73,8 @@ fun AppIcon(key: String, style: IconStyle, size: Dp, badge: Boolean, modifier: M
     val icons = rememberIcons(key, sizePx)
     Box(modifier.size(size)) {
         when {
-            icons == null -> Box(Modifier.fillMaxSize().clip(shape).background(palette.tileBg))
-            style == IconStyle.THEMED && icons.mono != null -> Box(Modifier.fillMaxSize().clip(shape).background(palette.tileBg)) {
+            icons == null -> Box(Modifier.fillMaxSize().panel(shape, palette.tileBg))
+            style == IconStyle.THEMED && icons.mono != null -> Box(Modifier.fillMaxSize().panel(shape, palette.tileBg)) {
                 Image(icons.mono, contentDescription = null, modifier = Modifier.fillMaxSize(), colorFilter = ColorFilter.tint(palette.tileFg))
             }
             else -> Image(
@@ -180,7 +180,7 @@ fun FolderEntry(
             ) {
                 Column(
                     Modifier
-                        .background(palette.pill, RoundedCornerShape(18.dp))
+                        .panel(RoundedCornerShape(18.dp), palette.pill)
                         .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 10.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
@@ -230,8 +230,7 @@ fun FolderIcon(folder: Fav.Folder, state: HomeUiState, size: Dp, open: Boolean =
         Column(
             Modifier
                 .fillMaxSize()
-                .clip(shape)
-                .background(if (style == IconStyle.THEMED) palette.tileBg else palette.pill)
+                .panel(shape, if (style == IconStyle.THEMED) palette.tileBg else palette.pill)
                 .then(if (open) Modifier.border(2.dp, palette.accent, shape) else Modifier)
                 .padding(padding),
             verticalArrangement = Arrangement.spacedBy(gap),

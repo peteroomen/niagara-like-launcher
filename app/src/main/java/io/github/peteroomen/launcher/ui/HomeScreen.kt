@@ -66,8 +66,8 @@ import io.github.peteroomen.launcher.data.Backdrop
 import io.github.peteroomen.launcher.data.FavouritesLayout
 import io.github.peteroomen.launcher.indexLetter
 import io.github.peteroomen.launcher.model.Fav
-import io.github.peteroomen.launcher.model.FavOps
 import io.github.peteroomen.launcher.model.Pie
+import io.github.peteroomen.launcher.model.PieHit
 import io.github.peteroomen.launcher.system.MediaState
 import io.github.peteroomen.launcher.system.NotificationDots
 import io.github.peteroomen.launcher.system.NotificationListener
@@ -97,12 +97,18 @@ fun HomeScreen(vm: LauncherViewModel) {
     var pie by remember { mutableStateOf<PieState?>(null) }
     var screenSize by remember { mutableStateOf(IntSize.Zero) }
     val usePie = state.appearance.favouritesLayout == FavouritesLayout.PIE
-    val pieSlots = remember(state.favs) { FavOps.allKeys(state.favs).take(Pie.SLOTS) }
+    // The pie holds the first eight favourites, folders included
+    val pieSlots = state.favs.take(Pie.SLOTS)
+    val folderSize = { slot: Int -> (pieSlots.getOrNull(slot) as? Fav.Folder)?.apps?.size ?: 0 }
     val density = LocalDensity.current
     val deadZonePx = with(density) { PieDeadZone.toPx() }
-    val pieSelected = pie?.let { Pie.slot(it.finger.x - it.center.x, it.finger.y - it.center.y, deadZonePx) }
+    val folderRingPx = with(density) { PieFolderRing.toPx() }
+    fun pieHit(center: Offset, finger: Offset, previous: PieHit?) =
+        Pie.hit(finger.x - center.x, finger.y - center.y, deadZonePx, folderRingPx, folderSize, previous)
     val haptics = LocalHapticFeedback.current
-    LaunchedEffect(pieSelected) { if (pie != null) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
+    LaunchedEffect(pie?.hit) { if (pie != null) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
+    // With liquid glass, the wallpaper itself blurs behind search, the A–Z list and the pie
+    WallpaperBlur(on = state.appearance.glass && (overlay != Overlay.NONE || pie != null))
 
     fun goHome() {
         overlay = Overlay.NONE
@@ -130,23 +136,28 @@ fun HomeScreen(vm: LauncherViewModel) {
                         onSwipeUp = { overlay = Overlay.SEARCH },
                         onSwipeDown = { SystemActions.expandNotifications(context) },
                         onPieStart = { at ->
-                            // Keep the whole pie on screen
-                            val r = with(density) { (PieRadius + 8.dp).toPx() }
+                            // Keep the whole pie on screen, including folder arcs
+                            val reach = if (pieSlots.any { it is Fav.Folder }) PieReachWithFolders else PieRadius + 8.dp
+                            val r = with(density) { reach.toPx() }
                             val top = with(density) { 96.dp.toPx() }
                             val center = Offset(
                                 at.x.coerceIn(r, (screenSize.width - r).coerceAtLeast(r)),
                                 at.y.coerceIn(r + top, (screenSize.height - r).coerceAtLeast(r + top)),
                             )
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            pie = PieState(center, at)
+                            pie = PieState(center, at, pieHit(center, at, null))
                         },
-                        onPieMove = { at -> pie = pie?.copy(finger = at) },
+                        onPieMove = { at -> pie = pie?.let { it.copy(finger = at, hit = pieHit(it.center, at, it.hit)) } },
                         onPieEnd = {
-                            val current = pie
+                            val hit = pie?.hit
                             pie = null
-                            if (current != null) {
-                                val slot = Pie.slot(current.finger.x - current.center.x, current.finger.y - current.center.y, deadZonePx)
-                                if (slot == null) menu = MenuTarget.Home else pieSlots.getOrNull(slot)?.let(vm::launch)
+                            if (hit != null) {
+                                when (val fav = hit.slot?.let { pieSlots.getOrNull(it) }) {
+                                    null -> if (hit.slot == null) menu = MenuTarget.Home
+                                    is Fav.App -> vm.launch(fav.key)
+                                    // On the folder itself nothing opens: its apps are in the arc
+                                    is Fav.Folder -> hit.folderIndex?.let { vm.launch(fav.apps[it]) }
+                                }
                             }
                         },
                     ),
@@ -229,7 +240,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                         .onGloballyPositioned { stripTop = it.positionInRoot().y },
                 )
 
-                pie?.let { PieMenu(state, it, pieSlots, pieSelected) }
+                pie?.let { PieMenu(state, it, pieSlots) }
 
                 scrubLetter?.let { letter ->
                     Text(
@@ -266,13 +277,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                 }
 
                 if (editingFavourites) {
-                    EditFavouritesDialog(
-                        state = state,
-                        onSetFavourite = vm::setFavourite,
-                        onRemoveFolder = vm::removeFolder,
-                        onReorder = vm::reorderFavourites,
-                        onDismiss = { editingFavourites = false },
-                    )
+                    EditFavouritesDialog(state, vm, onDismiss = { editingFavourites = false })
                 }
             }
         }
@@ -414,6 +419,17 @@ private fun SystemBarIcons(dark: Boolean) {
             isAppearanceLightStatusBars = dark
             isAppearanceLightNavigationBars = dark
         }
+    }
+}
+
+/** Blurs the wallpaper behind the whole launcher window (Android 12+, where the phone supports it). */
+@Composable
+private fun WallpaperBlur(on: Boolean) {
+    val view = LocalView.current
+    val radius = with(LocalDensity.current) { 28.dp.roundToPx() }
+    LaunchedEffect(on) {
+        val window = (view.context as? Activity)?.window ?: return@LaunchedEffect
+        window.setBackgroundBlurRadius(if (on) radius else 0)
     }
 }
 

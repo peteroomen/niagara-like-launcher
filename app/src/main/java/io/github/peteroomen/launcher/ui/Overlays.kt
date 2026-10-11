@@ -13,9 +13,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBars
@@ -182,7 +184,7 @@ fun AllAppsOverlay(
     Box(
         Modifier
             .fillMaxSize()
-            .background(palette.scrim)
+            .background(if (palette.glass) palette.scrim.copy(alpha = palette.scrim.alpha * 0.5f) else palette.scrim)
             .pointerInput(Unit) { detectTapGestures { onDismiss() } },
     ) {
         LazyColumn(
@@ -259,24 +261,40 @@ fun SearchOverlay(
     val focus = remember { FocusRequester() }
     val results = remember(query, state) { searchApps(state, query) }
     LaunchedEffect(Unit) { focus.requestFocus() }
+    // Flat mode: full screen over a dark scrim, light text. Glass mode: a glass panel 80% of the screen tall.
+    val glass = palette.glass
+    val ink = if (glass) palette.text else Color.White
+    val listPalette = if (glass) palette.copy(shadow = null) else palette.copy(text = Color.White, darkText = false)
     Box(
         Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.6f))
-            .pointerInput(Unit) { detectTapGestures { onDismiss() } },
+            .background(if (glass) Color.Black.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.6f))
+            .pointerInput(Unit) { detectTapGestures { onDismiss() } }
+            .imePadding(),
     ) {
         Column(
-            Modifier
-                .statusBarsPadding()
-                .imePadding()
-                .padding(horizontal = 22.dp, vertical = 24.dp),
+            if (glass) {
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.8f)
+                    .navigationBarsPadding()
+                    .padding(10.dp)
+                    .glass(RoundedCornerShape(28.dp), palette, rim = 1.5.dp)
+                    .pointerInput(Unit) { detectTapGestures { } } // taps inside the panel don't close it
+                    .padding(horizontal = 18.dp, vertical = 18.dp)
+            } else {
+                Modifier
+                    .statusBarsPadding()
+                    .padding(horizontal = 22.dp, vertical = 24.dp)
+            },
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             BasicTextField(
                 value = query,
                 onValueChange = { query = it },
                 singleLine = true,
-                textStyle = TextStyle(color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Medium),
+                textStyle = TextStyle(color = ink, fontSize = 22.sp, fontWeight = FontWeight.Medium, fontFamily = palette.font),
                 cursorBrush = SolidColor(palette.accent),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
                 keyboardActions = KeyboardActions(onGo = {
@@ -285,18 +303,17 @@ fun SearchOverlay(
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focus)
-                    .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(14.dp))
+                    .background(ink.copy(alpha = 0.1f), RoundedCornerShape(14.dp))
                     .padding(horizontal = 14.dp, vertical = 12.dp),
                 decorationBox = { field ->
                     Box {
-                        if (query.isEmpty()) Text(stringResource(R.string.search_apps), color = Color.White.copy(alpha = 0.5f), fontSize = 22.sp)
+                        if (query.isEmpty()) Text(stringResource(R.string.search_apps), color = ink.copy(alpha = 0.5f), fontSize = 22.sp, fontFamily = palette.font)
                         field()
                     }
                 },
             )
             Box(Modifier.padding(top = 10.dp))
-            // Search always sits on a dark scrim, so draw it with light text whatever the wallpaper
-            CompositionLocalProvider(LocalPalette provides palette.copy(text = Color.White, darkText = false)) {
+            CompositionLocalProvider(LocalPalette provides listPalette) {
                 results.forEach { key ->
                     AppRow(
                         key = key,
@@ -317,8 +334,9 @@ fun SearchOverlay(
             if (query.isNotBlank()) {
                 Text(
                     stringResource(R.string.search_web, query.trim()),
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = ink.copy(alpha = 0.7f),
                     fontSize = 15.sp,
+                    fontFamily = palette.font,
                     modifier = Modifier.fillMaxWidth().quietClick { onWebSearch(query.trim()) }.padding(vertical = 8.dp),
                 )
             }

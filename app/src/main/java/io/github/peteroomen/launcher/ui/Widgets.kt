@@ -151,8 +151,7 @@ fun MusicWidget(nowPlaying: NowPlaying?, hasAccess: Boolean, appLabel: String?, 
         Modifier
             .widthIn(max = 340.dp)
             .fillMaxWidth()
-            .clip(shape)
-            .background(palette.card)
+            .panel(shape, palette.card)
             .quietClick {
                 when {
                     !hasAccess -> onNeedAccess()
@@ -206,7 +205,7 @@ private fun AlbumArt(nowPlaying: NowPlaying?) {
     if (image != null) {
         Image(image, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(52.dp).clip(shape))
     } else {
-        Box(Modifier.size(52.dp).clip(shape).background(palette.tileBg), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(52.dp).panel(shape, palette.tileBg), contentAlignment = Alignment.Center) {
             Icon(painterResource(R.drawable.ic_music_note), contentDescription = null, tint = palette.tileFg, modifier = Modifier.size(24.dp))
         }
     }

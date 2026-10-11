@@ -73,6 +73,7 @@
     <string name="next">Next</string>
     <string name="edit_favourites">Edit favourites</string>
     <string name="done">Done</string>
+    <string name="cancel">Cancel</string>
     <string name="in_favourites">In favourites</string>
     <string name="other_apps">Other apps</string>
 
@@ -118,8 +119,8 @@
     <string name="shape_rounded">Rounded</string>
     <string name="shape_circle">Circle</string>
     <string name="shape_square">Square</string>
-    <string name="reorder_hint">Drag the handles to change the order.</string>
-    <string name="reorder_hint_pie">Drag the handles to change the order. The pie uses your first 8 apps, clockwise from the top.</string>
+    <string name="reorder_hint">Drag the handles to change the order. Drop an app on a folder to add it, or on another app to make a folder.</string>
+    <string name="reorder_hint_pie">Drag the handles to change the order. Drop an app on a folder to add it, or on another app to make a folder. The pie uses your first 8 favourites, clockwise from the top; slide past a folder to pick from its apps.</string>
     <string name="drag_to_reorder">Drag to reorder</string>
     <plurals name="folder_apps">
         <item quantity="one">%d app</item>
@@ -129,4 +130,8 @@
     <string name="favourites_layout">Favourites</string>
     <string name="layout_column">Column on the left</string>
     <string name="layout_pie">Pie (hold anywhere)</string>
+    <string name="pie_folder_hint">%1$s · slide out to choose</string>
+    <string name="pick_folder_apps">Apps in this folder</string>
+    <string name="liquid_glass">Liquid glass</string>
+    <string name="liquid_glass_summary">Icon tiles, folders, the music card, search and the pie become glass panels, and the wallpaper blurs behind search, the A–Z list and the pie.</string>
 </resources>

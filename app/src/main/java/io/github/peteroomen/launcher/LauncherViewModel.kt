@@ -169,6 +169,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun moveOutOfFolder(key: String) = editFavs { FavOps.moveOutOfFolder(it, key) }
     fun moveToFolder(key: String, folderId: String) = editFavs { FavOps.moveToFolder(it, key, folderId) }
     fun newFolder(key: String, name: String) = editFavs { FavOps.newFolder(it, key, name) }
+    fun createFolder(name: String, keys: List<String>) = editFavs { FavOps.createFolder(it, name, keys) }
+    fun mergeIntoNewFolder(key: String, ontoKey: String, name: String) = editFavs { FavOps.mergeIntoNewFolder(it, key, ontoKey, name) }
     fun renameFolder(id: String, name: String) = editFavs { FavOps.renameFolder(it, id, name) }
     fun ungroup(id: String) = editFavs { FavOps.ungroup(it, id) }
     fun removeFolder(id: String) = editFavs { FavOps.removeFolder(it, id) }

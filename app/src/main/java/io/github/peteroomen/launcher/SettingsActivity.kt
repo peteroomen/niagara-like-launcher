@@ -150,6 +150,13 @@ private fun SettingsScreen(vm: LauncherViewModel) {
 
         HorizontalDivider(Modifier.padding(vertical = 8.dp))
         Text(stringResource(R.string.appearance), style = MaterialTheme.typography.titleMedium)
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                Text(stringResource(R.string.liquid_glass))
+                Text(stringResource(R.string.liquid_glass_summary), style = MaterialTheme.typography.bodySmall)
+            }
+            Switch(checked = a.glass, onCheckedChange = { set(a.copy(glass = it)) })
+        }
         Chips(stringResource(R.string.accent_colour), a.accent, listOf(
             Accent.WALLPAPER to R.string.accent_wallpaper, Accent.AMBER to R.string.accent_amber, Accent.CORAL to R.string.accent_coral,
             Accent.PINK to R.string.accent_pink, Accent.VIOLET to R.string.accent_violet, Accent.BLUE to R.string.accent_blue,

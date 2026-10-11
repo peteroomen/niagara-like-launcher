@@ -79,6 +79,11 @@ object PaletteSource {
                 IconShape.CIRCLE -> CircleShape
                 IconShape.SQUARE -> RoundedCornerShape(percent = 14)
             },
+            glass = a.glass,
+            // Clear glass over dark wallpapers, frosted milky glass over light ones
+            glassTop = Color.White.copy(alpha = if (darkText) 0.72f else 0.26f),
+            glassBottom = Color.White.copy(alpha = if (darkText) 0.38f else 0.07f),
+            glassSheen = if (darkText) 0.5f else 0.24f,
         )
     }
 

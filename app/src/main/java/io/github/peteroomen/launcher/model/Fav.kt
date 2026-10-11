@@ -55,6 +55,23 @@ object FavOps {
         return result
     }
 
+    /** A new folder at the end holding [keys], taken from wherever they were. Nothing happens if [keys] is empty. */
+    fun createFolder(favs: List<Fav>, name: String, keys: List<String>, id: String = nextFolderId(favs)): List<Fav> {
+        if (keys.isEmpty()) return favs
+        val result = keys.fold(favs) { acc, key -> detach(acc, key) }
+        return result + Fav.Folder(id, name, keys.distinct())
+    }
+
+    /** Drop [key] onto the top-level app [ontoKey]: the two become a folder where [ontoKey] was. */
+    fun mergeIntoNewFolder(favs: List<Fav>, key: String, ontoKey: String, name: String, id: String = nextFolderId(favs)): List<Fav> {
+        if (key == ontoKey) return favs
+        val result = detach(favs, key).toMutableList()
+        val at = result.indexOfFirst { it is Fav.App && it.key == ontoKey }
+        if (at < 0) return favs
+        result[at] = Fav.Folder(id, name, listOf(ontoKey, key))
+        return result
+    }
+
     fun renameFolder(favs: List<Fav>, id: String, name: String): List<Fav> =
         favs.map { if (it is Fav.Folder && it.id == id) it.copy(name = name) else it }
 
