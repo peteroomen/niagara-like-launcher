@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
@@ -162,7 +163,18 @@ private fun SettingsScreen(vm: LauncherViewModel) {
             }
             Switch(checked = a.glass, onCheckedChange = { set(a.copy(glass = it)) })
         }
-        if (a.glass) GlassSource(vm, resumes)
+        if (a.glass) {
+            if (Build.VERSION.SDK_INT >= 33) {
+                Row(Modifier.fillMaxWidth().padding(start = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                        Text(stringResource(R.string.glass_bend))
+                        Text(stringResource(R.string.glass_bend_summary), style = MaterialTheme.typography.bodySmall)
+                    }
+                    Switch(checked = a.glassBend, onCheckedChange = { set(a.copy(glassBend = it)) })
+                }
+            }
+            GlassSource(vm, resumes)
+        }
         Chips(stringResource(R.string.accent_colour), a.accent, listOf(
             Accent.WALLPAPER to R.string.accent_wallpaper, Accent.AMBER to R.string.accent_amber, Accent.CORAL to R.string.accent_coral,
             Accent.PINK to R.string.accent_pink, Accent.VIOLET to R.string.accent_violet, Accent.BLUE to R.string.accent_blue,

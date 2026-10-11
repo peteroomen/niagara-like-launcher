@@ -1,5 +1,6 @@
 package io.github.peteroomen.launcher.ui
 
+import android.os.Build
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -18,6 +19,8 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.scale
@@ -61,6 +64,8 @@ data class Palette(
     val glassTint: Color,
     /** Heavier tint used when the wallpaper can't be seen, so text stays readable */
     val glassTintNoBlur: Color,
+    /** Bend the wallpaper at glass edges like a lens (Android 13+) */
+    val glassBend: Boolean,
 ) {
     fun style(size: TextUnit, weight: FontWeight = FontWeight.Normal, letterSpacing: TextUnit = TextUnit.Unspecified) =
         TextStyle(fontSize = size, fontWeight = weight, fontFamily = font, letterSpacing = letterSpacing, shadow = shadow)
@@ -68,8 +73,8 @@ data class Palette(
 
 val LocalPalette = staticCompositionLocalOf<Palette> { error("No palette") }
 
-/** The blurred wallpaper and the screen it's drawn across, for glass panels to show through. */
-class GlassBackdrop(val image: ImageBitmap, val screen: Size)
+/** The wallpaper copies and the screen they're drawn across, for glass panels to show through. */
+class GlassBackdrop(val frosted: ImageBitmap, val sharp: ImageBitmap, val screen: Size)
 
 val LocalGlassBackdrop = staticCompositionLocalOf<GlassBackdrop?> { null }
 
@@ -77,21 +82,28 @@ private val Vibrancy = ColorFilter.colorMatrix(ColorMatrix().apply { setToSatura
 
 /**
  * Liquid glass, after Apple's: the wallpaper behind the panel shows through blurred and a little
- * more vivid, under a light tint for contrast. The lighting is quiet: a hairline rim that catches
- * light at the top-left and bottom-right corners, and a faint glow along the top edge.
+ * more vivid, under a light tint for contrast. With bending on (Android 13+), the edges act like a
+ * lens: the wallpaper there is sharper and stretched, fading into the frosted middle. The lighting
+ * is quiet: a hairline rim that catches light at the top-left and bottom-right corners, and a
+ * faint glow along the top edge.
  */
 @Composable
 fun Modifier.glass(shape: Shape, palette: Palette, rim: Dp = 1.dp): Modifier {
     val backdrop = LocalGlassBackdrop.current
     val position = remember { mutableStateOf(Offset.Zero) }
+    val sharp = backdrop?.sharp
+    val edge = remember(sharp, palette.glassBend) {
+        // The shader compiles on the phone; if that ever fails, fall back to plain glass
+        if (sharp != null && palette.glassBend && Build.VERSION.SDK_INT >= 33) runCatching { GlassEdge(sharp) }.getOrNull() else null
+    }
     return this
         .onGloballyPositioned { position.value = it.positionOnScreen() }
         .clip(shape)
         .drawBehind {
             if (backdrop != null) {
-                // Lay the blurred wallpaper out exactly as the system does (centre-cropped to the
-                // screen), then shift it so this panel shows the part that's behind it
-                val image = backdrop.image
+                // Lay the wallpaper out exactly as the system does (centre-cropped to the screen),
+                // then shift it so this panel shows the part that's behind it
+                val image = backdrop.frosted
                 val scale = max(backdrop.screen.width / image.width, backdrop.screen.height / image.height)
                 val left = (backdrop.screen.width - image.width * scale) / 2 - position.value.x
                 val top = (backdrop.screen.height - image.height * scale) / 2 - position.value.y
@@ -101,6 +113,23 @@ fun Modifier.glass(shape: Shape, palette: Palette, rim: Dp = 1.dp): Modifier {
                     }
                 }
                 drawRect(palette.glassTint)
+                if (edge != null && Build.VERSION.SDK_INT >= 33) {
+                    val sharpImage = backdrop.sharp
+                    val sharpScale = max(backdrop.screen.width / sharpImage.width, backdrop.screen.height / sharpImage.height)
+                    val imageOrigin = Offset(
+                        (backdrop.screen.width - sharpImage.width * sharpScale) / 2,
+                        (backdrop.screen.height - sharpImage.height * sharpScale) / 2,
+                    )
+                    val corner = when (val outline = shape.createOutline(size, layoutDirection, this)) {
+                        is Outline.Rounded -> outline.roundRect.topLeftCornerRadius.x
+                        is Outline.Rectangle -> 0f
+                        is Outline.Generic -> size.minDimension / 2
+                    }
+                    val shortest = size.minDimension
+                    val fade = minOf(16.dp.toPx(), shortest / 3.5f)
+                    val strength = minOf(10.dp.toPx(), shortest / 5f)
+                    drawRect(ShaderBrush(edge.shaderFor(size, corner, fade, strength, position.value, imageOrigin, sharpScale)))
+                }
             } else {
                 drawRect(palette.glassTintNoBlur)
             }

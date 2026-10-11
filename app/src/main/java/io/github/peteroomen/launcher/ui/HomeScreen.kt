@@ -125,7 +125,7 @@ fun HomeScreen(vm: LauncherViewModel) {
     Orientation(lockPortrait = state.appearance.lockPortrait)
 
     MaterialTheme(colorScheme = dynamicDarkColorScheme(context)) {
-        val backdrop = glassImage?.takeIf { screenSize != IntSize.Zero }?.let { GlassBackdrop(it, screenSize.toSize()) }
+        val backdrop = glassImage?.takeIf { screenSize != IntSize.Zero }?.let { GlassBackdrop(it.frosted, it.sharp, screenSize.toSize()) }
         CompositionLocalProvider(LocalPalette provides palette, LocalIconLoader provides vm, LocalGlassBackdrop provides backdrop) {
             Box(
                 Modifier

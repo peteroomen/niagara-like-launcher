@@ -83,6 +83,7 @@ object PaletteSource {
             // Dark glass under light text, milky glass under dark text: enough tint to read over busy
             // photos without hiding them. Without the wallpaper to blur, a heavier frosted tint.
             glassTint = if (darkText) Color.White.copy(alpha = 0.34f) else Color.Black.copy(alpha = 0.2f),
+            glassBend = a.glassBend,
             glassTintNoBlur = if (darkText) Color.White.copy(alpha = 0.62f) else Color.Black.copy(alpha = 0.42f),
         )
     }

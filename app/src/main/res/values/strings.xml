@@ -141,4 +141,6 @@
     <string name="glass_allow_access">Allow wallpaper access</string>
     <string name="glass_access_note">Android lists this as \"All files access\". The launcher only uses it to read your wallpaper.</string>
     <string name="glass_pick_photo">Pick wallpaper photo instead</string>
+    <string name="glass_bend">Bend edges</string>
+    <string name="glass_bend_summary">The edges of glass panels bend the wallpaper like a lens, fading into the frosted middle.</string>
 </resources>

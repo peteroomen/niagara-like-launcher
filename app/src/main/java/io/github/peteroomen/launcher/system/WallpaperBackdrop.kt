@@ -2,6 +2,7 @@ package io.github.peteroomen.launcher.system
 
 import android.app.WallpaperManager
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
@@ -23,6 +24,7 @@ object WallpaperBackdrop {
     /** Width of the blurred copy. Small is fine: it's drawn blurry anyway. */
     private const val WIDTH = 160
     private const val RADIUS = 5
+    private const val SHARP_WIDTH = 540
 
     enum class Source { SYSTEM, PICKED, NONE }
 
@@ -43,19 +45,32 @@ object WallpaperBackdrop {
         else -> Source.NONE
     }
 
-    /** The blurred wallpaper, or null if we can't see it (no access, or a live wallpaper). */
-    fun load(context: Context): ImageBitmap? {
+    /**
+     * Two copies of the wallpaper for glass: [frosted] is small and heavily blurred for the body of a
+     * panel; [sharp] is larger and only lightly softened, for the bent edges to show through.
+     */
+    class Images(val frosted: ImageBitmap, val sharp: ImageBitmap)
+
+    /** The wallpaper copies, or null if we can't see it (no access, or a live wallpaper). */
+    fun load(context: Context): Images? {
         val drawable = systemWallpaper(context) ?: picked(context) ?: return null
         val w = drawable.intrinsicWidth
         val h = drawable.intrinsicHeight
         if (w <= 0 || h <= 0) return null
-        val small = drawable.toBitmap(WIDTH, (WIDTH.toLong() * h / w).toInt().coerceAtLeast(1))
-        val pixels = IntArray(small.width * small.height)
-        small.getPixels(pixels, 0, small.width, 0, 0, small.width, small.height)
-        BoxBlur.blur(pixels, small.width, small.height, RADIUS)
-        val blurred = small.copy(small.config ?: android.graphics.Bitmap.Config.ARGB_8888, true)
-        blurred.setPixels(pixels, 0, small.width, 0, 0, small.width, small.height)
-        return blurred.asImageBitmap()
+        return Images(
+            frosted = scaledAndBlurred(drawable, WIDTH, RADIUS, passes = 3),
+            sharp = scaledAndBlurred(drawable, SHARP_WIDTH, radius = 1, passes = 1),
+        )
+    }
+
+    private fun scaledAndBlurred(drawable: Drawable, width: Int, radius: Int, passes: Int): ImageBitmap {
+        val height = (width.toLong() * drawable.intrinsicHeight / drawable.intrinsicWidth).toInt().coerceAtLeast(1)
+        val bitmap = drawable.toBitmap(width, height, Bitmap.Config.ARGB_8888).copy(Bitmap.Config.ARGB_8888, true)
+        val pixels = IntArray(width * height)
+        bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+        BoxBlur.blur(pixels, width, height, radius, passes)
+        bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
+        return bitmap.asImageBitmap()
     }
 
     /** Copies the picked photo for the glass, and sets it as the home screen wallpaper. */
@@ -83,7 +98,7 @@ object WallpaperBackdrop {
     private fun picked(context: Context): Drawable? {
         val file = pickedFile(context)
         if (!file.exists()) return null
-        val bitmap = BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply { inSampleSize = 8 }) ?: return null
+        val bitmap = BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply { inSampleSize = 4 }) ?: return null
         return BitmapDrawable(context.resources, bitmap)
     }
 }

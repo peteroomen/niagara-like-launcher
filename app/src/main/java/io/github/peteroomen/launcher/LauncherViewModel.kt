@@ -22,7 +22,6 @@ import io.github.peteroomen.launcher.system.NotificationDots
 import io.github.peteroomen.launcher.system.PaletteSource
 import io.github.peteroomen.launcher.system.SystemActions
 import io.github.peteroomen.launcher.system.WallpaperBackdrop
-import androidx.compose.ui.graphics.ImageBitmap
 import io.github.peteroomen.launcher.ui.IconLoader
 import io.github.peteroomen.launcher.ui.Palette
 import kotlinx.coroutines.Dispatchers
@@ -77,7 +76,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val wallpaperColors = MutableStateFlow(PaletteSource.wallpaperColors(application))
     /** Blurred wallpaper for liquid glass; null when it can't be read. */
-    val glassBackdrop = MutableStateFlow<ImageBitmap?>(null)
+    val glassBackdrop = MutableStateFlow<WallpaperBackdrop.Images?>(null)
     val calendar = MutableStateFlow<CalendarState>(CalendarState.Empty)
     /** Fires when Home is pressed while the launcher is already showing. */
     val homePressed = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
