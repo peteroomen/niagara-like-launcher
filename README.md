@@ -10,7 +10,8 @@ The design came from the interactive prototype in [`prototype/index.html`](proto
 - **Icons:** themed (the app's monochrome icon tinted with wallpaper colours, Android 13+) or the apps' own colour icons, in three sizes.
 - **Notification dots:** on icons and folders, respecting each app's dot setting.
 - **Widgets:** the next calendar event within a week, and what's playing with play/pause.
-- **A–Z strip:** drag along the right edge to jump through every app.
+- **A–Z strip:** drag along the right edge to jump through every app. Slide left onto a name and let go to open it.
+- **Clock:** tap the time to open the Clock app, or the date for your calendar.
 - **Gestures:**
   - Double-tap empty space to turn the screen off (needs [Power Bubble](https://github.com/peteroomen/power-bubble)).
   - Swipe down for notifications.

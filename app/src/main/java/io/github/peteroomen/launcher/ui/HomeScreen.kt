@@ -75,6 +75,8 @@ fun HomeScreen(vm: LauncherViewModel) {
     var jumpLetter by remember { mutableStateOf<Char?>(null) }
     var scrubY by remember { mutableFloatStateOf(0f) }
     var stripTop by remember { mutableFloatStateOf(0f) }
+    var selectY by remember { mutableStateOf<Float?>(null) }
+    var highlighted by remember { mutableStateOf<String?>(null) }
 
     fun goHome() {
         overlay = Overlay.NONE
@@ -132,6 +134,8 @@ fun HomeScreen(vm: LauncherViewModel) {
                     AllAppsOverlay(
                         state = state,
                         jumpTo = jumpLetter,
+                        selectY = selectY,
+                        onHighlight = { highlighted = it },
                         onLaunch = { vm.launch(it); goHome() },
                         onLongClick = { menu = MenuTarget.App(it) },
                         onDismiss = ::goHome,
@@ -141,13 +145,28 @@ fun HomeScreen(vm: LauncherViewModel) {
                 AzStrip(
                     available = remember(state.apps, state.renames) { state.apps.map { indexLetter(state.label(it.key)) }.toSet() },
                     onScrub = { letter, y ->
+                        selectY = null
                         overlay = Overlay.ALL_APPS
                         openFolder = null
                         scrubLetter = letter
                         jumpLetter = letter
                         scrubY = y
                     },
-                    onRelease = { scrubLetter = null },
+                    onSelect = { y ->
+                        scrubLetter = null
+                        selectY = stripTop + y
+                    },
+                    onRelease = {
+                        // Letting go over a name opens it, like Niagara
+                        val key = highlighted.takeIf { selectY != null }
+                        scrubLetter = null
+                        selectY = null
+                        highlighted = null
+                        if (key != null) {
+                            vm.launch(key)
+                            goHome()
+                        }
+                    },
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
                         .systemBarsPadding()

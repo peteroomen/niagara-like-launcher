@@ -41,9 +41,12 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -58,12 +61,22 @@ import io.github.peteroomen.launcher.model.FavOps
 
 val AzLetters = listOf('#') + ('A'..'Z')
 
-/** Letters down the right edge. Dragging along them reports the letter under the finger and its y position. */
+/**
+ * Letters down the right edge. Dragging along them reports the letter under the finger and its y position.
+ * Sliding left off the strip reports [onSelect] instead, so a name in the list can be picked by letting go.
+ */
 @Composable
-fun AzStrip(available: Set<Char>, onScrub: (Char, Float) -> Unit, onRelease: () -> Unit, modifier: Modifier = Modifier) {
+fun AzStrip(
+    available: Set<Char>,
+    onScrub: (Char, Float) -> Unit,
+    onSelect: (Float) -> Unit,
+    onRelease: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val palette = LocalPalette.current
     val haptics = LocalHapticFeedback.current
     val scrub by rememberUpdatedState(onScrub)
+    val select by rememberUpdatedState(onSelect)
     val release by rememberUpdatedState(onRelease)
     var active by remember { mutableStateOf<Char?>(null) }
     Column(
@@ -82,11 +95,17 @@ fun AzStrip(available: Set<Char>, onScrub: (Char, Float) -> Unit, onRelease: () 
                         }
                         scrub(letter, y)
                     }
+                    val leaveDistance = 24.dp.toPx()
                     pick(down.position.y)
                     while (true) {
                         val change = awaitPointerEvent().changes.firstOrNull() ?: break
                         if (!change.pressed) break
-                        pick(change.position.y)
+                        if (change.position.x < -leaveDistance) {
+                            active = null
+                            select(change.position.y)
+                        } else {
+                            pick(change.position.y)
+                        }
                         change.consume()
                     }
                     active = null
@@ -125,6 +144,9 @@ private sealed interface ListRow {
 fun AllAppsOverlay(
     state: HomeUiState,
     jumpTo: Char?,
+    /** While the finger slides off the A–Z strip: its y in root coordinates. */
+    selectY: Float?,
+    onHighlight: (String?) -> Unit,
     onLaunch: (String) -> Unit,
     onLongClick: (String) -> Unit,
     onDismiss: () -> Unit,
@@ -142,6 +164,18 @@ fun AllAppsOverlay(
         val index = rows.indexOfFirst { it is ListRow.Header && it.letter >= target }.takeIf { it >= 0 }
             ?: rows.indexOfLast { it is ListRow.Header }
         if (index >= 0) listState.scrollToItem(index)
+    }
+    // Where each visible name is on screen, to find the one under a finger coming off the A–Z strip
+    val rowBounds = remember { HashMap<String, ClosedFloatingPointRange<Float>>() }
+    val highlighted = selectY?.let { y ->
+        listState.layoutInfo.visibleItemsInfo
+            .mapNotNull { it.key as? String }
+            .firstOrNull { rowBounds[it]?.contains(y) == true }
+    }
+    val haptics = LocalHapticFeedback.current
+    LaunchedEffect(highlighted) {
+        if (highlighted != null) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        onHighlight(highlighted)
     }
     val bars = WindowInsets.systemBars.asPaddingValues()
     Box(
@@ -170,8 +204,18 @@ fun AllAppsOverlay(
                     )
                     is ListRow.App -> Text(
                         state.label(row.key),
-                        color = palette.text,
+                        color = if (row.key == highlighted) palette.accent else palette.text,
                         modifier = Modifier
+                            .onGloballyPositioned {
+                                val top = it.positionInRoot().y
+                                rowBounds[row.key] = top..(top + it.size.height)
+                            }
+                            .graphicsLayer {
+                                val scale = if (row.key == highlighted) 1.08f else 1f
+                                scaleX = scale
+                                scaleY = scale
+                                transformOrigin = TransformOrigin(0f, 0.5f)
+                            }
                             .combinedClickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
