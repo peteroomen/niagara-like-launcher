@@ -21,13 +21,30 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 class GlassEdge(sharp: ImageBitmap) {
 
-    private val shader = RuntimeShader(AGSL).apply {
-        setInputShader(
-            "image",
-            BitmapShader(sharp.asAndroidBitmap(), Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply {
-                filterMode = BitmapShader.FILTER_MODE_LINEAR
-            },
-        )
+    private val image = BitmapShader(sharp.asAndroidBitmap(), Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply {
+        filterMode = BitmapShader.FILTER_MODE_LINEAR
+    }
+    private val shader = RuntimeShader(AGSL).apply { setInputShader("image", image) }
+    // Compiled on the phone; null if that fails, and glass falls back to frosted
+    private val clear: RuntimeShader? = runCatching { RuntimeShader(CLEAR_AGSL).apply { setInputShader("image", image) } }.getOrNull()
+
+    /**
+     * Clear glass, after Apple's: the whole panel is a lens. The wallpaper shows through barely
+     * blurred and a little magnified; towards the rim it's pulled inwards (a rounded bevel), with
+     * red, green and blue bending by slightly different amounts for faint colour fringes. A thin rim
+     * catches the light from the top-left and bottom-right, with a soft glow just inside it.
+     */
+    fun clearShaderFor(size: Size, radius: Float, bevel: Float, strength: Float, zoom: Float, panelOrigin: Offset, imageOrigin: Offset, imageScale: Float): Shader? {
+        val clear = clear ?: return null
+        clear.setFloatUniform("size", size.width, size.height)
+        clear.setFloatUniform("radius", radius.coerceAtMost(minOf(size.width, size.height) / 2))
+        clear.setFloatUniform("bevel", bevel)
+        clear.setFloatUniform("strength", strength)
+        clear.setFloatUniform("zoom", zoom)
+        clear.setFloatUniform("panelOrigin", panelOrigin.x, panelOrigin.y)
+        clear.setFloatUniform("imageOrigin", imageOrigin.x, imageOrigin.y)
+        clear.setFloatUniform("imageScale", imageScale)
+        return clear
     }
 
     /**
@@ -46,6 +63,58 @@ class GlassEdge(sharp: ImageBitmap) {
     }
 
     private companion object {
+        const val CLEAR_AGSL = """
+            uniform shader image;
+            uniform float2 size;
+            uniform float radius;
+            uniform float bevel;
+            uniform float strength;
+            uniform float zoom;
+            uniform float2 panelOrigin;
+            uniform float2 imageOrigin;
+            uniform float imageScale;
+
+            float edgeDistance(float2 p, float2 halfSize, float r) {
+                float2 q = abs(p) - halfSize + r;
+                return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
+            }
+
+            half3 wallpaperAt(float2 local) {
+                return image.eval((panelOrigin + local - imageOrigin) / imageScale).rgb;
+            }
+
+            half4 main(float2 coord) {
+                float2 halfSize = size * 0.5;
+                float2 p = coord - halfSize;
+                float inside = max(-edgeDistance(p, halfSize, radius), 0.0);
+                float2 n = float2(
+                    edgeDistance(p + float2(1.0, 0.0), halfSize, radius) - edgeDistance(p - float2(1.0, 0.0), halfSize, radius),
+                    edgeDistance(p + float2(0.0, 1.0), halfSize, radius) - edgeDistance(p - float2(0.0, 1.0), halfSize, radius));
+                n = n / max(length(n), 0.0001);
+
+                // A rounded bevel: flat in the middle, curving away at the rim, bending light inwards
+                float s = 1.0 - clamp(inside / bevel, 0.0, 1.0);
+                float bend = strength * s * s;
+                float2 base = halfSize + p / zoom;
+
+                // Each colour bends a little differently: faint fringes at the rim
+                half3 c;
+                c.r = wallpaperAt(base - n * bend).r;
+                c.g = wallpaperAt(base - n * bend * 1.08).g;
+                c.b = wallpaperAt(base - n * bend * 1.16).b;
+
+                half lum = dot(c, half3(0.2126, 0.7152, 0.0722));
+                c = mix(half3(lum), c, 1.2);
+
+                // Light catching the rim, brightest where it faces the top-left or bottom-right
+                float facing = abs(dot(n, float2(-0.7071, -0.7071)));
+                float rim = (1.0 - smoothstep(0.0, 3.0, inside)) * (0.3 + 0.7 * facing);
+                float glow = (1.0 - smoothstep(0.0, bevel * 0.8, inside)) * 0.07;
+                c = c * 0.95 + 0.05 + half(rim * 0.55 + glow);
+                return half4(clamp(c, 0.0, 1.0), 1.0);
+            }
+        """
+
         const val AGSL = """
             uniform shader image;
             uniform float2 size;

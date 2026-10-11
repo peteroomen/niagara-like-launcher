@@ -43,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -51,6 +52,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -132,7 +134,13 @@ fun HomeScreen(vm: LauncherViewModel) {
     Orientation(lockPortrait = state.appearance.lockPortrait)
 
     MaterialTheme(colorScheme = dynamicDarkColorScheme(context)) {
-        val backdrop = glassImage?.takeIf { screenSize != IntSize.Zero }?.let { GlassBackdrop(it.frosted, it.sharp, screenSize.toSize()) }
+        // Line the wallpaper up against the whole screen. Not the window: that shrinks when the
+        // keyboard opens, which would zoom and shift the wallpaper inside the glass.
+        val configuration = LocalConfiguration.current
+        val fullScreen = remember(configuration) {
+            (context as? Activity)?.windowManager?.currentWindowMetrics?.bounds?.let { Size(it.width().toFloat(), it.height().toFloat()) }
+        }
+        val backdrop = glassImage?.let { images -> fullScreen?.let { GlassBackdrop(images.frosted, images.sharp, it) } }
         CompositionLocalProvider(LocalPalette provides palette, LocalIconLoader provides vm, LocalGlassBackdrop provides backdrop) {
             Box(
                 Modifier

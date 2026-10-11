@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.Typeface
 import androidx.core.graphics.ColorUtils
 import io.github.peteroomen.launcher.data.Accent
 import io.github.peteroomen.launcher.data.Appearance
+import io.github.peteroomen.launcher.data.GlassStyle
 import io.github.peteroomen.launcher.data.IconShape
 import io.github.peteroomen.launcher.data.LauncherFont
 import io.github.peteroomen.launcher.data.TextShadow
@@ -84,6 +85,7 @@ object PaletteSource {
             // photos without hiding them. Without the wallpaper to blur, a heavier frosted tint.
             glassTint = if (darkText) Color.White.copy(alpha = 0.34f) else Color.Black.copy(alpha = 0.2f),
             glassBend = a.glassBend,
+            glassClear = a.glassStyle == GlassStyle.CLEAR,
             glassTintNoBlur = if (darkText) Color.White.copy(alpha = 0.62f) else Color.Black.copy(alpha = 0.42f),
         )
     }

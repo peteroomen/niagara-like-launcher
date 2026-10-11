@@ -146,4 +146,9 @@
     <string name="list_style">Search and app list</string>
     <string name="list_style_panel">Panel from the bottom</string>
     <string name="list_style_wallpaper">Wallpaper only</string>
+    <string name="glass_style">Glass style</string>
+    <string name="glass_clear">Clear (like Apple)</string>
+    <string name="glass_frosted">Frosted</string>
+    <string name="glass_clear_summary">Icons, buttons and the music card act like lenses: the wallpaper barely blurred, a little magnified and bent at the rim. The search and app list panel stays frosted so text is easy to read.</string>
+    <string name="glass_frosted_summary">Panels blur the wallpaper behind them under a light tint.</string>
 </resources>
