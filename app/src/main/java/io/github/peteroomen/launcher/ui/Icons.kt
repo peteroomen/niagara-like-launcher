@@ -24,7 +24,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,10 +56,13 @@ private val Greyscale = ColorFilter.colorMatrix(ColorMatrix().apply { setToSatur
 @Composable
 private fun rememberIcons(key: String, sizePx: Int): IconCache.Icons? {
     val loader = LocalIconLoader.current
-    val icons by produceState(loader.cached(key, sizePx), key, sizePx, loader) {
-        if (value == null) value = loader.load(key, sizePx)
+    // Keyed on the app, so a row that switches to another app (as search results do while typing)
+    // never keeps showing the previous app's icon
+    val icons = remember(key, sizePx, loader) { mutableStateOf(loader.cached(key, sizePx)) }
+    LaunchedEffect(icons) {
+        if (icons.value == null) icons.value = loader.load(key, sizePx)
     }
-    return icons
+    return icons.value
 }
 
 /**

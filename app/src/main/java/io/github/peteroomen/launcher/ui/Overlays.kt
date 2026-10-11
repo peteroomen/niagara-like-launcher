@@ -34,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -315,20 +316,7 @@ fun SearchOverlay(
             Box(Modifier.padding(top = 10.dp))
             CompositionLocalProvider(LocalPalette provides listPalette) {
                 results.forEach { key ->
-                    AppRow(
-                        key = key,
-                        label = state.label(key),
-                        appearance = state.appearance,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .combinedClickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = { onLaunch(key) },
-                                onLongClick = { onLongClick(key) },
-                            )
-                            .padding(vertical = 6.dp),
-                    )
+                    key(key) { SearchResult(key, state, onLaunch, onLongClick) }
                 }
             }
             if (query.isNotBlank()) {
@@ -342,4 +330,23 @@ fun SearchOverlay(
             }
         }
     }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun SearchResult(key: String, state: HomeUiState, onLaunch: (String) -> Unit, onLongClick: (String) -> Unit) {
+    AppRow(
+        key = key,
+        label = state.label(key),
+        appearance = state.appearance,
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = { onLaunch(key) },
+                onLongClick = { onLongClick(key) },
+            )
+            .padding(vertical = 6.dp),
+    )
 }
