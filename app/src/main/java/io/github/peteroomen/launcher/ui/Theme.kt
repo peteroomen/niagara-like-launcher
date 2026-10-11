@@ -1,12 +1,16 @@
 package io.github.peteroomen.launcher.ui
 
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.TextUnit
 import io.github.peteroomen.launcher.data.IconCache
 
-/** Colours for drawing straight onto the wallpaper. */
+/** How everything drawn straight onto the wallpaper looks: colours from the wallpaper plus the appearance settings. */
 data class Palette(
     val darkText: Boolean,
     val text: Color,
@@ -21,9 +25,16 @@ data class Palette(
     val ring: Color,
     /** Dims the wallpaper behind the A–Z list */
     val scrim: Color,
+    /** Music widget card */
+    val card: Color,
+    /** Colour of the readability backdrop (fade or dim) */
+    val backdrop: Color,
+    val shadow: Shadow?,
+    val font: FontFamily,
+    val iconShape: Shape,
 ) {
-    /** A soft shadow keeps light text readable on busy wallpapers. */
-    val shadow: Shadow? get() = if (darkText) null else Shadow(Color.Black.copy(alpha = 0.35f), Offset(0f, 1f), 10f)
+    fun style(size: TextUnit, weight: FontWeight = FontWeight.Normal, letterSpacing: TextUnit = TextUnit.Unspecified) =
+        TextStyle(fontSize = size, fontWeight = weight, fontFamily = font, letterSpacing = letterSpacing, shadow = shadow)
 }
 
 val LocalPalette = staticCompositionLocalOf<Palette> { error("No palette") }

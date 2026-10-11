@@ -73,6 +73,25 @@ object FavOps {
         }
     }
 
+    /** Stable id for an entry: the app key, or `folder:<id>`. */
+    fun idOf(fav: Fav): String = when (fav) {
+        is Fav.App -> fav.key
+        is Fav.Folder -> "folder:${fav.id}"
+    }
+
+    /**
+     * Applies a new order for the entries that are on screen. Entries that aren't shown (hidden or
+     * uninstalled apps) keep their slots, so they come back where they were.
+     */
+    fun reorder(saved: List<Fav>, shownOrder: List<String>): List<Fav> {
+        val shown = shownOrder.toSet()
+        val byId = saved.associateBy(::idOf)
+        val queue = ArrayDeque(shownOrder.mapNotNull { byId[it] })
+        return saved.map { if (idOf(it) in shown && queue.isNotEmpty()) queue.removeFirst() else it }
+    }
+
+    fun <T> move(list: List<T>, from: Int, to: Int): List<T> = list.toMutableList().apply { add(to, removeAt(from)) }
+
     fun nextFolderId(favs: List<Fav>): String {
         val highest = favs.filterIsInstance<Fav.Folder>().maxOfOrNull { it.id.removePrefix("f").toIntOrNull() ?: 0 } ?: 0
         return "f${highest + 1}"

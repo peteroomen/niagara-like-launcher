@@ -2,7 +2,6 @@ package io.github.peteroomen.launcher.data
 
 import android.content.Context
 import android.content.pm.LauncherActivityInfo
-import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
@@ -10,12 +9,17 @@ import android.os.Build
 import android.util.LruCache
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toBitmap
 
 /** App icons as bitmaps: the normal icon, plus the monochrome layer used for themed icons (Android 13+). */
 class IconCache(private val context: Context) {
 
-    class Icons(val full: ImageBitmap, val mono: ImageBitmap?)
+    /**
+     * [adaptive] icons are drawn unmasked (full square) so the launcher can cut them to its own icon
+     * shape. Older non-adaptive icons keep their own outline.
+     */
+    class Icons(val full: ImageBitmap, val mono: ImageBitmap?, val adaptive: Boolean)
 
     private val cache = object : LruCache<String, Icons>(24 * 1024 * 1024) {
         override fun sizeOf(key: String, value: Icons) =
@@ -29,21 +33,29 @@ class IconCache(private val context: Context) {
     fun load(info: LauncherActivityInfo, key: String, sizePx: Int): Icons {
         cached(key, sizePx)?.let { return it }
         val drawable = info.getIcon(context.resources.displayMetrics.densityDpi)
-        val mono = if (Build.VERSION.SDK_INT >= 33) (drawable as? AdaptiveIconDrawable)?.monochrome else null
-        val icons = Icons(
-            full = drawable.toBitmap(sizePx, sizePx).asImageBitmap(),
-            mono = mono?.let { renderLayer(it, sizePx) },
-        )
+        val icons = if (drawable is AdaptiveIconDrawable) {
+            val mono = if (Build.VERSION.SDK_INT >= 33) drawable.monochrome else null
+            Icons(
+                full = renderLayers(listOfNotNull(drawable.background, drawable.foreground), sizePx),
+                mono = mono?.let { renderLayers(listOf(it), sizePx) },
+                adaptive = true,
+            )
+        } else {
+            Icons(drawable.toBitmap(sizePx, sizePx).asImageBitmap(), mono = null, adaptive = false)
+        }
         cache.put("$key@$sizePx", icons)
         return icons
     }
 
     /** Adaptive icon layers are 108dp with the middle 72dp visible, so crop a quarter off each side. */
-    private fun renderLayer(layer: Drawable, size: Int): ImageBitmap {
-        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    private fun renderLayers(layers: List<Drawable>, size: Int): ImageBitmap {
+        val bitmap = createBitmap(size, size)
+        val canvas = Canvas(bitmap)
         val inset = size / 4
-        layer.setBounds(-inset, -inset, size + inset, size + inset)
-        layer.draw(Canvas(bitmap))
+        layers.forEach {
+            it.setBounds(-inset, -inset, size + inset, size + inset)
+            it.draw(canvas)
+        }
         return bitmap.asImageBitmap()
     }
 }

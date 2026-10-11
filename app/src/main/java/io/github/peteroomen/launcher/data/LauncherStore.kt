@@ -13,12 +13,35 @@ import io.github.peteroomen.launcher.model.Fav
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-enum class IconStyle { THEMED, COLOUR }
+enum class IconStyle { THEMED, COLOUR, GREYSCALE }
+enum class IconShape { ROUNDED, CIRCLE, SQUARE }
+enum class TextShadow { OFF, SOFT, MEDIUM, STRONG }
+enum class TextTone { AUTO, LIGHT, DARK }
+enum class LauncherFont { SYSTEM, CONDENSED, SERIF, MONO }
+enum class ClockSize(val sp: Int) { SMALL(44), MEDIUM(56), LARGE(72) }
+enum class ClockWeight { LIGHT, REGULAR, BOLD }
+/** Something behind the text to lift it off busy wallpapers. */
+enum class Backdrop { NONE, LEFT_FADE, DIM }
+
+/** Accent colour: taken from the wallpaper, a fixed hue, or plain white/black ([MONO]). */
+enum class Accent(val hue: Float?) {
+    WALLPAPER(null), AMBER(36f), CORAL(10f), PINK(330f), VIOLET(265f), BLUE(212f), TEAL(172f), GREEN(128f), MONO(null)
+}
 
 data class Appearance(
     val showNames: Boolean = false,
     val iconStyle: IconStyle = IconStyle.THEMED,
     val iconSizeDp: Int = 44,
+    val iconShape: IconShape = IconShape.ROUNDED,
+    val textShadow: TextShadow = TextShadow.SOFT,
+    val textTone: TextTone = TextTone.AUTO,
+    val accent: Accent = Accent.WALLPAPER,
+    val font: LauncherFont = LauncherFont.SYSTEM,
+    val clockSize: ClockSize = ClockSize.MEDIUM,
+    val clockWeight: ClockWeight = ClockWeight.LIGHT,
+    val backdrop: Backdrop = Backdrop.NONE,
+    /** Keep the home screen upright even when the phone is turned sideways. */
+    val lockPortrait: Boolean = true,
 )
 
 /** Everything the launcher remembers. */
@@ -33,6 +56,9 @@ data class Saved(
 
 private val Context.dataStore by preferencesDataStore(name = "launcher")
 
+private inline fun <reified T : Enum<T>> Preferences.enumOf(key: Preferences.Key<String>, default: T): T =
+    enumValues<T>().firstOrNull { it.name == this[key] } ?: default
+
 class LauncherStore(private val context: Context) {
 
     val saved: Flow<Saved> = context.dataStore.data.map(::read)
@@ -41,25 +67,47 @@ class LauncherStore(private val context: Context) {
         context.dataStore.edit { prefs -> write(prefs, transform(read(prefs))) }
     }
 
-    private fun read(p: Preferences) = Saved(
-        favs = FavJson.decode(p[FAVS]),
-        hidden = p[HIDDEN] ?: emptySet(),
-        renames = FavJson.decodeMap(p[RENAMES]),
-        appearance = Appearance(
-            showNames = p[SHOW_NAMES] ?: false,
-            iconStyle = IconStyle.entries.firstOrNull { it.name == p[ICON_STYLE] } ?: IconStyle.THEMED,
-            iconSizeDp = p[ICON_SIZE] ?: 44,
-        ),
-        seeded = p[SEEDED] ?: false,
-    )
+    private fun read(p: Preferences): Saved {
+        val d = Appearance()
+        return Saved(
+            favs = FavJson.decode(p[FAVS]),
+            hidden = p[HIDDEN] ?: emptySet(),
+            renames = FavJson.decodeMap(p[RENAMES]),
+            appearance = Appearance(
+                showNames = p[SHOW_NAMES] ?: d.showNames,
+                iconStyle = p.enumOf(ICON_STYLE, d.iconStyle),
+                iconSizeDp = p[ICON_SIZE] ?: d.iconSizeDp,
+                iconShape = p.enumOf(ICON_SHAPE, d.iconShape),
+                textShadow = p.enumOf(TEXT_SHADOW, d.textShadow),
+                textTone = p.enumOf(TEXT_TONE, d.textTone),
+                accent = p.enumOf(ACCENT, d.accent),
+                font = p.enumOf(FONT, d.font),
+                clockSize = p.enumOf(CLOCK_SIZE, d.clockSize),
+                clockWeight = p.enumOf(CLOCK_WEIGHT, d.clockWeight),
+                backdrop = p.enumOf(BACKDROP, d.backdrop),
+                lockPortrait = p[LOCK_PORTRAIT] ?: d.lockPortrait,
+            ),
+            seeded = p[SEEDED] ?: false,
+        )
+    }
 
     private fun write(p: MutablePreferences, s: Saved) {
+        val a = s.appearance
         p[FAVS] = FavJson.encode(s.favs)
         p[HIDDEN] = s.hidden
         p[RENAMES] = FavJson.encodeMap(s.renames)
-        p[SHOW_NAMES] = s.appearance.showNames
-        p[ICON_STYLE] = s.appearance.iconStyle.name
-        p[ICON_SIZE] = s.appearance.iconSizeDp
+        p[SHOW_NAMES] = a.showNames
+        p[ICON_STYLE] = a.iconStyle.name
+        p[ICON_SIZE] = a.iconSizeDp
+        p[ICON_SHAPE] = a.iconShape.name
+        p[TEXT_SHADOW] = a.textShadow.name
+        p[TEXT_TONE] = a.textTone.name
+        p[ACCENT] = a.accent.name
+        p[FONT] = a.font.name
+        p[CLOCK_SIZE] = a.clockSize.name
+        p[CLOCK_WEIGHT] = a.clockWeight.name
+        p[BACKDROP] = a.backdrop.name
+        p[LOCK_PORTRAIT] = a.lockPortrait
         p[SEEDED] = s.seeded
     }
 
@@ -70,6 +118,15 @@ class LauncherStore(private val context: Context) {
         val SHOW_NAMES = booleanPreferencesKey("show_names")
         val ICON_STYLE = stringPreferencesKey("icon_style")
         val ICON_SIZE = intPreferencesKey("icon_size")
+        val ICON_SHAPE = stringPreferencesKey("icon_shape")
+        val TEXT_SHADOW = stringPreferencesKey("text_shadow")
+        val TEXT_TONE = stringPreferencesKey("text_tone")
+        val ACCENT = stringPreferencesKey("accent")
+        val FONT = stringPreferencesKey("font")
+        val CLOCK_SIZE = stringPreferencesKey("clock_size")
+        val CLOCK_WEIGHT = stringPreferencesKey("clock_weight")
+        val BACKDROP = stringPreferencesKey("backdrop")
+        val LOCK_PORTRAIT = booleanPreferencesKey("lock_portrait")
         val SEEDED = booleanPreferencesKey("seeded")
     }
 }

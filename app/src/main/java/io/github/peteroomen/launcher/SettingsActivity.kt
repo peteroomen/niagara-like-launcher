@@ -23,13 +23,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.RadioButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -45,12 +45,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.peteroomen.launcher.data.Accent
+import io.github.peteroomen.launcher.data.Appearance
+import io.github.peteroomen.launcher.data.Backdrop
+import io.github.peteroomen.launcher.data.ClockSize
+import io.github.peteroomen.launcher.data.ClockWeight
+import io.github.peteroomen.launcher.data.IconShape
 import io.github.peteroomen.launcher.data.IconStyle
+import io.github.peteroomen.launcher.data.LauncherFont
+import io.github.peteroomen.launcher.data.TextShadow
+import io.github.peteroomen.launcher.data.TextTone
 import io.github.peteroomen.launcher.system.SystemActions
 import io.github.peteroomen.launcher.ui.openNotificationAccess
 
@@ -123,23 +131,60 @@ private fun SettingsScreen(vm: LauncherViewModel) {
 
         Section(stringResource(R.string.power_bubble_title), stringResource(if (hasPowerBubble) R.string.power_bubble_on else R.string.power_bubble_off)) {}
 
+        val a = state.appearance
+        fun set(change: Appearance) = vm.setAppearance(change)
+
+        HorizontalDivider(Modifier.padding(vertical = 8.dp))
+        Text(stringResource(R.string.readability), style = MaterialTheme.typography.titleMedium)
+        Chips(stringResource(R.string.text_shadow), a.textShadow, listOf(
+            TextShadow.OFF to R.string.shadow_off, TextShadow.SOFT to R.string.shadow_soft,
+            TextShadow.MEDIUM to R.string.shadow_medium, TextShadow.STRONG to R.string.shadow_strong,
+        )) { set(a.copy(textShadow = it)) }
+        Chips(stringResource(R.string.backdrop), a.backdrop, listOf(
+            Backdrop.NONE to R.string.backdrop_none, Backdrop.LEFT_FADE to R.string.backdrop_left, Backdrop.DIM to R.string.backdrop_dim,
+        )) { set(a.copy(backdrop = it)) }
+        Chips(stringResource(R.string.text_colour), a.textTone, listOf(
+            TextTone.AUTO to R.string.tone_auto, TextTone.LIGHT to R.string.tone_light, TextTone.DARK to R.string.tone_dark,
+        )) { set(a.copy(textTone = it)) }
+
         HorizontalDivider(Modifier.padding(vertical = 8.dp))
         Text(stringResource(R.string.appearance), style = MaterialTheme.typography.titleMedium)
-        val appearance = state.appearance
+        Chips(stringResource(R.string.accent_colour), a.accent, listOf(
+            Accent.WALLPAPER to R.string.accent_wallpaper, Accent.AMBER to R.string.accent_amber, Accent.CORAL to R.string.accent_coral,
+            Accent.PINK to R.string.accent_pink, Accent.VIOLET to R.string.accent_violet, Accent.BLUE to R.string.accent_blue,
+            Accent.TEAL to R.string.accent_teal, Accent.GREEN to R.string.accent_green, Accent.MONO to R.string.accent_mono,
+        )) { set(a.copy(accent = it)) }
+        Chips(stringResource(R.string.font), a.font, listOf(
+            LauncherFont.SYSTEM to R.string.font_system, LauncherFont.CONDENSED to R.string.font_condensed,
+            LauncherFont.SERIF to R.string.font_serif, LauncherFont.MONO to R.string.font_mono,
+        )) { set(a.copy(font = it)) }
+        Chips(stringResource(R.string.clock_size), a.clockSize, listOf(
+            ClockSize.SMALL to R.string.size_small, ClockSize.MEDIUM to R.string.size_medium, ClockSize.LARGE to R.string.size_large,
+        )) { set(a.copy(clockSize = it)) }
+        Chips(stringResource(R.string.clock_weight), a.clockWeight, listOf(
+            ClockWeight.LIGHT to R.string.weight_light, ClockWeight.REGULAR to R.string.weight_regular, ClockWeight.BOLD to R.string.weight_bold,
+        )) { set(a.copy(clockWeight = it)) }
+
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.lock_portrait), Modifier.weight(1f))
+            Switch(checked = a.lockPortrait, onCheckedChange = { set(a.copy(lockPortrait = it)) })
+        }
+
+        HorizontalDivider(Modifier.padding(vertical = 8.dp))
+        Text(stringResource(R.string.icons), style = MaterialTheme.typography.titleMedium)
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.show_names), Modifier.weight(1f))
-            Switch(checked = appearance.showNames, onCheckedChange = { vm.setAppearance(appearance.copy(showNames = it)) })
+            Switch(checked = a.showNames, onCheckedChange = { set(a.copy(showNames = it)) })
         }
-        Choice(stringResource(R.string.icons_themed), appearance.iconStyle == IconStyle.THEMED) {
-            vm.setAppearance(appearance.copy(iconStyle = IconStyle.THEMED))
-        }
-        Choice(stringResource(R.string.icons_colour), appearance.iconStyle == IconStyle.COLOUR) {
-            vm.setAppearance(appearance.copy(iconStyle = IconStyle.COLOUR))
-        }
-        Text(stringResource(R.string.icon_size), style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp))
-        listOf(R.string.size_small to 36, R.string.size_medium to 44, R.string.size_large to 52).forEach { (label, size) ->
-            Choice(stringResource(label), appearance.iconSizeDp == size) { vm.setAppearance(appearance.copy(iconSizeDp = size)) }
-        }
+        Chips(stringResource(R.string.icon_style), a.iconStyle, listOf(
+            IconStyle.THEMED to R.string.icons_themed, IconStyle.COLOUR to R.string.icons_colour, IconStyle.GREYSCALE to R.string.icons_greyscale,
+        )) { set(a.copy(iconStyle = it)) }
+        Chips(stringResource(R.string.icon_shape), a.iconShape, listOf(
+            IconShape.ROUNDED to R.string.shape_rounded, IconShape.CIRCLE to R.string.shape_circle, IconShape.SQUARE to R.string.shape_square,
+        )) { set(a.copy(iconShape = it)) }
+        Chips(stringResource(R.string.icon_size), a.iconSizeDp, listOf(
+            36 to R.string.size_small, 44 to R.string.size_medium, 52 to R.string.size_large,
+        )) { set(a.copy(iconSizeDp = it)) }
 
         HorizontalDivider(Modifier.padding(vertical = 8.dp))
         Text(stringResource(R.string.hidden_apps), style = MaterialTheme.typography.titleMedium)
@@ -163,14 +208,16 @@ private fun Section(title: String, status: String, actions: @Composable () -> Un
     }
 }
 
+/** A labelled row of chips; tapping one picks it. Scrolls sideways when there are many. */
 @Composable
-private fun Choice(label: String, selected: Boolean, onSelect: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().selectable(selected = selected, onClick = onSelect, role = Role.RadioButton).padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RadioButton(selected = selected, onClick = null)
-        Text(label, Modifier.padding(start = 12.dp))
+private fun <T> Chips(title: String, selected: T, options: List<Pair<T, Int>>, onSelect: (T) -> Unit) {
+    Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(title, style = MaterialTheme.typography.titleSmall)
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            options.forEach { (value, label) ->
+                FilterChip(selected = value == selected, onClick = { onSelect(value) }, label = { Text(stringResource(label)) })
+            }
+        }
     }
 }
 

@@ -21,6 +21,7 @@ import io.github.peteroomen.launcher.system.NotificationDots
 import io.github.peteroomen.launcher.system.PaletteSource
 import io.github.peteroomen.launcher.system.SystemActions
 import io.github.peteroomen.launcher.ui.IconLoader
+import io.github.peteroomen.launcher.ui.Palette
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -28,6 +29,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
@@ -69,14 +72,14 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val iconCache = IconCache(application)
     private val store = LauncherStore(application)
 
-    val palette = MutableStateFlow(PaletteSource.read(application))
+    private val wallpaperColors = MutableStateFlow(PaletteSource.wallpaperColors(application))
     val calendar = MutableStateFlow<CalendarState>(CalendarState.Empty)
     /** Fires when Home is pressed while the launcher is already showing. */
     val homePressed = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
     private val wallpaperManager = WallpaperManager.getInstance(application)
     private val colorsListener = WallpaperManager.OnColorsChangedListener { colors, which ->
-        if (which and WallpaperManager.FLAG_SYSTEM != 0) palette.value = PaletteSource.from(colors)
+        if (which and WallpaperManager.FLAG_SYSTEM != 0) wallpaperColors.value = colors
     }
 
     val ui: StateFlow<HomeUiState> = combine(repo.apps, store.saved, NotificationDots.packages) { apps, saved, dots ->
@@ -92,6 +95,11 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             dots = dots,
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeUiState())
+
+    /** Colours, shadows, font and icon shape: the wallpaper's colours combined with the appearance settings. */
+    val palette: StateFlow<Palette> = combine(wallpaperColors, ui.map { it.appearance }.distinctUntilChanged()) { colors, appearance ->
+        PaletteSource.resolve(colors, appearance)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, PaletteSource.resolve(wallpaperColors.value, Appearance()))
 
     init {
         wallpaperManager.addOnColorsChangedListener(colorsListener, Handler(Looper.getMainLooper()))
@@ -115,7 +123,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun onResume() {
-        palette.value = PaletteSource.read(app)
+        wallpaperColors.value = PaletteSource.wallpaperColors(app)
         refreshCalendar()
     }
 
@@ -155,6 +163,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     fun addFavourite(key: String) = editFavs { FavOps.add(it, key) }
     fun removeFavourite(key: String) = editFavs { FavOps.detach(it, key) }
+    fun setFavourite(key: String, favourite: Boolean) = if (favourite) addFavourite(key) else removeFavourite(key)
+    /** [shownOrder] is the new order of the favourites on screen, as [FavOps.idOf] ids. */
+    fun reorderFavourites(shownOrder: List<String>) = editFavs { FavOps.reorder(it, shownOrder) }
     fun moveOutOfFolder(key: String) = editFavs { FavOps.moveOutOfFolder(it, key) }
     fun moveToFolder(key: String, folderId: String) = editFavs { FavOps.moveToFolder(it, key, folderId) }
     fun newFolder(key: String, name: String) = editFavs { FavOps.newFolder(it, key, name) }

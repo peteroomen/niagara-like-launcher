@@ -6,17 +6,21 @@ The design came from the interactive prototype in [`prototype/index.html`](proto
 
 ## Features
 
-- **Favourites:** a column of icons centred on the left. Names are optional. Folders show their first four apps and open as a row beside the folder.
-- **Icons:** themed (the app's monochrome icon tinted with wallpaper colours, Android 13+) or the apps' own colour icons, in three sizes.
+- **Favourites:** a column of icons centred on the left. Names are optional. Hold an icon and drag to reorder. Folders show their first four apps and open as a row beside the folder.
+- **Edit favourites:** tick apps on and off in one list. It's in the hold menus for apps and for empty space.
+- **Icons:** themed (the app's monochrome icon tinted with wallpaper colours, Android 13+), colour or greyscale. Three sizes and three shapes (rounded, circle, square).
+- **Readability:** text shadow from off to strong, an optional fade or dim behind the text, and text colour from the wallpaper or forced light or dark.
+- **Look:** accent colour (from the wallpaper or a fixed colour), font (system, condensed, serif, mono), and clock size and weight.
+- **Portrait lock:** the home screen stays upright by default; turn it off in settings.
 - **Notification dots:** on icons and folders, respecting each app's dot setting.
-- **Widgets:** the next calendar event within a week, and what's playing with play/pause.
-- **A–Z strip:** drag along the right edge to jump through every app. Slide left onto a name and let go to open it.
+- **Widgets:** the next calendar event within a week, and a music player card with album art, progress, and previous, play/pause and next buttons.
+- **A–Z strip:** drag along the right edge to jump through every app, listed with icons. Slide left onto a name and let go to open it.
 - **Clock:** tap the time to open the Clock app, or the date for your calendar.
 - **Gestures:**
   - Double-tap empty space to turn the screen off (needs [Power Bubble](https://github.com/peteroomen/power-bubble)).
   - Swipe down for notifications.
   - Swipe up to search; Enter opens the top result or searches the web.
-- **Hold an app:** add it to favourites or a folder, move it out of a folder, rename, hide, see App info, or uninstall.
+- **Hold an app** (on the home screen, in the A–Z list or in search results): add it to favourites or a folder, move it out of a folder, rename, hide, see App info, or uninstall.
 - **Hold a folder:** rename it, ungroup it, or remove it.
 - **Hold empty space:** wallpaper and launcher settings.
 - **Wallpaper colours:** text, accent and icon colours come from the wallpaper and switch to dark text on light wallpapers.

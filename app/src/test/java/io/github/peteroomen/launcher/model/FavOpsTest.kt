@@ -84,6 +84,19 @@ class FavOpsTest {
         assertNull(FavOps.folderOf(favs, "phone"))
     }
 
+    @Test fun reorderMovesShownEntries() {
+        val order = FavOps.move(favs.map(FavOps::idOf), 2, 0)
+        assertEquals(listOf("camera", "phone", "folder:f1"), order)
+        assertEquals(listOf(Fav.App("camera"), Fav.App("phone"), travel), FavOps.reorder(favs, order))
+    }
+
+    @Test fun reorderKeepsHiddenEntriesInPlace() {
+        val saved = listOf(Fav.App("phone"), Fav.App("secret"), travel, Fav.App("camera"))
+        // "secret" is hidden, so the screen shows phone, travel, camera; drag camera to the top
+        val result = FavOps.reorder(saved, listOf("camera", "phone", "folder:f1"))
+        assertEquals(listOf(Fav.App("camera"), Fav.App("secret"), Fav.App("phone"), travel), result)
+    }
+
     @Test fun jsonRoundTrip() {
         assertEquals(favs, FavJson.decode(FavJson.encode(favs)))
         assertEquals(emptyList<Fav>(), FavJson.decode("not json"))

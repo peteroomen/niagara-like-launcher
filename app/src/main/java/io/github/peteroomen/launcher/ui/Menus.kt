@@ -48,14 +48,14 @@ private enum class Page { MAIN, PICK_FOLDER, RENAME, NEW_FOLDER, RENAME_FOLDER }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MenuSheet(target: MenuTarget, state: HomeUiState, vm: LauncherViewModel, onDismiss: () -> Unit) {
+fun MenuSheet(target: MenuTarget, state: HomeUiState, vm: LauncherViewModel, onEditFavourites: () -> Unit, onDismiss: () -> Unit) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var page by remember(target) { mutableStateOf(Page.MAIN) }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(Modifier.padding(bottom = 24.dp)) {
             when (target) {
                 is MenuTarget.App -> when (page) {
-                    Page.MAIN -> AppActions(target.key, state, vm, onDismiss) { page = it }
+                    Page.MAIN -> AppActions(target.key, state, vm, onEditFavourites, onDismiss) { page = it }
                     Page.PICK_FOLDER -> FolderPicker(target.key, state, vm, onDismiss) { page = Page.NEW_FOLDER }
                     Page.RENAME -> NameForm(
                         title = stringResource(R.string.rename),
@@ -93,6 +93,7 @@ fun MenuSheet(target: MenuTarget, state: HomeUiState, vm: LauncherViewModel, onD
                 }
                 MenuTarget.Home -> {
                     val context = LocalContext.current
+                    MenuItem(stringResource(R.string.edit_favourites), onClick = onEditFavourites)
                     MenuItem(stringResource(R.string.wallpaper)) { SystemActions.setWallpaper(context); onDismiss() }
                     MenuItem(stringResource(R.string.settings_name)) {
                         context.startActivity(Intent(context, SettingsActivity::class.java))
@@ -105,14 +106,22 @@ fun MenuSheet(target: MenuTarget, state: HomeUiState, vm: LauncherViewModel, onD
 }
 
 @Composable
-private fun AppActions(key: String, state: HomeUiState, vm: LauncherViewModel, onDismiss: () -> Unit, go: (Page) -> Unit) {
+private fun AppActions(
+    key: String,
+    state: HomeUiState,
+    vm: LauncherViewModel,
+    onEditFavourites: () -> Unit,
+    onDismiss: () -> Unit,
+    go: (Page) -> Unit,
+) {
     val folder = state.folderOf(key)
     val done = { action: () -> Unit -> action(); onDismiss() }
     SheetTitle(state.label(key))
+    if (!state.isFavourite(key)) MenuItem(stringResource(R.string.add_favourite)) { done { vm.addFavourite(key) } }
     folder?.let { MenuItem(stringResource(R.string.move_out_of, it.name)) { done { vm.moveOutOfFolder(key) } } }
     MenuItem(stringResource(if (folder != null) R.string.move_to_folder else R.string.add_to_folder)) { go(Page.PICK_FOLDER) }
     if (state.isFavourite(key)) MenuItem(stringResource(R.string.remove_favourite)) { done { vm.removeFavourite(key) } }
-    else MenuItem(stringResource(R.string.add_favourite)) { done { vm.addFavourite(key) } }
+    MenuItem(stringResource(R.string.edit_favourites), onClick = onEditFavourites)
     MenuItem(stringResource(R.string.rename)) { go(Page.RENAME) }
     if (key in state.hidden) MenuItem(stringResource(R.string.unhide)) { done { vm.unhide(key) } }
     else MenuItem(stringResource(R.string.hide)) { done { vm.hide(key) } }

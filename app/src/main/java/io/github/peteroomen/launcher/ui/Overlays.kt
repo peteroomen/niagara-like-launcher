@@ -29,6 +29,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -127,7 +128,7 @@ fun AzStrip(
                     scaleX = if (letter == active) 1.5f else 1f
                     scaleY = scaleX
                 },
-                style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.SemiBold, shadow = palette.shadow),
+                style = palette.style(10.sp, FontWeight.SemiBold),
             )
         }
     }
@@ -200,11 +201,13 @@ fun AllAppsOverlay(
                         row.letter.toString(),
                         color = palette.accent,
                         modifier = Modifier.padding(top = 18.dp, bottom = 4.dp),
-                        style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp, shadow = palette.shadow),
+                        style = palette.style(12.sp, FontWeight.SemiBold, 1.sp),
                     )
-                    is ListRow.App -> Text(
-                        state.label(row.key),
-                        color = if (row.key == highlighted) palette.accent else palette.text,
+                    is ListRow.App -> AppRow(
+                        key = row.key,
+                        label = state.label(row.key),
+                        appearance = state.appearance,
+                        highlighted = row.key == highlighted,
                         modifier = Modifier
                             .onGloballyPositioned {
                                 val top = it.positionInRoot().y
@@ -222,8 +225,7 @@ fun AllAppsOverlay(
                                 onClick = { onLaunch(row.key) },
                                 onLongClick = { onLongClick(row.key) },
                             )
-                            .padding(vertical = 4.dp),
-                        style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Medium, shadow = palette.shadow),
+                            .padding(vertical = 5.dp),
                     )
                 }
             }
@@ -243,8 +245,15 @@ fun searchApps(state: HomeUiState, query: String): List<String> {
         .map { it.key }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun SearchOverlay(state: HomeUiState, onLaunch: (String) -> Unit, onWebSearch: (String) -> Unit, onDismiss: () -> Unit) {
+fun SearchOverlay(
+    state: HomeUiState,
+    onLaunch: (String) -> Unit,
+    onLongClick: (String) -> Unit,
+    onWebSearch: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
     val palette = LocalPalette.current
     var query by remember { mutableStateOf("") }
     val focus = remember { FocusRequester() }
@@ -286,13 +295,24 @@ fun SearchOverlay(state: HomeUiState, onLaunch: (String) -> Unit, onWebSearch: (
                 },
             )
             Box(Modifier.padding(top = 10.dp))
-            results.forEach { key ->
-                Text(
-                    state.label(key),
-                    color = Color.White,
-                    fontSize = 22.sp,
-                    modifier = Modifier.fillMaxWidth().quietClick { onLaunch(key) }.padding(vertical = 6.dp),
-                )
+            // Search always sits on a dark scrim, so draw it with light text whatever the wallpaper
+            CompositionLocalProvider(LocalPalette provides palette.copy(text = Color.White, darkText = false)) {
+                results.forEach { key ->
+                    AppRow(
+                        key = key,
+                        label = state.label(key),
+                        appearance = state.appearance,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .combinedClickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = { onLaunch(key) },
+                                onLongClick = { onLongClick(key) },
+                            )
+                            .padding(vertical = 6.dp),
+                    )
+                }
             }
             if (query.isNotBlank()) {
                 Text(
