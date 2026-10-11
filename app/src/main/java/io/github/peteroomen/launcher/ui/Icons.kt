@@ -5,9 +5,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -27,23 +24,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.onClick
-import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -58,7 +49,6 @@ import io.github.peteroomen.launcher.R
 import io.github.peteroomen.launcher.data.IconCache
 import io.github.peteroomen.launcher.data.IconStyle
 import io.github.peteroomen.launcher.model.Fav
-import kotlin.math.abs
 
 private val Greyscale = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
 
@@ -130,71 +120,6 @@ fun Modifier.pressable(label: String, onClick: () -> Unit, onLongClick: () -> Un
             onLongClick = onLongClick,
         )
         .semantics { contentDescription = label }
-}
-
-/**
- * Gestures for a favourite: tap opens it; hold then drag moves it; hold and let go without moving
- * opens its menu. Swipes that start on it still reach the home screen (search, notifications).
- */
-@Composable
-fun Modifier.favouriteGestures(
-    label: String,
-    onTap: () -> Unit,
-    onMenu: () -> Unit,
-    onDragStart: () -> Unit,
-    onDrag: (Float) -> Unit,
-    onDragEnd: (moved: Boolean) -> Unit,
-): Modifier {
-    val tap by rememberUpdatedState(onTap)
-    val menu by rememberUpdatedState(onMenu)
-    val start by rememberUpdatedState(onDragStart)
-    val drag by rememberUpdatedState(onDrag)
-    val end by rememberUpdatedState(onDragEnd)
-    var pressed by remember { mutableStateOf(false) }
-    return this
-        .graphicsLayer { alpha = if (pressed) 0.6f else 1f }
-        .semantics {
-            contentDescription = label
-            onClick(label) { tap(); true }
-            onLongClick { menu(); true }
-        }
-        .pointerInput(Unit) {
-            awaitEachGesture {
-                val down = awaitFirstDown()
-                down.consume() // keep the home screen's own tap and long press out of it
-                pressed = true
-                var cancelled = false
-                val up = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
-                    waitForUpOrCancellation().also { if (it == null) cancelled = true }
-                }
-                pressed = false
-                if (up != null) {
-                    up.consume()
-                    tap()
-                    return@awaitEachGesture
-                }
-                if (cancelled) return@awaitEachGesture // became a swipe
-
-                // Held long enough: follow the finger until it lifts
-                start()
-                var total = 0f
-                var moved = false
-                while (true) {
-                    val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
-                    if (!change.pressed) {
-                        change.consume()
-                        break
-                    }
-                    val dy = change.position.y - change.previousPosition.y
-                    total += dy
-                    if (abs(total) > viewConfiguration.touchSlop) moved = true
-                    drag(dy)
-                    change.consume()
-                }
-                end(moved)
-                if (!moved) menu()
-            }
-        }
 }
 
 @Composable
@@ -294,7 +219,7 @@ fun FolderEntry(
 }
 
 @Composable
-private fun FolderIcon(folder: Fav.Folder, state: HomeUiState, size: Dp, open: Boolean) {
+fun FolderIcon(folder: Fav.Folder, state: HomeUiState, size: Dp, open: Boolean = false) {
     val palette = LocalPalette.current
     val shape = palette.iconShape
     val style = state.appearance.iconStyle

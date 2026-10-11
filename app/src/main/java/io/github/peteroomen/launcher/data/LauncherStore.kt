@@ -20,6 +20,7 @@ enum class TextTone { AUTO, LIGHT, DARK }
 enum class LauncherFont { SYSTEM, CONDENSED, SERIF, MONO }
 enum class ClockSize(val sp: Int) { SMALL(44), MEDIUM(56), LARGE(72) }
 enum class ClockWeight { LIGHT, REGULAR, BOLD }
+enum class FavouritesLayout { COLUMN, PIE }
 /** Something behind the text to lift it off busy wallpapers. */
 enum class Backdrop { NONE, LEFT_FADE, DIM }
 
@@ -29,6 +30,8 @@ enum class Accent(val hue: Float?) {
 }
 
 data class Appearance(
+    /** A column of icons on the left, or a pie that opens where you hold the screen. */
+    val favouritesLayout: FavouritesLayout = FavouritesLayout.COLUMN,
     val showNames: Boolean = false,
     val iconStyle: IconStyle = IconStyle.THEMED,
     val iconSizeDp: Int = 44,
@@ -74,6 +77,7 @@ class LauncherStore(private val context: Context) {
             hidden = p[HIDDEN] ?: emptySet(),
             renames = FavJson.decodeMap(p[RENAMES]),
             appearance = Appearance(
+                favouritesLayout = p.enumOf(FAVOURITES_LAYOUT, d.favouritesLayout),
                 showNames = p[SHOW_NAMES] ?: d.showNames,
                 iconStyle = p.enumOf(ICON_STYLE, d.iconStyle),
                 iconSizeDp = p[ICON_SIZE] ?: d.iconSizeDp,
@@ -96,6 +100,7 @@ class LauncherStore(private val context: Context) {
         p[FAVS] = FavJson.encode(s.favs)
         p[HIDDEN] = s.hidden
         p[RENAMES] = FavJson.encodeMap(s.renames)
+        p[FAVOURITES_LAYOUT] = a.favouritesLayout.name
         p[SHOW_NAMES] = a.showNames
         p[ICON_STYLE] = a.iconStyle.name
         p[ICON_SIZE] = a.iconSizeDp
@@ -115,6 +120,7 @@ class LauncherStore(private val context: Context) {
         val FAVS = stringPreferencesKey("favs")
         val HIDDEN = stringSetPreferencesKey("hidden")
         val RENAMES = stringPreferencesKey("renames")
+        val FAVOURITES_LAYOUT = stringPreferencesKey("favourites_layout")
         val SHOW_NAMES = booleanPreferencesKey("show_names")
         val ICON_STYLE = stringPreferencesKey("icon_style")
         val ICON_SIZE = intPreferencesKey("icon_size")

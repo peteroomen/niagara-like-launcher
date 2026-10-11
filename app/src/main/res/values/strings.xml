@@ -118,4 +118,15 @@
     <string name="shape_rounded">Rounded</string>
     <string name="shape_circle">Circle</string>
     <string name="shape_square">Square</string>
+    <string name="reorder_hint">Drag the handles to change the order.</string>
+    <string name="reorder_hint_pie">Drag the handles to change the order. The pie uses your first 8 apps, clockwise from the top.</string>
+    <string name="drag_to_reorder">Drag to reorder</string>
+    <plurals name="folder_apps">
+        <item quantity="one">%d app</item>
+        <item quantity="other">%d apps</item>
+    </plurals>
+    <string name="pie_centre_hint">Let go here for the menu</string>
+    <string name="favourites_layout">Favourites</string>
+    <string name="layout_column">Column on the left</string>
+    <string name="layout_pie">Pie (hold anywhere)</string>
 </resources>

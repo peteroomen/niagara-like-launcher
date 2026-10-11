@@ -8,12 +8,14 @@ import android.content.pm.ActivityInfo
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,12 +41,13 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -52,22 +55,23 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.peteroomen.launcher.HomeUiState
 import io.github.peteroomen.launcher.LauncherViewModel
 import io.github.peteroomen.launcher.data.Backdrop
+import io.github.peteroomen.launcher.data.FavouritesLayout
 import io.github.peteroomen.launcher.indexLetter
 import io.github.peteroomen.launcher.model.Fav
 import io.github.peteroomen.launcher.model.FavOps
+import io.github.peteroomen.launcher.model.Pie
 import io.github.peteroomen.launcher.system.MediaState
 import io.github.peteroomen.launcher.system.NotificationDots
 import io.github.peteroomen.launcher.system.NotificationListener
 import io.github.peteroomen.launcher.system.SystemActions
-import kotlin.math.roundToInt
 
 private enum class Overlay { NONE, ALL_APPS, SEARCH }
 
@@ -90,6 +94,15 @@ fun HomeScreen(vm: LauncherViewModel) {
     var stripTop by remember { mutableFloatStateOf(0f) }
     var selectY by remember { mutableStateOf<Float?>(null) }
     var highlighted by remember { mutableStateOf<String?>(null) }
+    var pie by remember { mutableStateOf<PieState?>(null) }
+    var screenSize by remember { mutableStateOf(IntSize.Zero) }
+    val usePie = state.appearance.favouritesLayout == FavouritesLayout.PIE
+    val pieSlots = remember(state.favs) { FavOps.allKeys(state.favs).take(Pie.SLOTS) }
+    val density = LocalDensity.current
+    val deadZonePx = with(density) { PieDeadZone.toPx() }
+    val pieSelected = pie?.let { Pie.slot(it.finger.x - it.center.x, it.finger.y - it.center.y, deadZonePx) }
+    val haptics = LocalHapticFeedback.current
+    LaunchedEffect(pieSelected) { if (pie != null) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
 
     fun goHome() {
         overlay = Overlay.NONE
@@ -108,12 +121,34 @@ fun HomeScreen(vm: LauncherViewModel) {
             Box(
                 Modifier
                     .fillMaxSize()
+                    .onSizeChanged { screenSize = it }
                     .homeGestures(
+                        pieEnabled = usePie,
                         onDoubleTap = { SystemActions.screenOff(context) },
                         onTap = { openFolder = null },
                         onLongPress = { menu = MenuTarget.Home },
                         onSwipeUp = { overlay = Overlay.SEARCH },
                         onSwipeDown = { SystemActions.expandNotifications(context) },
+                        onPieStart = { at ->
+                            // Keep the whole pie on screen
+                            val r = with(density) { (PieRadius + 8.dp).toPx() }
+                            val top = with(density) { 96.dp.toPx() }
+                            val center = Offset(
+                                at.x.coerceIn(r, (screenSize.width - r).coerceAtLeast(r)),
+                                at.y.coerceIn(r + top, (screenSize.height - r).coerceAtLeast(r + top)),
+                            )
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            pie = PieState(center, at)
+                        },
+                        onPieMove = { at -> pie = pie?.copy(finger = at) },
+                        onPieEnd = {
+                            val current = pie
+                            pie = null
+                            if (current != null) {
+                                val slot = Pie.slot(current.finger.x - current.center.x, current.finger.y - current.center.y, deadZonePx)
+                                if (slot == null) menu = MenuTarget.Home else pieSlots.getOrNull(slot)?.let(vm::launch)
+                            }
+                        },
                     ),
             ) {
                 ReadabilityBackdrop(state.appearance.backdrop)
@@ -134,18 +169,18 @@ fun HomeScreen(vm: LauncherViewModel) {
                         appLabel = nowPlaying?.let { np -> state.apps.firstOrNull { it.packageName == np.packageName }?.label },
                         onNeedAccess = { openNotificationAccess(context) },
                     )
-                    // Favourites sit centred on the left in the space below the widgets
-                    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
-                        Favourites(
-                            state = state,
-                            openFolder = openFolder,
-                            onToggleFolder = { id -> openFolder = if (openFolder == id) null else id },
-                            onCloseFolder = { openFolder = null },
-                            onLaunch = { key -> vm.launch(key); openFolder = null },
-                            onMenu = { openFolder = null; menu = it },
-                            onDragStart = { openFolder = null },
-                            onReorder = vm::reorderFavourites,
-                        )
+                    // Favourites sit centred on the left in the space below the widgets (unless they live in the pie)
+                    if (!usePie) {
+                        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+                            Favourites(
+                                state = state,
+                                openFolder = openFolder,
+                                onToggleFolder = { id -> openFolder = if (openFolder == id) null else id },
+                                onCloseFolder = { openFolder = null },
+                                onLaunch = { key -> vm.launch(key); openFolder = null },
+                                onMenu = { openFolder = null; menu = it },
+                            )
+                        }
                     }
                 }
 
@@ -194,8 +229,9 @@ fun HomeScreen(vm: LauncherViewModel) {
                         .onGloballyPositioned { stripTop = it.positionInRoot().y },
                 )
 
+                pie?.let { PieMenu(state, it, pieSlots, pieSelected) }
+
                 scrubLetter?.let { letter ->
-                    val density = LocalDensity.current
                     Text(
                         letter.toString(),
                         color = palette.accent,
@@ -230,7 +266,13 @@ fun HomeScreen(vm: LauncherViewModel) {
                 }
 
                 if (editingFavourites) {
-                    EditFavouritesDialog(state, onSetFavourite = vm::setFavourite, onDismiss = { editingFavourites = false })
+                    EditFavouritesDialog(
+                        state = state,
+                        onSetFavourite = vm::setFavourite,
+                        onRemoveFolder = vm::removeFolder,
+                        onReorder = vm::reorderFavourites,
+                        onDismiss = { editingFavourites = false },
+                    )
                 }
             }
         }
@@ -252,10 +294,7 @@ private fun ReadabilityBackdrop(backdrop: Backdrop) {
     }
 }
 
-/**
- * The favourites column. Hold an icon and drag it up or down to move it; the others slide out of
- * the way. Hold and let go without moving to open its menu.
- */
+/** The favourites column. Tap opens; hold opens the menu. Reordering lives in Edit favourites. */
 @Composable
 private fun Favourites(
     state: HomeUiState,
@@ -264,89 +303,15 @@ private fun Favourites(
     onCloseFolder: () -> Unit,
     onLaunch: (String) -> Unit,
     onMenu: (MenuTarget) -> Unit,
-    onDragStart: () -> Unit,
-    onReorder: (List<String>) -> Unit,
 ) {
-    val haptics = LocalHapticFeedback.current
-    val pitch = with(LocalDensity.current) { (state.appearance.iconSizeDp.dp + 10.dp).toPx() }
-
-    // After a drop, show the new order straight away until the saved order catches up
-    var pending by remember { mutableStateOf<List<String>?>(null) }
-    val savedIds = state.favs.map(FavOps::idOf)
-    LaunchedEffect(savedIds) { pending = null }
-    val byId = state.favs.associateBy(FavOps::idOf)
-    val favs = pending?.mapNotNull { byId[it] }?.takeIf { it.size == state.favs.size } ?: state.favs
-    val ids = favs.map(FavOps::idOf)
-
-    var dragId by remember { mutableStateOf<String?>(null) }
-    var dragOffset by remember { mutableFloatStateOf(0f) }
-    val from = ids.indexOf(dragId)
-    val target = if (from < 0) -1 else (from + (dragOffset / pitch).roundToInt()).coerceIn(0, ids.lastIndex)
-    val currentIds by rememberUpdatedState(ids)
-    val currentTarget by rememberUpdatedState(target)
-
     Column(Modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        favs.forEachIndexed { i, fav ->
-            val id = ids[i]
-            val dragging = i == from
-            val shift by animateFloatAsState(
-                when {
-                    from < 0 || dragging -> 0f
-                    from < target && i in (from + 1)..target -> -pitch
-                    from > target && i in target until from -> pitch
-                    else -> 0f
-                },
-                label = "shift",
-            )
-            val label = when (fav) {
-                is Fav.App -> state.label(fav.key)
-                is Fav.Folder -> folderLabel(fav)
-            }
-            val modifier = Modifier
-                .zIndex(if (dragging) 1f else 0f)
-                .graphicsLayer {
-                    translationY = if (dragging) dragOffset else shift
-                    val scale = if (dragging) 1.12f else 1f
-                    scaleX = scale
-                    scaleY = scale
-                }
-                .favouriteGestures(
-                    label = label,
-                    onTap = {
-                        when (fav) {
-                            is Fav.App -> onLaunch(fav.key)
-                            is Fav.Folder -> onToggleFolder(fav.id)
-                        }
-                    },
-                    onMenu = {
-                        onMenu(
-                            when (fav) {
-                                is Fav.App -> MenuTarget.App(fav.key)
-                                is Fav.Folder -> MenuTarget.Folder(fav.id)
-                            },
-                        )
-                    },
-                    onDragStart = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onDragStart()
-                        dragId = id
-                        dragOffset = 0f
-                    },
-                    onDrag = { dragOffset += it },
-                    onDragEnd = { moved ->
-                        val fromIndex = currentIds.indexOf(id)
-                        val toIndex = currentTarget
-                        if (moved && fromIndex >= 0 && toIndex >= 0 && fromIndex != toIndex) {
-                            val newOrder = FavOps.move(currentIds, fromIndex, toIndex)
-                            pending = newOrder
-                            onReorder(newOrder)
-                        }
-                        dragId = null
-                        dragOffset = 0f
-                    },
-                )
+        state.favs.forEach { fav ->
             when (fav) {
-                is Fav.App -> FavouriteApp(fav.key, state, modifier)
+                is Fav.App -> FavouriteApp(
+                    key = fav.key,
+                    state = state,
+                    modifier = Modifier.pressable(state.label(fav.key), { onLaunch(fav.key) }, { onMenu(MenuTarget.App(fav.key)) }),
+                )
                 is Fav.Folder -> FolderEntry(
                     folder = fav,
                     state = state,
@@ -354,32 +319,39 @@ private fun Favourites(
                     onClose = onCloseFolder,
                     onLaunch = onLaunch,
                     onAppLongClick = { onMenu(MenuTarget.App(it)) },
-                    modifier = modifier,
+                    modifier = Modifier.pressable(folderLabel(fav), { onToggleFolder(fav.id) }, { onMenu(MenuTarget.Folder(fav.id)) }),
                 )
             }
         }
     }
 }
 
-/** Taps, double-taps and long presses on empty space, plus vertical swipes anywhere on the home screen. */
+/**
+ * Gestures on the home screen. Vertical swipes work anywhere. On empty space: tap, double-tap, and a
+ * long press, which opens the home menu, or in pie mode shows the pie and follows the finger.
+ */
 @Composable
 private fun Modifier.homeGestures(
+    pieEnabled: Boolean,
     onDoubleTap: () -> Unit,
     onTap: () -> Unit,
     onLongPress: () -> Unit,
     onSwipeUp: () -> Unit,
     onSwipeDown: () -> Unit,
+    onPieStart: (Offset) -> Unit,
+    onPieMove: (Offset) -> Unit,
+    onPieEnd: () -> Unit,
 ): Modifier {
     val doubleTap by rememberUpdatedState(onDoubleTap)
     val tap by rememberUpdatedState(onTap)
     val longPress by rememberUpdatedState(onLongPress)
     val up by rememberUpdatedState(onSwipeUp)
     val down by rememberUpdatedState(onSwipeDown)
+    val pieStart by rememberUpdatedState(onPieStart)
+    val pieMove by rememberUpdatedState(onPieMove)
+    val pieEnd by rememberUpdatedState(onPieEnd)
     val threshold = with(LocalDensity.current) { 60.dp.toPx() }
     return this
-        .pointerInput(Unit) {
-            detectTapGestures(onDoubleTap = { doubleTap() }, onTap = { tap() }, onLongPress = { longPress() })
-        }
         .pointerInput(Unit) {
             var total = 0f
             detectVerticalDragGestures(
@@ -395,6 +367,40 @@ private fun Modifier.homeGestures(
                     change.consume()
                 },
             )
+        }
+        .pointerInput(pieEnabled) {
+            if (!pieEnabled) {
+                detectTapGestures(onDoubleTap = { doubleTap() }, onTap = { tap() }, onLongPress = { longPress() })
+                return@pointerInput
+            }
+            var lastTapAt = 0L
+            awaitEachGesture {
+                val first = awaitFirstDown()
+                var cancelled = false
+                val lifted = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                    waitForUpOrCancellation().also { if (it == null) cancelled = true }
+                }
+                if (lifted != null) {
+                    if (lifted.uptimeMillis - lastTapAt < viewConfiguration.doubleTapTimeoutMillis) {
+                        lastTapAt = 0L
+                        doubleTap()
+                    } else {
+                        lastTapAt = lifted.uptimeMillis
+                        tap()
+                    }
+                    return@awaitEachGesture
+                }
+                if (cancelled) return@awaitEachGesture // it was a swipe
+
+                pieStart(first.position)
+                while (true) {
+                    val change = awaitPointerEvent().changes.firstOrNull { it.id == first.id } ?: break
+                    change.consume() // keeps the swipe detector from treating this as a swipe
+                    if (!change.pressed) break
+                    pieMove(change.position)
+                }
+                pieEnd()
+            }
         }
 }
 

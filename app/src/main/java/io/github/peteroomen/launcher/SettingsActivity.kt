@@ -54,6 +54,7 @@ import io.github.peteroomen.launcher.data.Appearance
 import io.github.peteroomen.launcher.data.Backdrop
 import io.github.peteroomen.launcher.data.ClockSize
 import io.github.peteroomen.launcher.data.ClockWeight
+import io.github.peteroomen.launcher.data.FavouritesLayout
 import io.github.peteroomen.launcher.data.IconShape
 import io.github.peteroomen.launcher.data.IconStyle
 import io.github.peteroomen.launcher.data.LauncherFont
@@ -172,6 +173,9 @@ private fun SettingsScreen(vm: LauncherViewModel) {
 
         HorizontalDivider(Modifier.padding(vertical = 8.dp))
         Text(stringResource(R.string.icons), style = MaterialTheme.typography.titleMedium)
+        Chips(stringResource(R.string.favourites_layout), a.favouritesLayout, listOf(
+            FavouritesLayout.COLUMN to R.string.layout_column, FavouritesLayout.PIE to R.string.layout_pie,
+        )) { set(a.copy(favouritesLayout = it)) }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.show_names), Modifier.weight(1f))
             Switch(checked = a.showNames, onCheckedChange = { set(a.copy(showNames = it)) })
