@@ -2,6 +2,7 @@ package io.github.peteroomen.launcher
 
 import android.app.Application
 import android.app.WallpaperManager
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import androidx.lifecycle.AndroidViewModel
@@ -20,6 +21,8 @@ import io.github.peteroomen.launcher.model.FavOps
 import io.github.peteroomen.launcher.system.NotificationDots
 import io.github.peteroomen.launcher.system.PaletteSource
 import io.github.peteroomen.launcher.system.SystemActions
+import io.github.peteroomen.launcher.system.WallpaperBackdrop
+import androidx.compose.ui.graphics.ImageBitmap
 import io.github.peteroomen.launcher.ui.IconLoader
 import io.github.peteroomen.launcher.ui.Palette
 import kotlinx.coroutines.Dispatchers
@@ -73,13 +76,18 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val store = LauncherStore(application)
 
     private val wallpaperColors = MutableStateFlow(PaletteSource.wallpaperColors(application))
+    /** Blurred wallpaper for liquid glass; null when it can't be read. */
+    val glassBackdrop = MutableStateFlow<ImageBitmap?>(null)
     val calendar = MutableStateFlow<CalendarState>(CalendarState.Empty)
     /** Fires when Home is pressed while the launcher is already showing. */
     val homePressed = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
     private val wallpaperManager = WallpaperManager.getInstance(application)
     private val colorsListener = WallpaperManager.OnColorsChangedListener { colors, which ->
-        if (which and WallpaperManager.FLAG_SYSTEM != 0) wallpaperColors.value = colors
+        if (which and WallpaperManager.FLAG_SYSTEM != 0) {
+            wallpaperColors.value = colors
+            onWallpaperChanged()
+        }
     }
 
     val ui: StateFlow<HomeUiState> = combine(repo.apps, store.saved, NotificationDots.packages) { apps, saved, dots ->
@@ -105,6 +113,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         wallpaperManager.addOnColorsChangedListener(colorsListener, Handler(Looper.getMainLooper()))
         // Icons may have changed when apps are installed or updated
         repo.apps.drop(1).onEach { iconCache.clear() }.launchIn(viewModelScope)
+        refreshGlassBackdrop()
         viewModelScope.launch {
             val apps = repo.apps.first { it.isNotEmpty() }
             store.update { if (it.seeded) it else it.copy(favs = DefaultFavourites.pick(app, apps), seeded = true) }
@@ -124,7 +133,35 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     fun onResume() {
         wallpaperColors.value = PaletteSource.wallpaperColors(app)
+        refreshGlassBackdrop()
         refreshCalendar()
+    }
+
+    fun refreshGlassBackdrop() {
+        viewModelScope.launch {
+            // Read the saved setting, not ui.value, which is still a placeholder at start-up
+            val glassOn = store.saved.first().appearance.glass
+            glassBackdrop.value = if (!glassOn) null else withContext(Dispatchers.IO) { WallpaperBackdrop.load(app) }
+        }
+    }
+
+    /**
+     * The wallpaper changed. If glass was showing a photo picked in the launcher and the person has
+     * since set a different wallpaper elsewhere, that copy is stale: drop it.
+     */
+    private fun onWallpaperChanged() {
+        if (!WallpaperBackdrop.isOwnChange() && WallpaperBackdrop.pickedFile(app).exists()) {
+            viewModelScope.launch(Dispatchers.IO) { WallpaperBackdrop.forgetPicked(app) }
+        }
+        refreshGlassBackdrop()
+    }
+
+    /** Use a photo picked in the launcher as the wallpaper, and keep a copy for glass to blur. */
+    fun usePickedWallpaper(uri: Uri) {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { WallpaperBackdrop.usePicked(app, uri) }
+            refreshGlassBackdrop()
+        }
     }
 
     fun refreshCalendar() {
@@ -183,5 +220,11 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     fun hide(key: String) = edit { it.copy(hidden = it.hidden + key) }
     fun unhide(key: String) = edit { it.copy(hidden = it.hidden - key) }
-    fun setAppearance(appearance: Appearance) = edit { it.copy(appearance = appearance) }
+    fun setAppearance(appearance: Appearance) {
+        val glassChanged = appearance.glass != ui.value.appearance.glass
+        viewModelScope.launch {
+            store.update { it.copy(appearance = appearance) }
+            if (glassChanged) refreshGlassBackdrop()
+        }
+    }
 }

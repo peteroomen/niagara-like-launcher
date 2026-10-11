@@ -10,6 +10,12 @@
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
     <!-- Calendar widget -->
     <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <!-- Liquid glass: Android only lets a launcher read the wallpaper image with this -->
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+    <!-- Liquid glass: setting a photo picked in the launcher as the wallpaper -->
+    <uses-permission android:name="android.permission.SET_WALLPAPER" />
     <!-- "Uninstall" in the app menu -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
 

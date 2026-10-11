@@ -80,10 +80,10 @@ object PaletteSource {
                 IconShape.SQUARE -> RoundedCornerShape(percent = 14)
             },
             glass = a.glass,
-            // Clear glass over dark wallpapers, frosted milky glass over light ones
-            glassTop = Color.White.copy(alpha = if (darkText) 0.72f else 0.26f),
-            glassBottom = Color.White.copy(alpha = if (darkText) 0.38f else 0.07f),
-            glassSheen = if (darkText) 0.5f else 0.24f,
+            // Dark glass under light text, milky glass under dark text: enough tint to read over busy
+            // photos without hiding them. Without the wallpaper to blur, a heavier frosted tint.
+            glassTint = if (darkText) Color.White.copy(alpha = 0.34f) else Color.Black.copy(alpha = 0.2f),
+            glassTintNoBlur = if (darkText) Color.White.copy(alpha = 0.62f) else Color.Black.copy(alpha = 0.42f),
         )
     }
 

@@ -133,5 +133,12 @@
     <string name="pie_folder_hint">%1$s · slide out to choose</string>
     <string name="pick_folder_apps">Apps in this folder</string>
     <string name="liquid_glass">Liquid glass</string>
-    <string name="liquid_glass_summary">Icon tiles, folders, the music card, search and the pie become glass panels, and the wallpaper blurs behind search, the A–Z list and the pie.</string>
+    <string name="liquid_glass_summary">Icon tiles, folders, the music card, search and the pie become glass, showing the wallpaper blurred behind them.</string>
+    <string name="glass_source_checking">Checking whether glass can see your wallpaper…</string>
+    <string name="glass_source_system">Glass is blurring your wallpaper.</string>
+    <string name="glass_source_picked">Glass is blurring the photo you picked here. If you set a different wallpaper somewhere else, pick it here again.</string>
+    <string name="glass_source_none">Glass can\'t see your wallpaper, so it uses a frosted tint instead. To blur the real thing, allow wallpaper access or pick your wallpaper photo here.</string>
+    <string name="glass_allow_access">Allow wallpaper access</string>
+    <string name="glass_access_note">Android lists this as \"All files access\". The launcher only uses it to read your wallpaper.</string>
+    <string name="glass_pick_photo">Pick wallpaper photo instead</string>
 </resources>

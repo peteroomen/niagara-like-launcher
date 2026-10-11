@@ -12,6 +12,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -39,6 +40,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -61,6 +63,9 @@ import io.github.peteroomen.launcher.data.LauncherFont
 import io.github.peteroomen.launcher.data.TextShadow
 import io.github.peteroomen.launcher.data.TextTone
 import io.github.peteroomen.launcher.system.SystemActions
+import io.github.peteroomen.launcher.system.WallpaperBackdrop
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import io.github.peteroomen.launcher.ui.openNotificationAccess
 
 class SettingsActivity : ComponentActivity() {
@@ -157,6 +162,7 @@ private fun SettingsScreen(vm: LauncherViewModel) {
             }
             Switch(checked = a.glass, onCheckedChange = { set(a.copy(glass = it)) })
         }
+        if (a.glass) GlassSource(vm, resumes)
         Chips(stringResource(R.string.accent_colour), a.accent, listOf(
             Accent.WALLPAPER to R.string.accent_wallpaper, Accent.AMBER to R.string.accent_amber, Accent.CORAL to R.string.accent_coral,
             Accent.PINK to R.string.accent_pink, Accent.VIOLET to R.string.accent_violet, Accent.BLUE to R.string.accent_blue,
@@ -216,6 +222,46 @@ private fun Section(title: String, status: String, actions: @Composable () -> Un
         Text(title, style = MaterialTheme.typography.titleMedium)
         Text(status, style = MaterialTheme.typography.bodyMedium)
         actions()
+    }
+}
+
+/** Where liquid glass gets the wallpaper to blur from, and how to give it access. */
+@Composable
+private fun GlassSource(vm: LauncherViewModel, resumes: Int) {
+    val context = LocalContext.current
+    var picks by remember { mutableIntStateOf(0) }
+    val source by produceState<WallpaperBackdrop.Source?>(null, resumes, picks) {
+        value = withContext(Dispatchers.IO) { WallpaperBackdrop.source(context) }
+    }
+    val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) {
+            vm.usePickedWallpaper(uri)
+            picks++
+        }
+    }
+    Column(Modifier.padding(start = 4.dp, top = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            stringResource(
+                when (source) {
+                    WallpaperBackdrop.Source.SYSTEM -> R.string.glass_source_system
+                    WallpaperBackdrop.Source.PICKED -> R.string.glass_source_picked
+                    WallpaperBackdrop.Source.NONE -> R.string.glass_source_none
+                    null -> R.string.glass_source_checking
+                },
+            ),
+            style = MaterialTheme.typography.bodySmall,
+        )
+        if (source != null && source != WallpaperBackdrop.Source.SYSTEM) {
+            Button(onClick = {
+                context.startActivity(
+                    Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.fromParts("package", context.packageName, null)),
+                )
+            }) { Text(stringResource(R.string.glass_allow_access)) }
+            Text(stringResource(R.string.glass_access_note), style = MaterialTheme.typography.bodySmall)
+            OutlinedButton(onClick = {
+                pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            }) { Text(stringResource(R.string.glass_pick_photo)) }
+        }
     }
 }
 

@@ -56,6 +56,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
@@ -79,6 +80,7 @@ private enum class Overlay { NONE, ALL_APPS, SEARCH }
 fun HomeScreen(vm: LauncherViewModel) {
     val state by vm.ui.collectAsStateWithLifecycle()
     val palette by vm.palette.collectAsStateWithLifecycle()
+    val glassImage by vm.glassBackdrop.collectAsStateWithLifecycle()
     val calendar by vm.calendar.collectAsStateWithLifecycle()
     val nowPlaying by MediaState.nowPlaying.collectAsStateWithLifecycle()
     val hasNotificationAccess by NotificationDots.connected.collectAsStateWithLifecycle()
@@ -123,7 +125,8 @@ fun HomeScreen(vm: LauncherViewModel) {
     Orientation(lockPortrait = state.appearance.lockPortrait)
 
     MaterialTheme(colorScheme = dynamicDarkColorScheme(context)) {
-        CompositionLocalProvider(LocalPalette provides palette, LocalIconLoader provides vm) {
+        val backdrop = glassImage?.takeIf { screenSize != IntSize.Zero }?.let { GlassBackdrop(it, screenSize.toSize()) }
+        CompositionLocalProvider(LocalPalette provides palette, LocalIconLoader provides vm, LocalGlassBackdrop provides backdrop) {
             Box(
                 Modifier
                     .fillMaxSize()
