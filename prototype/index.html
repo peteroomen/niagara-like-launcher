@@ -45,7 +45,6 @@ header p { margin: 8px 0 0; color: var(--muted); max-width: 64ch; }
 .date b { color: var(--acc); font-weight: inherit; }
 
 .widgets { display: grid; gap: 12px; margin-top: 22px; max-height: 220px; overflow: hidden; transition: opacity .2s, max-height .25s, margin .25s; }
-.screen.folder-open .widgets { max-height: 0; margin-top: 0; opacity: 0; pointer-events: none; }
 .widget { display: grid; gap: 1px; }
 .widget .lbl { font: 600 10.5px var(--f-body); letter-spacing: .1em; text-transform: uppercase; color: var(--acc); }
 .widget .val { font-size: 15px; line-height: 1.3; }
@@ -53,19 +52,40 @@ header p { margin: 8px 0 0; color: var(--muted); max-width: 64ch; }
 .widget .row { display: flex; gap: 10px; align-items: baseline; }
 .widget button { font: 600 12px var(--f-body); color: var(--t); background: none; border: 1px solid var(--t2); border-radius: 999px; padding: 2px 10px; cursor: pointer; text-shadow: none; }
 
-.favs { list-style: none; margin: auto 0 0; padding: 0; display: grid; gap: 9px; }
+.favs { list-style: none; margin: auto 0 0; padding: 18px 0 0; display: grid; gap: 10px; justify-items: start; }
+.favs > li { position: relative; display: flex; align-items: center; gap: 12px; }
+.favs .app .name, .fhead .name { --fs: 17px; font-size: 17px; font-weight: var(--lw); }
+.ic { width: var(--is, 42px); height: var(--is, 42px); border-radius: 32%; display: grid; place-items: center; flex: none; position: relative;
+  background: var(--tileBg); color: var(--tileFg); text-shadow: none; transition: opacity .15s, transform .15s; }
+.ic svg { width: 52%; height: 52%; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.ic .ltr { font: 600 calc(var(--is, 42px) * .42)/1 var(--lf); }
+.screen.colour .ic { background: var(--c); color: #fff; }
+.badge { position: absolute; top: -2px; right: -2px; width: 11px; height: 11px; border-radius: 50%; background: var(--acc); box-shadow: 0 0 0 2px var(--ring); }
+.lbl { display: grid; min-width: 0; }
+.screen:not(.names) .favs .lbl { display: none; }
+.fic { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; place-items: stretch; padding: calc(var(--is, 42px) * .15); gap: calc(var(--is, 42px) * .07); box-sizing: border-box; }
+.fic .mini { display: grid; place-items: center; border-radius: 30%; min-width: 0; min-height: 0; }
+.fic svg { width: 86%; height: 86%; stroke-width: 2.4; }
+.fic .ltr { font-size: calc(var(--is, 42px) * .2); }
+.screen.colour .fic { background: var(--pill); }
+.screen.colour .fic .mini { background: var(--c); color: #fff; }
+.screen.colour .fic svg { width: 70%; height: 70%; }
+.folder.open .fic { box-shadow: 0 0 0 2px var(--acc); }
+.frow { position: absolute; left: calc(var(--is, 42px) + 12px); top: 50%; transform: translateY(-50%); background: var(--pill); border-radius: 18px; padding: 8px 10px 10px; display: grid; gap: 6px; z-index: 5; animation: frow .18s ease-out; text-shadow: none; }
+@keyframes frow { from { opacity: 0; transform: translate(-8px, -50%); } }
+.frow .ftitle { font: 600 10.5px var(--f-body); letter-spacing: .1em; text-transform: uppercase; color: var(--acc); }
+.frow ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 10px; }
+.frow .app { display: grid; justify-items: center; gap: 4px; width: auto; }
+.frow .ic { --is: 40px; }
+.frow .cap { font: 11px/1.2 var(--f-body); color: var(--t); max-width: 50px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.screen:not(.names) .frow .cap { display: none; }
 .app { cursor: pointer; display: block; width: fit-content; max-width: 100%; }
-.favs .app + .app { margin-top: 2px; }
-.app .name, .fhead { font-size: var(--fs, 30px); font-weight: var(--lw); letter-spacing: var(--ls); line-height: 1.12; display: inline-flex; align-items: center; gap: 8px; }
+.app .name { font-size: var(--fs, 30px); font-weight: var(--lw); letter-spacing: var(--ls); line-height: 1.12; display: inline-flex; align-items: center; gap: 8px; }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--acc); box-shadow: none; flex: none; }
-.preview { font-family: var(--f-body); font-size: 13px; line-height: 1.3; padding-block: 2px; color: var(--t2); margin-top: 3px; max-width: 220px; touch-action: none; transition: transform .2s, opacity .2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.preview { font-family: var(--f-body); font-size: 13px; line-height: 1.3; padding-block: 2px; color: var(--t2); margin-top: 3px; max-width: 180px; touch-action: none; transition: transform .2s, opacity .2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .preview b { color: var(--t); font-weight: 600; }
-.app.pressed .name, .fhead.pressed { opacity: .55; }
-.fhead { cursor: pointer; }
-.fhead .count { font: 600 12px var(--f-body); color: var(--t2); align-self: flex-start; margin: 4px 0 0 -4px; letter-spacing: 0; }
-.folder.open > .fhead { color: var(--acc); }
-.fsub { list-style: none; margin: 6px 0 4px 2px; padding: 0 0 0 14px; display: grid; gap: 4px; border-left: 1px solid var(--t2); }
-.fsub .app .name { --fs: 22px; }
+.app.pressed .name, .app.pressed .ic, .fhead.pressed .ic { opacity: .55; transform: scale(.94); }
+.fhead { display: flex; align-items: center; gap: 12px; cursor: pointer; }
 
 .az { position: absolute; right: 4px; top: 150px; bottom: 70px; width: 30px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; touch-action: none; z-index: 4; cursor: ns-resize; }
 .az span { font: 600 9.5px/1 var(--f-body); color: var(--t2); pointer-events: none; }
@@ -172,7 +192,7 @@ code { font: 12.5px var(--f-mono); background: var(--chip); padding: 1px 5px; bo
 <div class="wrap">
   <header>
     <h1>Launcher Prototype</h1>
-    <p>Favourite apps as plain type on the wallpaper, a couple of widgets above them, and every other app one slide away on the A–Z strip. Everything on the phone works: try the gestures listed on the right.</p>
+    <p>Favourite apps as a column of icons down the left edge, so the middle of the wallpaper stays clear. Calendar and music widgets at the top, and every other app one slide away on the A–Z strip. Everything on the phone works: try the gestures listed on the right.</p>
   </header>
 
   <div class="main">
@@ -231,11 +251,11 @@ code { font: 12.5px var(--f-mono); background: var(--chip); padding: 1px 5px; bo
       <section>
         <span class="eyebrow">Try it on the phone</span>
         <ul class="try">
-          <li><b>Tap a name</b><span>Opens the app. The bar at the bottom takes you home.</span></li>
+          <li><b>Tap an icon</b><span>Opens the app. The bar at the bottom takes you home.</span></li>
           <li><b>Slide the A–Z</b><span>Drag along the letters on the right edge to jump through every app.</span></li>
-          <li><b>Swipe a preview</b><span>Swipe a message preview sideways to dismiss the notification.</span></li>
-          <li><b>Tap a folder</b><span>Travel and Work open in place, with the widgets tucked away to make room. Tap it again, or empty space, to close it.</span></li>
-          <li><b>Hold a name</b><span>Rename it, hide it, put it in a folder or a new one, or add or remove it from favourites.</span></li>
+          <li><b>Swipe a preview</b><span>With app names shown, the latest message appears beside the icon. Swipe it sideways to dismiss it.</span></li>
+          <li><b>Tap a folder</b><span>Travel and Work slide open as a row of icons beside the folder. Tap it again, or empty space, to close it.</span></li>
+          <li><b>Hold an icon</b><span>Rename it, hide it, put it in a folder or a new one, or add or remove it from favourites.</span></li>
           <li><b>Hold a folder</b><span>Rename it, ungroup it, or remove it from favourites.</span></li>
           <li><b>Swipe up</b><span>Search apps. Press Enter to open the top result.</span></li>
           <li><b>Swipe down</b><span>Opens the notification shade.</span></li>
@@ -263,11 +283,25 @@ code { font: 12.5px var(--f-mono); background: var(--chip); padding: 1px 5px; bo
           </div>
         </div>
         <div class="grp">
-          <span class="lab">Text size</span>
+          <span class="lab">App names</span>
+          <div class="seg" id="names">
+            <button type="button" data-names="off" aria-pressed="true">Hidden</button>
+            <button type="button" data-names="on" aria-pressed="false">Shown</button>
+          </div>
+        </div>
+        <div class="grp">
+          <span class="lab">Icons</span>
+          <div class="seg" id="icstyle">
+            <button type="button" data-st="themed" aria-pressed="true">Themed</button>
+            <button type="button" data-st="colour" aria-pressed="false">Colour</button>
+          </div>
+        </div>
+        <div class="grp">
+          <span class="lab">Icon size</span>
           <div class="seg" id="sizes">
-            <button type="button" data-size="26" aria-pressed="false">Small</button>
-            <button type="button" data-size="30" aria-pressed="true">Medium</button>
-            <button type="button" data-size="35" aria-pressed="false">Large</button>
+            <button type="button" data-size="36" aria-pressed="false">Small</button>
+            <button type="button" data-size="42" aria-pressed="true">Medium</button>
+            <button type="button" data-size="48" aria-pressed="false">Large</button>
           </div>
         </div>
         <div class="grp">
@@ -287,6 +321,7 @@ code { font: 12.5px var(--f-mono); background: var(--chip); padding: 1px 5px; bo
             <tr><td>Widgets</td><td><code>AppWidgetHost</code>. Adding one goes through the system widget picker or <code>bindAppWidgetIdIfAllowed</code>.</td></tr>
             <tr><td>Double-tap</td><td>Sends Power Bubble's screen-off intent, so the launcher needs no accessibility service of its own.</td></tr>
             <tr><td>Swipe down</td><td>Opens the real notification shade, via the status bar service or Power Bubble's <code>GLOBAL_ACTION_NOTIFICATIONS</code>.</td></tr>
+            <tr><td>Icons</td><td><code>LauncherActivityInfo.getIcon()</code>. Themed icons use the app's monochrome icon layer (Android 13+), tinted with wallpaper colours. Apps without one fall back to their normal icon.</td></tr>
             <tr><td>Folders</td><td>Only the launcher knows about them. Each folder is a saved name plus a list of apps, in DataStore or Room.</td></tr>
             <tr><td>Hide, rename</td><td>Stored by the launcher itself (DataStore or Room). Hidden apps stay installed and searchable.</td></tr>
             <tr><td>Wallpaper colours</td><td><code>WallpaperManager.getWallpaperColors()</code> gives the main colours and a "supports dark text" hint. This page does the same analysis in the browser.</td></tr>
@@ -298,9 +333,9 @@ code { font: 12.5px var(--f-mono); background: var(--chip); padding: 1px 5px; bo
         <span class="eyebrow">Still to decide</span>
         <ul class="qs">
           <li>Should hidden apps show up in search, or disappear completely?</li>
-          <li>Widgets above the list (as here) or below it, closer to your thumb?</li>
           <li>Should letting go of the A–Z strip over a name open that app (like Niagara), or keep the list open?</li>
-          <li>Folders open in place here. Would you rather they open as a pop-up list over the wallpaper?</li>
+          <li>With names hidden, a new message shows only as a dot on the icon. Is that enough, or should the latest message appear beside it?</li>
+          <li>Should the icon column sit at the bottom, near your thumb (as here), or be centred vertically on the left edge?</li>
           <li>Anything for the clock and weather line: tap to open Clock, Weather, Calendar?</li>
         </ul>
       </section>
@@ -344,6 +379,35 @@ code { font: 12.5px var(--f-mono); background: var(--chip); padding: 1px 5px; bo
   const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   // ---------- rendering ----------
+  // Stand-in icons: simple glyphs, not the apps' real artwork
+  const GLYPHS = {
+    Phone: ['M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2'],
+    Messages: ['M4 5h16v11H9l-5 4z'],
+    WhatsApp: ['M20 11.5a8 8 0 0 1-11.6 7.1L4 20l1.4-4.3A8 8 0 1 1 20 11.5z'],
+    Camera: ['M4 8h3l2-3h6l2 3h3v11H4z', 'M12 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'],
+    Spotify: ['M9 18V6l10-2v12', 'M9 18a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z', 'M19 16a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z'],
+    Maps: ['M12 21s-6-5.5-6-10a6 6 0 1 1 12 0c0 4.5-6 10-6 10z', 'M12 13a2 2 0 1 0 0-4 2 2 0 0 0 0 4z'],
+    Uber: ['M3 13l2-6h14l2 6v5H3z', 'M7 15.5h.01', 'M17 15.5h.01'],
+    Translate: ['M4 5h9', 'M8.5 5v2c0 4-2 7-4.5 8', 'M6 10c1.5 2 3.5 3.5 6 4', 'M13 20l4-9 4 9', 'M14.5 17h5'],
+    Weather: ['M7 18h10a4 4 0 0 0 0-8 6 6 0 0 0-11.5 2A3 3 0 0 0 7 18z'],
+    Gmail: ['M4 6h16v12H4z', 'M4 7l8 6 8-6'],
+    Slack: ['M10 4L8 20', 'M16 4l-2 16', 'M5 9h15', 'M4 15h15'],
+    Docs: ['M6 3h8l4 4v14H6z', 'M9 12h6', 'M9 16h6'],
+    Zoom: ['M3 7h12v10H3z', 'M15 11l6-4v10l-6-4'],
+  };
+  const COLOURS = { Phone: '#2f8f5b', Messages: '#3a6fd8', WhatsApp: '#24a058', Camera: '#55595f', Spotify: '#1b9a4d', Maps: '#d0533b',
+    Uber: '#26262a', Translate: '#3f7ee8', Weather: '#e09b26', Gmail: '#d64a3b', Slack: '#5b2e6e', Docs: '#3b6fd8', Zoom: '#2d6ae0' };
+  const colourOf = id => COLOURS[id] || `hsl(${[...id].reduce((h, c) => h * 31 + c.charCodeAt(0), 7) % 360} 45% 42%)`;
+  const glyphOf = id => GLYPHS[id]
+    ? `<svg viewBox="0 0 24 24" aria-hidden="true">${GLYPHS[id].map(d => `<path d="${d}"/>`).join('')}</svg>`
+    : `<span class="ltr">${esc(label(id)[0].toUpperCase())}</span>`;
+  const iconHTML = (id, badge) => `<span class="ic" style="--c:${colourOf(id)}">${glyphOf(id)}${badge ? '<i class="badge"></i>' : ''}</span>`;
+
+  function favAppHTML(id) {
+    const n = notifs[id], has = !!(n && n.length);
+    const prev = has ? `<div class="preview" data-id="${esc(id)}"><b>${esc(n[0].from)}</b> ${esc(n[0].text)}${n.length > 1 ? ` · +${n.length - 1}` : ''}</div>` : '';
+    return `<li class="app" data-id="${esc(id)}" aria-label="${esc(label(id))}">${iconHTML(id, has)}<span class="lbl"><span class="name">${esc(label(id))}</span>${prev}</span></li>`;
+  }
   function appHTML(id, withPreview) {
     const n = notifs[id];
     const dot = n && n.length ? '<i class="dot"></i>' : '';
@@ -353,14 +417,18 @@ code { font: 12.5px var(--f-mono); background: var(--chip); padding: 1px 5px; bo
   }
   function folderHTML(f) {
     const apps = f.apps.filter(a => !hidden.has(a));
-    const dot = apps.some(a => notifs[a]?.length) ? '<i class="dot"></i>' : '';
+    const badge = apps.some(a => notifs[a]?.length);
     const open = openFolder === f.folder;
-    return `<li class="folder${open ? ' open' : ''}" data-folder="${f.folder}"><span class="name fhead">${esc(f.name)}<span class="count">${apps.length}</span>${dot}</span>`
-      + (open ? `<ul class="fsub">${apps.map(a => appHTML(a, false)).join('')}</ul>` : '') + '</li>';
+    const minis = apps.slice(0, 4).map(a => `<span class="mini" style="--c:${colourOf(a)}">${glyphOf(a)}</span>`).join('');
+    const row = open
+      ? `<div class="frow"><span class="ftitle">${esc(f.name)}</span><ul>${apps.map(a =>
+          `<li class="app" data-id="${esc(a)}" aria-label="${esc(label(a))}">${iconHTML(a, !!notifs[a]?.length)}<span class="cap">${esc(label(a))}</span></li>`).join('')}</ul></div>`
+      : '';
+    return `<li class="folder${open ? ' open' : ''}" data-folder="${f.folder}"><span class="fhead" aria-label="${esc(f.name)} folder"><span class="ic fic">${minis}${badge ? '<i class="badge"></i>' : ''}</span>`
+      + `<span class="lbl"><span class="name">${esc(f.name)}</span></span></span>${row}</li>`;
   }
   function renderFavs() {
-    $('favs').innerHTML = favs.map(x => isFolder(x) ? folderHTML(x) : hidden.has(x) ? '' : appHTML(x, true)).join('');
-    screen.classList.toggle('folder-open', !!openFolder);
+    $('favs').innerHTML = favs.map(x => isFolder(x) ? folderHTML(x) : hidden.has(x) ? '' : favAppHTML(x)).join('');
   }
   function toggleFolder(fid) { openFolder = openFolder === fid ? null : fid; renderFavs(); }
   function renderDrawer() {
@@ -376,7 +444,7 @@ code { font: 12.5px var(--f-mono); background: var(--chip); padding: 1px 5px; bo
   }
   function renderHidden() {
     const list = [...hidden];
-    $('hiddenList').innerHTML = list.length ? list.map(a => `<button type="button" data-unhide="${esc(a)}">Unhide ${esc(label(a))}</button>`).join('') : 'None. Hold an app name to hide it.';
+    $('hiddenList').innerHTML = list.length ? list.map(a => `<button type="button" data-unhide="${esc(a)}">Unhide ${esc(label(a))}</button>`).join('') : 'None. Hold an app to hide it.';
   }
   function renderAll() { renderFavs(); renderDrawer(); renderShade(); renderHidden(); }
 
@@ -645,6 +713,11 @@ code { font: 12.5px var(--f-mono); background: var(--chip); padding: 1px 5px; bo
     screen.style.setProperty('--acc', accent);
     screen.style.setProperty('--shadow', darkText ? 'none' : '0 1px 10px rgba(0,0,0,.35)');
     screen.style.setProperty('--scrimA', darkText ? '0' : '.45');
+    // Themed icons: tinted tiles in the wallpaper's hue, like Android 13+ themed icons
+    screen.style.setProperty('--tileBg', darkText ? `hsl(${h | 0} 50% 84% / .92)` : `hsl(${h | 0} 35% 14% / .55)`);
+    screen.style.setProperty('--tileFg', darkText ? `hsl(${h | 0} 60% 24%)` : `hsl(${h | 0} 85% 84%)`);
+    screen.style.setProperty('--pill', darkText ? 'rgba(255,255,255,.6)' : 'rgba(0,0,0,.4)');
+    screen.style.setProperty('--ring', darkText ? 'rgba(255,255,255,.9)' : 'rgba(0,0,0,.45)');
     drawer.style.background = darkText ? 'rgba(255,255,255,.6)' : '';
     $('swatches').innerHTML = `<span><i style="background:${primary}"></i>Main</span><span><i style="background:${accent}"></i>Accent</span><span><i style="background:${darkText ? '#141414' : '#fafafa'}"></i>${darkText ? 'Dark text' : 'Light text'}</span>`;
   }
@@ -688,9 +761,19 @@ code { font: 12.5px var(--f-mono); background: var(--chip); padding: 1px 5px; bo
   });
   $('sizes').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
-    screen.style.setProperty('--fs', b.dataset.size + 'px');
+    screen.style.setProperty('--is', b.dataset.size + 'px');
     [...$('sizes').children].forEach(x => x.setAttribute('aria-pressed', String(x === b)));
   });
+
+  function segToggle(groupId, apply) {
+    $(groupId).addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      apply(b);
+      [...$(groupId).children].forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    });
+  }
+  segToggle('names', b => screen.classList.toggle('names', b.dataset.names === 'on'));
+  segToggle('icstyle', b => screen.classList.toggle('colour', b.dataset.st === 'colour'));
 
   // ---------- clock ----------
   function tick() {
