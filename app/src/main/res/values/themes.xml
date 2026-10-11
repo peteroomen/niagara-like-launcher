@@ -1,0 +1,13 @@
+<resources>
+    <!-- Home screen: transparent window over the system wallpaper -->
+    <style name="Theme.Launcher.Home" parent="android:Theme.Material.Wallpaper.NoTitleBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
+        <item name="android:enforceStatusBarContrast">false</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
+
+    <style name="Theme.Launcher.Settings" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

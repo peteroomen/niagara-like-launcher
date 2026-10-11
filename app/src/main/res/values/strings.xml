@@ -1,0 +1,71 @@
+<resources>
+    <string name="app_name">Launcher</string>
+    <string name="settings_name">Launcher settings</string>
+
+    <string name="calendar">Calendar</string>
+    <string name="calendar_permission">Show your next event</string>
+    <string name="calendar_empty">Nothing in the next 7 days</string>
+    <string name="today">Today</string>
+    <string name="tomorrow">Tomorrow</string>
+    <string name="music">Music</string>
+    <string name="nothing_playing">Nothing playing</string>
+    <string name="music_needs_access">Allow notification access to show music</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+
+    <string name="search_apps">Search apps</string>
+    <string name="search_web">Search the web for “%1$s”</string>
+    <string name="folder_description">%1$s folder</string>
+
+    <string name="move_out_of">Move out of %1$s</string>
+    <string name="add_to_folder">Add to folder</string>
+    <string name="move_to_folder">Move to another folder</string>
+    <string name="add_favourite">Add to favourites</string>
+    <string name="remove_favourite">Remove from favourites</string>
+    <string name="rename">Rename</string>
+    <string name="hide">Hide</string>
+    <string name="unhide">Unhide</string>
+    <string name="app_info">App info</string>
+    <string name="uninstall">Uninstall</string>
+    <string name="put_in">Put %1$s in</string>
+    <string name="new_folder">New folder</string>
+    <string name="default_folder_name">Folder</string>
+    <string name="name">Name</string>
+    <string name="save">Save</string>
+    <string name="create">Create</string>
+    <string name="reset_name">Use “%1$s”</string>
+    <string name="rename_folder">Rename folder</string>
+    <string name="ungroup">Ungroup</string>
+    <string name="wallpaper">Wallpaper</string>
+    <string name="set_wallpaper">Set wallpaper</string>
+
+    <string name="power_bubble_missing">Install Power Bubble to turn the screen off with a double-tap</string>
+
+    <string name="set_home">Home app</string>
+    <string name="set_home_done">This is your home app.</string>
+    <string name="set_home_todo">Another app is your home app.</string>
+    <string name="set_home_button">Make this your home app</string>
+    <string name="notif_title">Notification dots and music</string>
+    <string name="notif_on">On. Dots and the music widget are working.</string>
+    <string name="notif_off">Off. Dots and the music widget need notification access.</string>
+    <string name="notif_button">Open notification access</string>
+    <string name="restricted_hint">Switch greyed out? Android blocks this for sideloaded apps until you allow it. Open App info, tap ⋮, choose Allow restricted settings, then try again.</string>
+    <string name="open_app_info">Open App info</string>
+    <string name="calendar_title">Calendar widget</string>
+    <string name="calendar_on">On. Your next event shows on the home screen.</string>
+    <string name="calendar_off">Off. The widget needs calendar access.</string>
+    <string name="calendar_button">Allow calendar access</string>
+    <string name="power_bubble_title">Double-tap to turn the screen off</string>
+    <string name="power_bubble_on">Power Bubble is installed. Make sure its accessibility service is on.</string>
+    <string name="power_bubble_off">Needs the Power Bubble app.</string>
+    <string name="appearance">Appearance</string>
+    <string name="show_names">Show app names</string>
+    <string name="icons_themed">Themed icons</string>
+    <string name="icons_colour">Colour icons</string>
+    <string name="icon_size">Icon size</string>
+    <string name="size_small">Small</string>
+    <string name="size_medium">Medium</string>
+    <string name="size_large">Large</string>
+    <string name="hidden_apps">Hidden apps</string>
+    <string name="hidden_none">None. Hold an app to hide it.</string>
+</resources>

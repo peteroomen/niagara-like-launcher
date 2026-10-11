@@ -1,0 +1,263 @@
+package io.github.peteroomen.launcher.ui
+
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import io.github.peteroomen.launcher.HomeUiState
+import io.github.peteroomen.launcher.R
+import io.github.peteroomen.launcher.indexLetter
+import io.github.peteroomen.launcher.model.FavOps
+
+val AzLetters = listOf('#') + ('A'..'Z')
+
+/** Letters down the right edge. Dragging along them reports the letter under the finger and its y position. */
+@Composable
+fun AzStrip(available: Set<Char>, onScrub: (Char, Float) -> Unit, onRelease: () -> Unit, modifier: Modifier = Modifier) {
+    val palette = LocalPalette.current
+    val haptics = LocalHapticFeedback.current
+    val scrub by rememberUpdatedState(onScrub)
+    val release by rememberUpdatedState(onRelease)
+    var active by remember { mutableStateOf<Char?>(null) }
+    Column(
+        modifier
+            .width(30.dp)
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    val down = awaitFirstDown()
+                    down.consume()
+                    fun pick(y: Float) {
+                        val i = (y / size.height * AzLetters.size).toInt().coerceIn(0, AzLetters.lastIndex)
+                        val letter = AzLetters[i]
+                        if (letter != active) {
+                            active = letter
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        }
+                        scrub(letter, y)
+                    }
+                    pick(down.position.y)
+                    while (true) {
+                        val change = awaitPointerEvent().changes.firstOrNull() ?: break
+                        if (!change.pressed) break
+                        pick(change.position.y)
+                        change.consume()
+                    }
+                    active = null
+                    release()
+                }
+            },
+        verticalArrangement = Arrangement.SpaceBetween,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        AzLetters.forEach { letter ->
+            Text(
+                letter.toString(),
+                color = when {
+                    letter == active -> palette.accent
+                    letter in available -> palette.muted
+                    else -> palette.muted.copy(alpha = palette.muted.alpha * 0.35f)
+                },
+                modifier = Modifier.graphicsLayer {
+                    scaleX = if (letter == active) 1.5f else 1f
+                    scaleY = scaleX
+                },
+                style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.SemiBold, shadow = palette.shadow),
+            )
+        }
+    }
+}
+
+private sealed interface ListRow {
+    data class Header(val letter: Char) : ListRow
+    data class App(val key: String) : ListRow
+}
+
+/** Every app, A to Z, over a dimmed wallpaper. Opened by the A–Z strip. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun AllAppsOverlay(
+    state: HomeUiState,
+    jumpTo: Char?,
+    onLaunch: (String) -> Unit,
+    onLongClick: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val palette = LocalPalette.current
+    val listState = rememberLazyListState()
+    val rows = remember(state.apps, state.renames) {
+        state.apps.groupBy { indexLetter(state.label(it.key)) }.toSortedMap().flatMap { (letter, apps) ->
+            listOf(ListRow.Header(letter)) + apps.map { ListRow.App(it.key) }
+        }
+    }
+    LaunchedEffect(jumpTo, rows) {
+        val target = jumpTo ?: return@LaunchedEffect
+        // jump to this letter, or the next one that has apps
+        val index = rows.indexOfFirst { it is ListRow.Header && it.letter >= target }.takeIf { it >= 0 }
+            ?: rows.indexOfLast { it is ListRow.Header }
+        if (index >= 0) listState.scrollToItem(index)
+    }
+    val bars = WindowInsets.systemBars.asPaddingValues()
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(palette.scrim)
+            .pointerInput(Unit) { detectTapGestures { onDismiss() } },
+    ) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = 24.dp,
+                end = 48.dp,
+                top = bars.calculateTopPadding() + 24.dp,
+                bottom = bars.calculateBottomPadding() + 120.dp,
+            ),
+        ) {
+            items(rows, key = { if (it is ListRow.Header) "#h${it.letter}" else (it as ListRow.App).key }) { row ->
+                when (row) {
+                    is ListRow.Header -> Text(
+                        row.letter.toString(),
+                        color = palette.accent,
+                        modifier = Modifier.padding(top = 18.dp, bottom = 4.dp),
+                        style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp, shadow = palette.shadow),
+                    )
+                    is ListRow.App -> Text(
+                        state.label(row.key),
+                        color = palette.text,
+                        modifier = Modifier
+                            .combinedClickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = { onLaunch(row.key) },
+                                onLongClick = { onLongClick(row.key) },
+                            )
+                            .padding(vertical = 4.dp),
+                        style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Medium, shadow = palette.shadow),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Search apps by name. Hidden apps only turn up once you've typed two letters. */
+fun searchApps(state: HomeUiState, query: String): List<String> {
+    val q = query.trim()
+    if (q.isEmpty()) return FavOps.allKeys(state.favs).take(5)
+    val pool = state.byKey.values.filter { q.length >= 2 || it.key !in state.hidden }
+    return pool
+        .filter { state.label(it.key).contains(q, ignoreCase = true) || it.label.contains(q, ignoreCase = true) }
+        .sortedWith(compareBy({ !state.label(it.key).startsWith(q, ignoreCase = true) }, { state.label(it.key).lowercase() }))
+        .take(8)
+        .map { it.key }
+}
+
+@Composable
+fun SearchOverlay(state: HomeUiState, onLaunch: (String) -> Unit, onWebSearch: (String) -> Unit, onDismiss: () -> Unit) {
+    val palette = LocalPalette.current
+    var query by remember { mutableStateOf("") }
+    val focus = remember { FocusRequester() }
+    val results = remember(query, state) { searchApps(state, query) }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.6f))
+            .pointerInput(Unit) { detectTapGestures { onDismiss() } },
+    ) {
+        Column(
+            Modifier
+                .statusBarsPadding()
+                .imePadding()
+                .padding(horizontal = 22.dp, vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            BasicTextField(
+                value = query,
+                onValueChange = { query = it },
+                singleLine = true,
+                textStyle = TextStyle(color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Medium),
+                cursorBrush = SolidColor(palette.accent),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
+                keyboardActions = KeyboardActions(onGo = {
+                    results.firstOrNull()?.let(onLaunch) ?: if (query.isNotBlank()) onWebSearch(query) else Unit
+                }),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focus)
+                    .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(14.dp))
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                decorationBox = { field ->
+                    Box {
+                        if (query.isEmpty()) Text(stringResource(R.string.search_apps), color = Color.White.copy(alpha = 0.5f), fontSize = 22.sp)
+                        field()
+                    }
+                },
+            )
+            Box(Modifier.padding(top = 10.dp))
+            results.forEach { key ->
+                Text(
+                    state.label(key),
+                    color = Color.White,
+                    fontSize = 22.sp,
+                    modifier = Modifier.fillMaxWidth().quietClick { onLaunch(key) }.padding(vertical = 6.dp),
+                )
+            }
+            if (query.isNotBlank()) {
+                Text(
+                    stringResource(R.string.search_web, query.trim()),
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 15.sp,
+                    modifier = Modifier.fillMaxWidth().quietClick { onWebSearch(query.trim()) }.padding(vertical = 8.dp),
+                )
+            }
+        }
+    }
+}
