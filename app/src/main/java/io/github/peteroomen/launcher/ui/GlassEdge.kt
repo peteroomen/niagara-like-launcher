@@ -34,8 +34,26 @@ class GlassEdge(sharp: ImageBitmap) {
      * red, green and blue bending by slightly different amounts for faint colour fringes. A thin rim
      * catches the light from the top-left and bottom-right, with a soft glow just inside it.
      */
-    fun clearShaderFor(size: Size, radius: Float, bevel: Float, strength: Float, zoom: Float, panelOrigin: Offset, imageOrigin: Offset, imageScale: Float): Shader? {
+    /**
+     * [extendLeft], [extendTop], [extendRight] and [extendBottom] push edges out past the panel, so
+     * they don't bend: for a sheet whose sides and bottom sit against the screen.
+     */
+    fun clearShaderFor(
+        size: Size,
+        radius: Float,
+        bevel: Float,
+        strength: Float,
+        zoom: Float,
+        panelOrigin: Offset,
+        imageOrigin: Offset,
+        imageScale: Float,
+        extendLeft: Float = 0f,
+        extendTop: Float = 0f,
+        extendRight: Float = 0f,
+        extendBottom: Float = 0f,
+    ): Shader? {
         val clear = clear ?: return null
+        clear.setFloatUniform("extend", extendLeft, extendTop, extendRight, extendBottom)
         clear.setFloatUniform("size", size.width, size.height)
         clear.setFloatUniform("radius", radius.coerceAtMost(minOf(size.width, size.height) / 2))
         clear.setFloatUniform("bevel", bevel)
@@ -73,6 +91,7 @@ class GlassEdge(sharp: ImageBitmap) {
             uniform float2 panelOrigin;
             uniform float2 imageOrigin;
             uniform float imageScale;
+            uniform float4 extend; // left, top, right, bottom: edges pushed out of sight
 
             float edgeDistance(float2 p, float2 halfSize, float r) {
                 float2 q = abs(p) - halfSize + r;
@@ -84,8 +103,10 @@ class GlassEdge(sharp: ImageBitmap) {
             }
 
             half4 main(float2 coord) {
-                float2 halfSize = size * 0.5;
-                float2 p = coord - halfSize;
+                // The lens shape, which can be bigger than the panel on sides that shouldn't bend
+                float2 shift = float2(extend.x, extend.y);
+                float2 halfSize = (size + float2(extend.x + extend.z, extend.y + extend.w)) * 0.5;
+                float2 p = coord + shift - halfSize;
                 float inside = max(-edgeDistance(p, halfSize, radius), 0.0);
                 float2 n = float2(
                     edgeDistance(p + float2(1.0, 0.0), halfSize, radius) - edgeDistance(p - float2(1.0, 0.0), halfSize, radius),
@@ -95,7 +116,7 @@ class GlassEdge(sharp: ImageBitmap) {
                 // A rounded bevel: flat in the middle, curving away at the rim, bending light inwards
                 float s = 1.0 - clamp(inside / bevel, 0.0, 1.0);
                 float bend = strength * s * s;
-                float2 base = halfSize + p / zoom;
+                float2 base = halfSize + p / zoom - shift;
 
                 // Each colour bends a little differently: faint fringes at the rim
                 half3 c;

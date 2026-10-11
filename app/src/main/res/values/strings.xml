@@ -149,6 +149,6 @@
     <string name="glass_style">Glass style</string>
     <string name="glass_clear">Clear (like Apple)</string>
     <string name="glass_frosted">Frosted</string>
-    <string name="glass_clear_summary">Icons, buttons and the music card act like lenses: the wallpaper barely blurred, a little magnified and bent at the rim. The search and app list panel stays frosted so text is easy to read.</string>
+    <string name="glass_clear_summary">Glass acts like a lens: the wallpaper barely blurred and bent at the rim, and small things like icons a little magnified. Big panels like search and the app list keep a light tint so text stays readable.</string>
     <string name="glass_frosted_summary">Panels blur the wallpaper behind them under a light tint.</string>
 </resources>

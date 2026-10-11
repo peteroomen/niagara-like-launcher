@@ -263,7 +263,8 @@ fun SearchOverlay(
     // Same container as the A–Z list: straight on the wallpaper, or a sheet from the bottom
     val sheet = state.appearance.listStyle == ListStyle.PANEL
     val ink = palette.text
-    val listPalette = if (sheet) palette.copy(shadow = null) else palette
+    // Frosted sheets are calm enough for plain text; clear glass and bare wallpaper need the shadow
+    val listPalette = if (sheet && !(palette.glass && palette.glassClear)) palette.copy(shadow = null) else palette
     ListContainer(sheet, onDismiss) {
         Column(
             if (sheet) {
@@ -355,7 +356,7 @@ fun ListContainer(sheet: Boolean, onDismiss: () -> Unit, content: @Composable ()
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .fillMaxHeight(0.8f)
-                    .panel(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), palette.scrim, rim = 1.5.dp)
+                    .panel(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), palette.scrim, rim = 1.5.dp, sheet = true)
                     .pointerInput(Unit) { detectTapGestures { } }, // taps on the sheet itself don't close it
             ) { content() }
         } else {

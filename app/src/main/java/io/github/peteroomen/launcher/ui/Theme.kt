@@ -93,15 +93,14 @@ private val RimBrush = Brush.linearGradient(
 )
 
 /**
- * Liquid glass, after Apple's. Small panels (icons, buttons, the music card) in the clear style
- * are a lens: the wallpaper behind is barely blurred, magnified a little and bent inwards at the
- * rim with faint colour fringes, under a lit rim (Android 13+). Otherwise panels are frosted: the
- * wallpaper blurred and a little more vivid under a light tint, and small frosted panels can bend
- * the wallpaper at their edges. Big panels (the search and app list sheet) are always frosted
- * without bending, so text stays readable and the screen edges stay clean.
+ * Liquid glass, after Apple's. In the clear style every panel is a lens: the wallpaper behind is
+ * barely blurred and bent inwards at the rim with faint colour fringes, under a lit rim (Android
+ * 13+). Small panels also magnify a little; big ones (the search and app list sheet, the pie) keep
+ * a light tint so their text stays readable. Otherwise panels are frosted: the wallpaper blurred
+ * and a little more vivid under a light tint, and small frosted panels can bend at their edges.
  */
 @Composable
-fun Modifier.glass(shape: Shape, palette: Palette, rim: Dp = 1.dp): Modifier {
+fun Modifier.glass(shape: Shape, palette: Palette, rim: Dp = 1.dp, sheet: Boolean = false): Modifier {
     val backdrop = LocalGlassBackdrop.current
     val position = remember { mutableStateOf(Offset.Zero) }
     val sharp = backdrop?.sharp
@@ -129,8 +128,10 @@ fun Modifier.glass(shape: Shape, palette: Palette, rim: Dp = 1.dp): Modifier {
                     (backdrop.screen.width - sharpImage.width * sharpScale) / 2,
                     (backdrop.screen.height - sharpImage.height * sharpScale) / 2,
                 )
-                if (palette.glassClear && small && lens != null && Build.VERSION.SDK_INT >= 33) {
+                if (palette.glassClear && lens != null && Build.VERSION.SDK_INT >= 33) {
                     val shortest = size.minDimension
+                    // A sheet's sides and bottom sit against the screen: push them out so only its top bends
+                    val away = if (sheet) 40.dp.toPx() else 0f
                     val shader = lens.clearShaderFor(
                         size = size,
                         radius = corner,
@@ -138,13 +139,19 @@ fun Modifier.glass(shape: Shape, palette: Palette, rim: Dp = 1.dp): Modifier {
                         // (A deep bevel stretches everything behind a short panel like the music card.)
                         bevel = minOf(shortest * 0.25f, 12.dp.toPx()),
                         strength = minOf(shortest * 0.12f, 6.dp.toPx()),
-                        zoom = 1.03f,
+                        // Big panels don't magnify: even a little moves things a long way across them
+                        zoom = if (small) 1.03f else 1f,
                         panelOrigin = position.value,
                         imageOrigin = sharpOrigin,
                         imageScale = sharpScale,
+                        extendLeft = away,
+                        extendRight = away,
+                        extendBottom = away,
                     )
                     if (shader != null) {
                         drawRect(ShaderBrush(shader))
+                        // Big panels hold text: a light tint keeps it readable over clear glass
+                        if (!small) drawRect(palette.glassTint)
                         clearDrawn = true
                     }
                 }
@@ -178,11 +185,14 @@ fun Modifier.glass(shape: Shape, palette: Palette, rim: Dp = 1.dp): Modifier {
         }
 }
 
-/** A panel behind something: liquid glass when that's switched on, otherwise a flat [fill]. */
+/**
+ * A panel behind something: liquid glass when that's switched on, otherwise a flat [fill]. A
+ * [sheet] sits against the sides and bottom of the screen, so only its top edge is a glass edge.
+ */
 @Composable
-fun Modifier.panel(shape: Shape, fill: Color, rim: Dp = 1.dp): Modifier {
+fun Modifier.panel(shape: Shape, fill: Color, rim: Dp = 1.dp, sheet: Boolean = false): Modifier {
     val palette = LocalPalette.current
-    return if (palette.glass) glass(shape, palette, rim) else clip(shape).background(fill)
+    return if (palette.glass) glass(shape, palette, rim, sheet) else clip(shape).background(fill)
 }
 
 interface IconLoader {
