@@ -134,9 +134,11 @@ fun Modifier.glass(shape: Shape, palette: Palette, rim: Dp = 1.dp): Modifier {
                     val shader = lens.clearShaderFor(
                         size = size,
                         radius = corner,
-                        bevel = minOf(shortest * 0.38f, 26.dp.toPx()),
-                        strength = minOf(shortest * 0.22f, 14.dp.toPx()),
-                        zoom = 1.06f,
+                        // A thin bevel at the rim, so the middle shows the wallpaper as it is.
+                        // (A deep bevel stretches everything behind a short panel like the music card.)
+                        bevel = minOf(shortest * 0.25f, 12.dp.toPx()),
+                        strength = minOf(shortest * 0.12f, 6.dp.toPx()),
+                        zoom = 1.03f,
                         panelOrigin = position.value,
                         imageOrigin = sharpOrigin,
                         imageScale = sharpScale,

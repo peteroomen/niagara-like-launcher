@@ -24,7 +24,7 @@ object WallpaperBackdrop {
     /** Width of the blurred copy. Small is fine: it's drawn blurry anyway. */
     private const val WIDTH = 160
     private const val RADIUS = 3
-    private const val SHARP_WIDTH = 540
+    private const val SHARP_WIDTH = 720
 
     enum class Source { SYSTEM, PICKED, NONE }
 
@@ -59,7 +59,7 @@ object WallpaperBackdrop {
         if (w <= 0 || h <= 0) return null
         return Images(
             frosted = scaledAndBlurred(drawable, WIDTH, RADIUS, passes = 3),
-            sharp = scaledAndBlurred(drawable, SHARP_WIDTH, radius = 2, passes = 2), // a light blur, as seen through clear glass
+            sharp = scaledAndBlurred(drawable, SHARP_WIDTH, radius = 1, passes = 2), // a light blur, as seen through clear glass
         )
     }
 
