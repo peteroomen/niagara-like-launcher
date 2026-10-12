@@ -76,7 +76,7 @@ data class Palette(
 val LocalPalette = staticCompositionLocalOf<Palette> { error("No palette") }
 
 /** The wallpaper copies and the screen they're drawn across, for glass panels to show through. */
-class GlassBackdrop(val frosted: ImageBitmap, val sharp: ImageBitmap, val screen: Size)
+class GlassBackdrop(val frosted: ImageBitmap, val edge: ImageBitmap, val sharp: ImageBitmap, val screen: Size)
 
 val LocalGlassBackdrop = staticCompositionLocalOf<GlassBackdrop?> { null }
 
@@ -97,16 +97,17 @@ private val RimBrush = Brush.linearGradient(
  * barely blurred and bent inwards at the rim with faint colour fringes, under a lit rim (Android
  * 13+). Small panels also magnify a little; big ones (the search and app list sheet, the pie) keep
  * a light tint so their text stays readable. Otherwise panels are frosted: the wallpaper blurred
- * and a little more vivid under a light tint, and small frosted panels can bend at their edges.
+ * and a little more vivid under a light tint, and frosted panels can bend at their edges.
  */
 @Composable
 fun Modifier.glass(shape: Shape, palette: Palette, rim: Dp = 1.dp, sheet: Boolean = false): Modifier {
     val backdrop = LocalGlassBackdrop.current
     val position = remember { mutableStateOf(Offset.Zero) }
     val sharp = backdrop?.sharp
-    val lens = remember(sharp, palette.glassBend, palette.glassClear) {
+    val edge = backdrop?.edge
+    val lens = remember(sharp, edge, palette.glassBend, palette.glassClear) {
         // The shaders compile on the phone; if that ever fails, fall back to plain frosted glass
-        if (sharp != null && (palette.glassBend || palette.glassClear) && Build.VERSION.SDK_INT >= 33) runCatching { GlassEdge(sharp) }.getOrNull() else null
+        if (sharp != null && edge != null && (palette.glassBend || palette.glassClear) && Build.VERSION.SDK_INT >= 33) runCatching { GlassEdge(sharp, edge) }.getOrNull() else null
     }
     return this
         .onGloballyPositioned { position.value = it.positionOnScreen() }
@@ -167,11 +168,17 @@ fun Modifier.glass(shape: Shape, palette: Palette, rim: Dp = 1.dp, sheet: Boolea
                         }
                     }
                     drawRect(palette.glassTint)
-                    if (palette.glassBend && small && lens != null && Build.VERSION.SDK_INT >= 33) {
+                    if (palette.glassBend && lens != null && Build.VERSION.SDK_INT >= 33) {
+                        val edgeImage = backdrop.edge
+                        val edgeScale = max(backdrop.screen.width / edgeImage.width, backdrop.screen.height / edgeImage.height)
+                        val edgeOrigin = Offset(
+                            (backdrop.screen.width - edgeImage.width * edgeScale) / 2,
+                            (backdrop.screen.height - edgeImage.height * edgeScale) / 2,
+                        )
                         val shortest = size.minDimension
                         val fade = minOf(16.dp.toPx(), shortest / 3.5f)
                         val strength = minOf(10.dp.toPx(), shortest / 5f)
-                        drawRect(ShaderBrush(lens.shaderFor(size, corner, fade, strength, position.value, sharpOrigin, sharpScale)))
+                        drawRect(ShaderBrush(lens.shaderFor(size, corner, fade, strength, position.value, edgeOrigin, edgeScale)))
                     }
                 }
             } else {

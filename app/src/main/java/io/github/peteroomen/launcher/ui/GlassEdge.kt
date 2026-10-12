@@ -19,14 +19,14 @@ import androidx.compose.ui.graphics.asAndroidBitmap
  * a signed distance to the edge. Android 13+ only (AGSL runtime shaders).
  */
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-class GlassEdge(sharp: ImageBitmap) {
+class GlassEdge(sharp: ImageBitmap, edge: ImageBitmap) {
 
-    private val image = BitmapShader(sharp.asAndroidBitmap(), Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply {
+    private fun imageShader(image: ImageBitmap) = BitmapShader(image.asAndroidBitmap(), Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply {
         filterMode = BitmapShader.FILTER_MODE_LINEAR
     }
-    private val shader = RuntimeShader(AGSL).apply { setInputShader("image", image) }
+    private val shader = RuntimeShader(AGSL).apply { setInputShader("image", imageShader(edge)) }
     // Compiled on the phone; null if that fails, and glass falls back to frosted
-    private val clear: RuntimeShader? = runCatching { RuntimeShader(CLEAR_AGSL).apply { setInputShader("image", image) } }.getOrNull()
+    private val clear: RuntimeShader? = runCatching { RuntimeShader(CLEAR_AGSL).apply { setInputShader("image", imageShader(sharp)) } }.getOrNull()
 
     /**
      * Clear glass, after Apple's: the whole panel is a lens. The wallpaper shows through barely
