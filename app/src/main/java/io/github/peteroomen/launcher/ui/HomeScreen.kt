@@ -256,7 +256,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                         .align(Alignment.CenterEnd)
                         .systemBarsPadding()
                         .padding(end = 4.dp)
-                        .fillMaxHeight(0.62f)
+                        .fillMaxHeight(0.75f)
                         .onGloballyPositioned { stripTop = it.positionInRoot().y },
                     hidden = state.appearance.hideLetters,
                     shown = overlay == Overlay.ALL_APPS,

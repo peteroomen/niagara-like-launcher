@@ -83,6 +83,9 @@ import kotlin.math.roundToInt
 
 val AzLetters = listOf('#') + ('A'..'Z')
 
+/** How wide the A–Z strip's touch zone is (the letters themselves take the right 30dp). */
+val StripTouchWidth = 44.dp
+
 /**
  * The A–Z strip, Niagara style. Touching it bends the letters out to the left around the finger,
  * further the further the finger goes, magnifies the letter under it and shows that letter in a
@@ -123,9 +126,12 @@ fun AzStrip(
     val focus by animateFloatAsState(if (touching) 1f else 0f, spring(stiffness = Spring.StiffnessMedium), label = "focus")
     val alpha by animateFloatAsState(if (!hidden || touching || shown) 1f else 0f, label = "letters")
 
+    // The letters sit in the rightmost 30dp; the touch zone reaches further left, for a thumb that
+    // lands a little short of them
+    val lettersLeft = with(density) { (StripTouchWidth - 30.dp).toPx() }
     Box(
         modifier
-            .width(30.dp)
+            .width(StripTouchWidth)
             .onSizeChanged { height = it.height.coerceAtLeast(1) }
             .graphicsLayer { this.alpha = alpha }
             .pointerInput(Unit) {
@@ -135,7 +141,7 @@ fun AzStrip(
                     touching = true
                     var picking = false
                     fun follow(x: Float, y: Float) {
-                        fingerX = x
+                        fingerX = (x - lettersLeft).coerceAtMost(0f)
                         fingerY = y.coerceIn(0f, size.height.toFloat())
                     }
                     fun pick(y: Float) {
@@ -156,7 +162,7 @@ fun AzStrip(
                             if (!change.pressed) break
                             follow(change.position.x, change.position.y)
                             // Off the strip to the left: the letter stays put and the finger picks a name
-                            if (picking || change.position.x < -leaveDistance) {
+                            if (picking || change.position.x - lettersLeft < -leaveDistance) {
                                 picking = true
                                 select(change.position.y)
                             } else {
@@ -174,7 +180,7 @@ fun AzStrip(
     ) {
         val slot = height.toFloat() / AzLetters.size
         val spread = height * 0.2f // how far up and down the bend reaches
-        Column(Modifier.fillMaxSize()) {
+        Column(Modifier.align(Alignment.CenterEnd).width(30.dp).fillMaxHeight()) {
             AzLetters.forEachIndexed { i, letter ->
                 Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Text(
@@ -206,7 +212,7 @@ fun AzStrip(
                 Modifier
                     .offset {
                         IntOffset(
-                            (with(density) { 15.dp.toPx() } - pull - gap - bubble).roundToInt(),
+                            (lettersLeft + with(density) { 15.dp.toPx() } - pull - gap - bubble).roundToInt(),
                             (fingerY - bubble / 2).roundToInt(),
                         )
                     }
