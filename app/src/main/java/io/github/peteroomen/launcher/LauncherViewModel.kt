@@ -15,14 +15,17 @@ import io.github.peteroomen.launcher.data.IconCache
 import io.github.peteroomen.launcher.data.LauncherStore
 import io.github.peteroomen.launcher.data.Saved
 import io.github.peteroomen.launcher.data.needsGlassBackdrop
+import io.github.peteroomen.launcher.model.AppUsage
 import io.github.peteroomen.launcher.model.Fav
 import io.github.peteroomen.launcher.model.FavOps
+import io.github.peteroomen.launcher.model.Suggestions
 import io.github.peteroomen.launcher.system.NotificationDots
 import io.github.peteroomen.launcher.system.PaletteSource
 import io.github.peteroomen.launcher.system.SystemActions
 import io.github.peteroomen.launcher.system.WallpaperBackdrop
 import io.github.peteroomen.launcher.ui.IconLoader
 import io.github.peteroomen.launcher.ui.Palette
+import java.text.Normalizer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,15 +33,14 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.text.Normalizer
 
 data class HomeUiState(
     /** Apps for the A–Z list and search, not hidden, sorted by the name shown. */
@@ -50,6 +52,7 @@ data class HomeUiState(
     val renames: Map<String, String> = emptyMap(),
     val appearance: Appearance = Appearance(),
     val dots: Set<String> = emptySet(),
+    val usage: Map<String, AppUsage> = emptyMap(),
 ) {
     fun label(key: String) = renames[key] ?: byKey[key]?.label ?: key
     fun hasDot(key: String) = byKey[key]?.packageName in dots
@@ -97,6 +100,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             renames = saved.renames,
             appearance = saved.appearance,
             dots = dots,
+            usage = saved.usage,
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeUiState())
 
@@ -163,8 +167,11 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     // ---- launching ----
 
-    fun launch(key: String) {
-        ui.value.byKey[key]?.let(repo::launch)
+    /** Opens an app, counting it for search suggestions ([fromSearch]: found by typing its name). */
+    fun launch(key: String, fromSearch: Boolean = false) {
+        val app = ui.value.byKey[key] ?: return
+        repo.launch(app)
+        edit { it.copy(usage = Suggestions.record(it.usage, key, System.currentTimeMillis(), fromSearch)) }
     }
 
     fun openAppInfo(key: String) {

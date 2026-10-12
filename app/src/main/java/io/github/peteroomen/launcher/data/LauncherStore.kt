@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import io.github.peteroomen.launcher.model.AppUsage
 import io.github.peteroomen.launcher.model.Fav
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -84,6 +85,8 @@ data class Saved(
     val favs: List<Fav> = emptyList(),
     val hidden: Set<String> = emptySet(),
     val renames: Map<String, String> = emptyMap(),
+    /** How often each app is opened, and opened from search, for suggestions in search. */
+    val usage: Map<String, AppUsage> = emptyMap(),
     val appearance: Appearance = Appearance(),
     /** Whether default favourites have been picked on first run. */
     val seeded: Boolean = false,
@@ -108,6 +111,7 @@ class LauncherStore(private val context: Context) {
             favs = FavJson.decode(p[FAVS]),
             hidden = p[HIDDEN] ?: emptySet(),
             renames = FavJson.decodeMap(p[RENAMES]),
+            usage = FavJson.decodeUsage(p[USAGE]),
             appearance = Appearance(
                 favouritesLayout = p.enumOf(FAVOURITES_LAYOUT, d.favouritesLayout),
                 showNames = p[SHOW_NAMES] ?: d.showNames,
@@ -141,6 +145,7 @@ class LauncherStore(private val context: Context) {
         p[FAVS] = FavJson.encode(s.favs)
         p[HIDDEN] = s.hidden
         p[RENAMES] = FavJson.encodeMap(s.renames)
+        p[USAGE] = FavJson.encodeUsage(s.usage)
         p[FAVOURITES_LAYOUT] = a.favouritesLayout.name
         p[SHOW_NAMES] = a.showNames
         p[ICON_STYLE] = a.iconStyle.name
@@ -170,6 +175,7 @@ class LauncherStore(private val context: Context) {
         val FAVS = stringPreferencesKey("favs")
         val HIDDEN = stringSetPreferencesKey("hidden")
         val RENAMES = stringPreferencesKey("renames")
+        val USAGE = stringPreferencesKey("usage")
         val FAVOURITES_LAYOUT = stringPreferencesKey("favourites_layout")
         val SHOW_NAMES = booleanPreferencesKey("show_names")
         val ICON_STYLE = stringPreferencesKey("icon_style")

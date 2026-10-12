@@ -281,7 +281,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                 AnimatedVisibility(overlay == Overlay.SEARCH, enter = fadeIn(), exit = fadeOut()) {
                     SearchOverlay(
                         state = state,
-                        onLaunch = { vm.launch(it); goHome() },
+                        onLaunch = { key, searched -> vm.launch(key, fromSearch = searched); goHome() },
                         onLongClick = { menu = MenuTarget.App(it) },
                         onWebSearch = { SystemActions.webSearch(context, it); goHome() },
                         onDismiss = ::goHome,

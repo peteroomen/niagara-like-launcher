@@ -57,6 +57,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -70,6 +71,8 @@ import io.github.peteroomen.launcher.data.ListStyle
 import io.github.peteroomen.launcher.data.appNameWeight
 import io.github.peteroomen.launcher.indexLetter
 import io.github.peteroomen.launcher.model.FavOps
+import io.github.peteroomen.launcher.model.Reason
+import io.github.peteroomen.launcher.model.Suggestions
 import kotlin.math.roundToInt
 
 val AzLetters = listOf('#') + ('A'..'Z')
@@ -348,7 +351,7 @@ private fun LetterGroup(
 /** Search apps by name. Hidden apps only turn up once you've typed two letters. */
 fun searchApps(state: HomeUiState, query: String): List<String> {
     val q = query.trim()
-    if (q.isEmpty()) return FavOps.allKeys(state.favs).take(5)
+    if (q.isEmpty()) return emptyList()
     val pool = state.byKey.values.filter { q.length >= 2 || it.key !in state.hidden }
     return pool
         .filter { state.label(it.key).contains(q, ignoreCase = true) || it.label.contains(q, ignoreCase = true) }
@@ -361,7 +364,8 @@ fun searchApps(state: HomeUiState, query: String): List<String> {
 @Composable
 fun SearchOverlay(
     state: HomeUiState,
-    onLaunch: (String) -> Unit,
+    /** The app, and whether it was found by typing (counted towards "often searched for"). */
+    onLaunch: (String, Boolean) -> Unit,
     onLongClick: (String) -> Unit,
     onWebSearch: (String) -> Unit,
     onDismiss: () -> Unit,
@@ -370,6 +374,16 @@ fun SearchOverlay(
     var query by remember { mutableStateOf("") }
     val focus = remember { FocusRequester() }
     val results = remember(query, state) { searchApps(state, query) }
+    // Before anything's typed: new apps, and the ones you search for and open most
+    val suggestions = remember(state.apps, state.usage, state.favs) {
+        Suggestions.pick(
+            installedAt = state.apps.associate { it.key to it.installedAt },
+            usage = state.usage,
+            favourites = FavOps.allKeys(state.favs),
+            now = System.currentTimeMillis(),
+        )
+    }
+    val searched = query.isNotBlank()
     LaunchedEffect(Unit) { focus.requestFocus() }
     // Same container as the A–Z list: straight on the wallpaper, or a sheet from the bottom
     val sheet = state.appearance.listStyle == ListStyle.PANEL
@@ -394,7 +408,7 @@ fun SearchOverlay(
                 cursorBrush = SolidColor(palette.accent),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
                 keyboardActions = KeyboardActions(onGo = {
-                    results.firstOrNull()?.let(onLaunch) ?: if (query.isNotBlank()) onWebSearch(query) else Unit
+                    results.firstOrNull()?.let { onLaunch(it, true) } ?: if (query.isNotBlank()) onWebSearch(query) else Unit
                 }),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -418,8 +432,14 @@ fun SearchOverlay(
             )
             Box(Modifier.padding(top = 10.dp))
             CompositionLocalProvider(LocalPalette provides listPalette) {
-                results.forEach { key ->
-                    key(key) { SearchResult(key, state, onLaunch, onLongClick) }
+                if (searched) {
+                    results.forEach { key ->
+                        key(key) { SearchResult(key, state, null, { onLaunch(it, true) }, onLongClick) }
+                    }
+                } else {
+                    suggestions.forEach { s ->
+                        key(s.key) { SearchResult(s.key, state, reasonText(s.reason), { onLaunch(it, false) }, onLongClick) }
+                    }
                 }
             }
             if (query.isNotBlank()) {
@@ -437,11 +457,12 @@ fun SearchOverlay(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun SearchResult(key: String, state: HomeUiState, onLaunch: (String) -> Unit, onLongClick: (String) -> Unit) {
+private fun SearchResult(key: String, state: HomeUiState, subtitle: String?, onLaunch: (String) -> Unit, onLongClick: (String) -> Unit) {
     AppRow(
         key = key,
         label = state.label(key),
         appearance = state.appearance,
+        subtitle = subtitle,
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(
@@ -483,4 +504,17 @@ fun ListContainer(sheet: Boolean, onDismiss: () -> Unit, content: @Composable ()
             content()
         }
     }
+}
+
+/** Why a suggestion is there, under its name. */
+@Composable
+private fun reasonText(reason: Reason): String = when (reason) {
+    is Reason.Installed -> when (val days = Suggestions.daysAgo(reason.at, System.currentTimeMillis())) {
+        0 -> stringResource(R.string.reason_installed_today)
+        1 -> stringResource(R.string.reason_installed_yesterday)
+        else -> pluralStringResource(R.plurals.reason_installed_days, days, days)
+    }
+    Reason.Searched -> stringResource(R.string.reason_searched)
+    Reason.Used -> stringResource(R.string.reason_used)
+    Reason.Favourite -> stringResource(R.string.reason_favourite)
 }

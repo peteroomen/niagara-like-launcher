@@ -121,12 +121,13 @@ private fun AppActions(
     folder?.let { MenuItem(stringResource(R.string.move_out_of, it.name)) { done { vm.moveOutOfFolder(key) } } }
     MenuItem(stringResource(if (folder != null) R.string.move_to_folder else R.string.add_to_folder)) { go(Page.PICK_FOLDER) }
     if (state.isFavourite(key)) MenuItem(stringResource(R.string.remove_favourite)) { done { vm.removeFavourite(key) } }
-    MenuItem(stringResource(R.string.edit_favourites), onClick = onEditFavourites)
+    // App info and Uninstall near the top, where they're seen without scrolling the menu
+    MenuItem(stringResource(R.string.app_info)) { done { vm.openAppInfo(key) } }
+    MenuItem(stringResource(R.string.uninstall)) { done { vm.uninstall(key) } }
     MenuItem(stringResource(R.string.rename)) { go(Page.RENAME) }
     if (key in state.hidden) MenuItem(stringResource(R.string.unhide)) { done { vm.unhide(key) } }
     else MenuItem(stringResource(R.string.hide)) { done { vm.hide(key) } }
-    MenuItem(stringResource(R.string.app_info)) { done { vm.openAppInfo(key) } }
-    MenuItem(stringResource(R.string.uninstall)) { done { vm.uninstall(key) } }
+    MenuItem(stringResource(R.string.edit_favourites), onClick = onEditFavourites)
 }
 
 @Composable

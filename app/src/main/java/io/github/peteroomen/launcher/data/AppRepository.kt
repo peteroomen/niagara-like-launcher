@@ -21,10 +21,14 @@ data class AppInfo(
     val packageName: String,
     val component: ComponentName,
     val user: UserHandle,
+    /** When the app was first installed, for "recently installed" in search. */
+    val installedAt: Long = 0L,
 )
 
 /** Every launchable app for this user, kept up to date as apps are installed, updated and removed. */
 class AppRepository(context: Context, private val scope: CoroutineScope) {
+
+    private val packageManager = context.packageManager
 
     private val launcherApps = context.getSystemService(LauncherApps::class.java)
     @Volatile private var infos: Map<String, LauncherActivityInfo> = emptyMap()
@@ -51,8 +55,11 @@ class AppRepository(context: Context, private val scope: CoroutineScope) {
         scope.launch(Dispatchers.IO) {
             val list = launcherApps.getActivityList(null, Process.myUserHandle())
             infos = list.associateBy { it.componentName.flattenToShortString() }
+            val installed = HashMap<String, Long>()
             _apps.value = list.map {
-                AppInfo(it.componentName.flattenToShortString(), it.label.toString(), it.componentName.packageName, it.componentName, it.user)
+                val pkg = it.componentName.packageName
+                val at = installed.getOrPut(pkg) { runCatching { packageManager.getPackageInfo(pkg, 0).firstInstallTime }.getOrDefault(0L) }
+                AppInfo(it.componentName.flattenToShortString(), it.label.toString(), pkg, it.componentName, it.user, at)
             }.sortedBy { it.label.lowercase() }
         }
     }

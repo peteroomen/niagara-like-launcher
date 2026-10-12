@@ -323,16 +323,23 @@ fun AppRow(
     appearance: Appearance,
     modifier: Modifier = Modifier,
     highlighted: Boolean = false,
+    /** A line under the name, e.g. why it's suggested. */
+    subtitle: String? = null,
 ) {
     val palette = LocalPalette.current
     Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         AppIcon(key, appearance.iconStyle, ListIconSize, badge = false)
-        Text(
-            label,
-            color = if (highlighted) palette.accent else palette.text,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            style = palette.style(appearance.appTextSize.sp.sp, appearance.appNameWeight),
-        )
+        Column {
+            Text(
+                label,
+                color = if (highlighted) palette.accent else palette.text,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = palette.style(appearance.appTextSize.sp.sp, appearance.appNameWeight),
+            )
+            if (subtitle != null) {
+                Text(subtitle, color = palette.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, style = palette.style(12.sp))
+            }
+        }
     }
 }

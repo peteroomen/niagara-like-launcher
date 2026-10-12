@@ -171,4 +171,13 @@
     <string name="app_names_footer">Used in the A–Z list, search and favourites.</string>
     <string name="weight_medium">Medium</string>
     <string name="glass_wallpaper">Wallpaper for glass</string>
+    <string name="reason_installed_today">Installed today</string>
+    <string name="reason_installed_yesterday">Installed yesterday</string>
+    <plurals name="reason_installed_days">
+        <item quantity="one">Installed %d day ago</item>
+        <item quantity="other">Installed %d days ago</item>
+    </plurals>
+    <string name="reason_searched">You often search for this</string>
+    <string name="reason_used">You open this often</string>
+    <string name="reason_favourite">In your favourites</string>
 </resources>

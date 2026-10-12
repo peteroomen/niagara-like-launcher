@@ -1,5 +1,6 @@
 package io.github.peteroomen.launcher.data
 
+import io.github.peteroomen.launcher.model.AppUsage
 import io.github.peteroomen.launcher.model.Fav
 import org.json.JSONArray
 import org.json.JSONException
@@ -33,6 +34,24 @@ object FavJson {
             }
         } catch (e: JSONException) {
             emptyList()
+        }
+    }
+
+    /** Usage as `{"key": [opened, searched, lastOpened], …}`. */
+    fun encodeUsage(usage: Map<String, AppUsage>): String = JSONObject().apply {
+        usage.forEach { (key, u) -> put(key, JSONArray().put(u.opened.toDouble()).put(u.searched.toDouble()).put(u.lastOpened)) }
+    }.toString()
+
+    fun decodeUsage(json: String?): Map<String, AppUsage> {
+        if (json.isNullOrEmpty()) return emptyMap()
+        return try {
+            val obj = JSONObject(json)
+            obj.keys().asSequence().associateWith { key ->
+                val a = obj.getJSONArray(key)
+                AppUsage(a.getDouble(0).toFloat(), a.getDouble(1).toFloat(), a.getLong(2))
+            }
+        } catch (e: JSONException) {
+            emptyMap()
         }
     }
 
