@@ -2,11 +2,6 @@
     <string name="app_name">Launcher</string>
     <string name="settings_name">Launcher settings</string>
 
-    <string name="calendar">Calendar</string>
-    <string name="calendar_permission">Show your next event</string>
-    <string name="calendar_empty">Nothing in the next 7 days</string>
-    <string name="today">Today</string>
-    <string name="tomorrow">Tomorrow</string>
     <string name="music">Music</string>
     <string name="nothing_playing">Nothing playing</string>
     <string name="music_needs_access">Allow notification access to show music</string>
@@ -51,10 +46,6 @@
     <string name="notif_button">Open notification access</string>
     <string name="restricted_hint">Switch greyed out? Android blocks this for sideloaded apps until you allow it. Open App info, tap ⋮, choose Allow restricted settings, then try again.</string>
     <string name="open_app_info">Open App info</string>
-    <string name="calendar_title">Calendar widget</string>
-    <string name="calendar_on">On. Your next event shows on the home screen.</string>
-    <string name="calendar_off">Off. The widget needs calendar access.</string>
-    <string name="calendar_button">Allow calendar access</string>
     <string name="power_bubble_title">Double-tap to turn the screen off</string>
     <string name="power_bubble_on">Power Bubble is installed. Make sure its accessibility service is on.</string>
     <string name="power_bubble_off">Needs the Power Bubble app.</string>

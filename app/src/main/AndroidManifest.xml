@@ -9,7 +9,6 @@
     <!-- Swipe down to open the notification shade -->
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
     <!-- Calendar widget -->
-    <uses-permission android:name="android.permission.READ_CALENDAR" />
     <!-- Liquid glass: Android only lets a launcher read the wallpaper image with this -->
     <uses-permission
         android:name="android.permission.MANAGE_EXTERNAL_STORAGE"

@@ -1,11 +1,6 @@
 package io.github.peteroomen.launcher.ui
 
-import android.Manifest
-import android.content.Context
 import android.text.format.DateFormat
-import android.text.format.DateUtils
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -42,14 +37,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.peteroomen.launcher.R
 import io.github.peteroomen.launcher.data.Appearance
-import io.github.peteroomen.launcher.data.CalendarState
 import io.github.peteroomen.launcher.data.ClockWeight
-import io.github.peteroomen.launcher.data.NextEvent
 import io.github.peteroomen.launcher.system.MediaState
 import io.github.peteroomen.launcher.system.NowPlaying
 import io.github.peteroomen.launcher.system.SystemActions
 import kotlinx.coroutines.delay
-import java.util.Date
 import java.util.Locale
 
 /** Clickable without a ripple, so nothing flashes over the wallpaper. */
@@ -106,39 +98,6 @@ private fun WidgetText(text: String, muted: Boolean = false, size: Int = 15, wei
         overflow = TextOverflow.Ellipsis,
         style = palette.style(size.sp, weight),
     )
-}
-
-@Composable
-fun CalendarWidget(state: CalendarState, onPermissionResult: () -> Unit) {
-    val context = LocalContext.current
-    val askPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { onPermissionResult() }
-    Column(
-        Modifier.quietClick {
-            when (state) {
-                CalendarState.NoPermission -> askPermission.launch(Manifest.permission.READ_CALENDAR)
-                CalendarState.Empty -> SystemActions.openCalendar(context)
-                is CalendarState.Upcoming -> SystemActions.openCalendar(context, state.event.eventId)
-            }
-        },
-    ) {
-        WidgetLabel(stringResource(R.string.calendar))
-        when (state) {
-            CalendarState.NoPermission -> WidgetText(stringResource(R.string.calendar_permission), muted = true)
-            CalendarState.Empty -> WidgetText(stringResource(R.string.calendar_empty), muted = true)
-            is CalendarState.Upcoming -> WidgetText(describe(context, state.event))
-        }
-    }
-}
-
-/** "Today 14:30 · Dentist", "Tomorrow · Holiday", "Tue 09:00 · Standup" */
-private fun describe(context: Context, event: NextEvent): String {
-    val day = when {
-        DateUtils.isToday(event.begin) || event.begin < System.currentTimeMillis() -> context.getString(R.string.today)
-        DateUtils.isToday(event.begin - DateUtils.DAY_IN_MILLIS) -> context.getString(R.string.tomorrow)
-        else -> DateFormat.format("EEE", event.begin).toString()
-    }
-    val time = if (event.allDay) "" else " " + DateFormat.getTimeFormat(context).format(Date(event.begin))
-    return "$day$time · ${event.title}"
 }
 
 /** A small player: album art, title and artist, previous / play-pause / next, and a progress line. */

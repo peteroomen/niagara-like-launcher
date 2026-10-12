@@ -86,7 +86,6 @@ fun HomeScreen(vm: LauncherViewModel) {
     val state by vm.ui.collectAsStateWithLifecycle()
     val palette by vm.palette.collectAsStateWithLifecycle()
     val glassImage by vm.glassBackdrop.collectAsStateWithLifecycle()
-    val calendar by vm.calendar.collectAsStateWithLifecycle()
     val nowPlaying by MediaState.nowPlaying.collectAsStateWithLifecycle()
     val hasNotificationAccess by NotificationDots.connected.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -190,17 +189,10 @@ fun HomeScreen(vm: LauncherViewModel) {
                         .padding(start = 24.dp, end = 48.dp, top = 28.dp, bottom = 16.dp),
                 ) {
                     ClockAndDate(state.appearance)
-                    Spacer(Modifier.height(22.dp))
-                    CalendarWidget(calendar, onPermissionResult = vm::refreshCalendar)
-                    Spacer(Modifier.height(14.dp))
-                    MusicWidget(
-                        nowPlaying = nowPlaying,
-                        hasAccess = hasNotificationAccess,
-                        appLabel = nowPlaying?.let { np -> state.apps.firstOrNull { it.packageName == np.packageName }?.label },
-                        onNeedAccess = { openNotificationAccess(context) },
-                    )
-                    // Favourites sit centred on the left in the space below the widgets (unless they live in the pie)
-                    if (!usePie) {
+                    // Favourites sit centred on the left between the clock and the music player (unless they live in the pie)
+                    if (usePie) {
+                        Spacer(Modifier.weight(1f))
+                    } else {
                         Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
                             Favourites(
                                 state = state,
@@ -212,6 +204,12 @@ fun HomeScreen(vm: LauncherViewModel) {
                             )
                         }
                     }
+                    MusicWidget(
+                        nowPlaying = nowPlaying,
+                        hasAccess = hasNotificationAccess,
+                        appLabel = nowPlaying?.let { np -> state.apps.firstOrNull { it.packageName == np.packageName }?.label },
+                        onNeedAccess = { openNotificationAccess(context) },
+                    )
                 }
 
                 AnimatedVisibility(overlay == Overlay.ALL_APPS, enter = fadeIn(), exit = fadeOut()) {

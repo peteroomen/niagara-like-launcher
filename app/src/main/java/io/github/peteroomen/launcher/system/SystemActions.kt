@@ -3,7 +3,6 @@ package io.github.peteroomen.launcher.system
 import android.annotation.SuppressLint
 import android.app.SearchManager
 import android.content.ActivityNotFoundException
-import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -37,10 +36,8 @@ object SystemActions {
 
     fun openAlarms(context: Context) = start(context, Intent(AlarmClock.ACTION_SHOW_ALARMS))
 
-    fun openCalendar(context: Context, eventId: Long? = null) {
-        val uri = if (eventId != null) ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId)
-        else CalendarContract.CONTENT_URI.buildUpon().appendPath("time").build()
-        start(context, Intent(Intent.ACTION_VIEW, uri))
+    fun openCalendar(context: Context) {
+        start(context, Intent(Intent.ACTION_VIEW, CalendarContract.CONTENT_URI.buildUpon().appendPath("time").build()))
     }
 
     fun openMusic(context: Context, packageName: String?) {

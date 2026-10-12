@@ -10,8 +10,6 @@ import androidx.lifecycle.viewModelScope
 import io.github.peteroomen.launcher.data.AppInfo
 import io.github.peteroomen.launcher.data.AppRepository
 import io.github.peteroomen.launcher.data.Appearance
-import io.github.peteroomen.launcher.data.CalendarSource
-import io.github.peteroomen.launcher.data.CalendarState
 import io.github.peteroomen.launcher.data.DefaultFavourites
 import io.github.peteroomen.launcher.data.IconCache
 import io.github.peteroomen.launcher.data.LauncherStore
@@ -25,7 +23,6 @@ import io.github.peteroomen.launcher.system.WallpaperBackdrop
 import io.github.peteroomen.launcher.ui.IconLoader
 import io.github.peteroomen.launcher.ui.Palette
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -77,7 +74,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val wallpaperColors = MutableStateFlow(PaletteSource.wallpaperColors(application))
     /** Blurred wallpaper for liquid glass; null when it can't be read. */
     val glassBackdrop = MutableStateFlow<WallpaperBackdrop.Images?>(null)
-    val calendar = MutableStateFlow<CalendarState>(CalendarState.Empty)
     /** Fires when Home is pressed while the launcher is already showing. */
     val homePressed = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
@@ -117,12 +113,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             val apps = repo.apps.first { it.isNotEmpty() }
             store.update { if (it.seeded) it else it.copy(favs = DefaultFavourites.pick(app, apps), seeded = true) }
         }
-        viewModelScope.launch {
-            while (true) {
-                refreshCalendar()
-                delay(60_000)
-            }
-        }
     }
 
     override fun onCleared() {
@@ -133,7 +123,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun onResume() {
         wallpaperColors.value = PaletteSource.wallpaperColors(app)
         refreshGlassBackdrop()
-        refreshCalendar()
     }
 
     fun refreshGlassBackdrop() {
@@ -161,10 +150,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             runCatching { WallpaperBackdrop.usePicked(app, uri) }
             refreshGlassBackdrop()
         }
-    }
-
-    fun refreshCalendar() {
-        viewModelScope.launch { calendar.value = withContext(Dispatchers.IO) { CalendarSource.read(app) } }
     }
 
     // ---- icons ----

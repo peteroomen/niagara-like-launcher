@@ -1,10 +1,8 @@
 package io.github.peteroomen.launcher
 
-import android.Manifest
 import android.app.role.RoleManager
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -100,14 +98,9 @@ private fun SettingsScreen(vm: LauncherViewModel) {
     val roleManager = context.getSystemService(RoleManager::class.java)
     val isHome = remember(resumes) { roleManager.isRoleHeld(RoleManager.ROLE_HOME) }
     val hasNotificationAccess = remember(resumes) { context.packageName in NotificationManagerCompat.getEnabledListenerPackages(context) }
-    val hasCalendar = remember(resumes) { context.checkSelfPermission(Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED }
     val hasPowerBubble = remember(resumes) { context.packageManager.getLaunchIntentForPackage(SystemActions.POWER_BUBBLE_PACKAGE) != null }
 
     val requestRole = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { resumes++ }
-    val requestCalendar = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
-        resumes++
-        vm.refreshCalendar()
-    }
 
     Column(
         Modifier
@@ -129,12 +122,6 @@ private fun SettingsScreen(vm: LauncherViewModel) {
                 Button(onClick = { openNotificationAccess(context) }) { Text(stringResource(R.string.notif_button)) }
                 Text(stringResource(R.string.restricted_hint), style = MaterialTheme.typography.bodySmall)
                 TextButton(onClick = { openAppInfo(context) }) { Text(stringResource(R.string.open_app_info)) }
-            }
-        }
-
-        Section(stringResource(R.string.calendar_title), stringResource(if (hasCalendar) R.string.calendar_on else R.string.calendar_off)) {
-            if (!hasCalendar) Button(onClick = { requestCalendar.launch(Manifest.permission.READ_CALENDAR) }) {
-                Text(stringResource(R.string.calendar_button))
             }
         }
 
