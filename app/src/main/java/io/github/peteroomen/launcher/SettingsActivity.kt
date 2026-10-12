@@ -82,6 +82,7 @@ import io.github.peteroomen.launcher.data.GlassStyle
 import io.github.peteroomen.launcher.data.IconShape
 import io.github.peteroomen.launcher.data.IconStyle
 import io.github.peteroomen.launcher.data.LauncherFont
+import io.github.peteroomen.launcher.data.LetterSize
 import io.github.peteroomen.launcher.data.ListStyle
 import io.github.peteroomen.launcher.data.TextShadow
 import io.github.peteroomen.launcher.data.TextTone
@@ -232,7 +233,22 @@ private fun SettingsScreen(vm: LauncherViewModel) {
                     ChoiceItem(stringResource(R.string.app_text_weight), a.appTextWeight, listOf(
                         AppTextWeight.LIGHT to R.string.weight_light, AppTextWeight.REGULAR to R.string.weight_regular, AppTextWeight.MEDIUM to R.string.weight_medium,
                     )) { set(a.copy(appTextWeight = it)) }
+                    ChoiceItem(stringResource(R.string.app_font), a.appFont, listOf(
+                        null to R.string.font_same,
+                        LauncherFont.SYSTEM to R.string.font_system, LauncherFont.CONDENSED to R.string.font_condensed,
+                        LauncherFont.SERIF to R.string.font_serif, LauncherFont.MONO to R.string.font_mono,
+                    )) { set(a.copy(appFont = it)) }
                     Footer(stringResource(R.string.app_names_footer))
+                    SectionHeader(stringResource(R.string.letter_headings))
+                    ChoiceItem(stringResource(R.string.app_text_size), a.letterSize, listOf(
+                        LetterSize.SMALL to R.string.size_small, LetterSize.MEDIUM to R.string.size_medium, LetterSize.LARGE to R.string.size_large,
+                    )) { set(a.copy(letterSize = it)) }
+                    ChoiceItem(stringResource(R.string.app_font), a.letterFont, listOf(
+                        null to R.string.font_same,
+                        LauncherFont.SYSTEM to R.string.font_system, LauncherFont.CONDENSED to R.string.font_condensed,
+                        LauncherFont.SERIF to R.string.font_serif, LauncherFont.MONO to R.string.font_mono,
+                    )) { set(a.copy(letterFont = it)) }
+                    Footer(stringResource(R.string.letter_headings_footer))
                     SectionHeader(stringResource(R.string.readability))
                     ChoiceItem(stringResource(R.string.text_colour), a.textTone, listOf(
                         TextTone.AUTO to R.string.tone_auto, TextTone.LIGHT to R.string.tone_light, TextTone.DARK to R.string.tone_dark,

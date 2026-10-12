@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.TransformOrigin
@@ -84,12 +85,28 @@ fun AppIcon(key: String, style: IconStyle, size: Dp, badge: Boolean, modifier: M
             style == IconStyle.THEMED && icons.mono != null -> Box(Modifier.fillMaxSize().panel(shape, palette.tileBg)) {
                 Image(icons.mono, contentDescription = null, modifier = Modifier.fillMaxSize(), colorFilter = ColorFilter.tint(palette.tileFg))
             }
-            else -> Image(
+            icons.fullBleed -> Image(
                 icons.full,
                 contentDescription = null,
-                modifier = Modifier.fillMaxSize().then(if (icons.adaptive) Modifier.clip(shape) else Modifier),
+                modifier = Modifier.fillMaxSize().clip(shape),
                 colorFilter = if (style == IconStyle.GREYSCALE) Greyscale else null,
             )
+            // An old-style icon with its own outline: shrunk onto a plate of the icon shape, as
+            // Android's own launcher does, so every icon has the same outline
+            else -> Box(
+                Modifier
+                    .fillMaxSize()
+                    .clip(shape)
+                    .background(if (style == IconStyle.THEMED) palette.tileBg else Color.White),
+                contentAlignment = Alignment.Center,
+            ) {
+                Image(
+                    icons.full,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(0.72f),
+                    colorFilter = if (style == IconStyle.GREYSCALE) Greyscale else null,
+                )
+            }
         }
         if (badge) NotificationDot(Modifier.align(Alignment.TopEnd).offset(3.dp, (-3).dp))
     }
@@ -138,7 +155,7 @@ private fun NameLabel(text: String, appearance: Appearance) {
         color = palette.text,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
-        style = palette.style(appearance.appTextSize.sp.sp, appearance.appNameWeight),
+        style = palette.style(appearance.appTextSize.sp.sp, appearance.appNameWeight).copy(fontFamily = palette.appFont),
     )
 }
 

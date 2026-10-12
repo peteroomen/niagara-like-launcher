@@ -154,6 +154,8 @@ fun AzStrip(
                         scrub(letter, y)
                     }
                     val leaveDistance = 24.dp.toPx()
+                    // Coming back this close to the letters picks letters again
+                    val returnDistance = 8.dp.toPx()
                     follow(down.position.x, down.position.y)
                     pick(down.position.y)
                     try {
@@ -161,8 +163,11 @@ fun AzStrip(
                             val change = awaitPointerEvent().changes.firstOrNull() ?: break
                             if (!change.pressed) break
                             follow(change.position.x, change.position.y)
-                            // Off the strip to the left: the letter stays put and the finger picks a name
-                            if (picking || change.position.x - lettersLeft < -leaveDistance) {
+                            // Off the strip to the left: the letter stays put and the finger picks a name.
+                            // Back onto the strip: choosing letters again.
+                            val x = change.position.x - lettersLeft
+                            if (picking && x > -returnDistance) picking = false
+                            if (picking || x < -leaveDistance) {
                                 picking = true
                                 select(change.position.y)
                             } else {
@@ -319,7 +324,7 @@ fun AllAppsOverlay(
                         row.letter.toString(),
                         color = palette.accent,
                         modifier = Modifier.padding(top = 18.dp, bottom = 4.dp),
-                        style = palette.style(12.sp, FontWeight.SemiBold, 1.sp),
+                        style = palette.style(state.appearance.letterSize.sp.sp, FontWeight.SemiBold, 1.sp).copy(fontFamily = palette.letterFont),
                     )
                     is ListRow.App -> AppRow(
                         key = row.key,
@@ -392,7 +397,7 @@ private fun LetterGroup(
                 letter.toString(),
                 color = palette.accent,
                 modifier = Modifier.padding(bottom = 4.dp),
-                style = palette.style(12.sp, FontWeight.SemiBold, 1.sp),
+                style = palette.style(state.appearance.letterSize.sp.sp, FontWeight.SemiBold, 1.sp).copy(fontFamily = palette.letterFont),
             )
             keys.forEach { key ->
                 key(key) {
@@ -478,7 +483,7 @@ fun SearchOverlay(
                 onValueChange = { query = it },
                 singleLine = true,
                 // The same size and weight as the names below it, and in the A–Z list
-                textStyle = TextStyle(color = ink, fontSize = state.appearance.appTextSize.sp.sp, fontWeight = state.appearance.appNameWeight, fontFamily = palette.font),
+                textStyle = TextStyle(color = ink, fontSize = state.appearance.appTextSize.sp.sp, fontWeight = state.appearance.appNameWeight, fontFamily = palette.appFont),
                 cursorBrush = SolidColor(palette.accent),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
                 keyboardActions = KeyboardActions(onGo = {
@@ -498,7 +503,7 @@ fun SearchOverlay(
                                 color = ink.copy(alpha = 0.5f),
                                 fontSize = state.appearance.appTextSize.sp.sp,
                                 fontWeight = state.appearance.appNameWeight,
-                                fontFamily = palette.font,
+                                fontFamily = palette.appFont,
                             )
                         }
                         field()

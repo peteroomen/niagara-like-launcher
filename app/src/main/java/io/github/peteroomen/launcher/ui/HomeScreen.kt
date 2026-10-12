@@ -253,10 +253,11 @@ fun HomeScreen(vm: LauncherViewModel) {
                         }
                     },
                     modifier = Modifier
-                        .align(Alignment.CenterEnd)
+                        // Low on the screen, where a thumb reaches it
+                        .align(Alignment.BottomEnd)
                         .systemBarsPadding()
-                        .padding(end = 4.dp)
-                        .fillMaxHeight(0.75f)
+                        .padding(end = 4.dp, bottom = 40.dp)
+                        .fillMaxHeight(0.72f)
                         .onGloballyPositioned { stripTop = it.positionInRoot().y },
                     hidden = state.appearance.hideLetters,
                     shown = overlay == Overlay.ALL_APPS,

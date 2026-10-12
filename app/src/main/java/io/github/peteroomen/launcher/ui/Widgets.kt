@@ -335,7 +335,7 @@ fun AppRow(
                 color = if (highlighted) palette.accent else palette.text,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                style = palette.style(appearance.appTextSize.sp.sp, appearance.appNameWeight),
+                style = palette.style(appearance.appTextSize.sp.sp, appearance.appNameWeight).copy(fontFamily = palette.appFont),
             )
             if (subtitle != null) {
                 Text(subtitle, color = palette.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, style = palette.style(12.sp))

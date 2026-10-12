@@ -25,6 +25,8 @@ enum class ClockStyle { DIGITAL, ANALOG }
 /** App names in the A–Z list, search and favourites. */
 enum class AppTextSize(val sp: Int) { SMALL(16), MEDIUM(18), LARGE(20) }
 enum class AppTextWeight { LIGHT, REGULAR, MEDIUM }
+/** The letter headings in the A–Z list. */
+enum class LetterSize(val sp: Int) { SMALL(14), MEDIUM(20), LARGE(28) }
 enum class ClockAlign { LEFT, CENTER, RIGHT }
 /** A panel behind the clock, in any of the panel looks, whatever the Panels setting is. */
 enum class ClockBackground { NONE, GLASS, BLUR, FLAT }
@@ -67,6 +69,11 @@ data class Appearance(
     val clockStyle: ClockStyle = ClockStyle.DIGITAL,
     val appTextSize: AppTextSize = AppTextSize.SMALL,
     val appTextWeight: AppTextWeight = AppTextWeight.REGULAR,
+    /** Font for app names; null follows [font]. */
+    val appFont: LauncherFont? = null,
+    val letterSize: LetterSize = LetterSize.MEDIUM,
+    /** Font for the A–Z list's letter headings; null follows [font]. */
+    val letterFont: LauncherFont? = null,
     val clockAlign: ClockAlign = ClockAlign.LEFT,
     val clockBackground: ClockBackground = ClockBackground.NONE,
     val backdrop: Backdrop = Backdrop.NONE,
@@ -127,6 +134,9 @@ class LauncherStore(private val context: Context) {
                 clockStyle = p.enumOf(CLOCK_STYLE, d.clockStyle),
                 appTextSize = p.enumOf(APP_TEXT_SIZE, d.appTextSize),
                 appTextWeight = p.enumOf(APP_TEXT_WEIGHT, d.appTextWeight),
+                appFont = p[APP_FONT]?.let { name -> LauncherFont.entries.firstOrNull { it.name == name } },
+                letterSize = p.enumOf(LETTER_SIZE, d.letterSize),
+                letterFont = p[LETTER_FONT]?.let { name -> LauncherFont.entries.firstOrNull { it.name == name } },
                 clockAlign = p.enumOf(CLOCK_ALIGN, d.clockAlign),
                 clockBackground = p.enumOf(CLOCK_BACKGROUND, d.clockBackground),
                 backdrop = p.enumOf(BACKDROP, d.backdrop),
@@ -160,6 +170,9 @@ class LauncherStore(private val context: Context) {
         p[CLOCK_STYLE] = a.clockStyle.name
         p[APP_TEXT_SIZE] = a.appTextSize.name
         p[APP_TEXT_WEIGHT] = a.appTextWeight.name
+        a.appFont?.let { p[APP_FONT] = it.name } ?: p.remove(APP_FONT)
+        p[LETTER_SIZE] = a.letterSize.name
+        a.letterFont?.let { p[LETTER_FONT] = it.name } ?: p.remove(LETTER_FONT)
         p[CLOCK_ALIGN] = a.clockAlign.name
         p[CLOCK_BACKGROUND] = a.clockBackground.name
         p[BACKDROP] = a.backdrop.name
@@ -190,6 +203,9 @@ class LauncherStore(private val context: Context) {
         val CLOCK_STYLE = stringPreferencesKey("clock_style")
         val APP_TEXT_SIZE = stringPreferencesKey("app_text_size")
         val APP_TEXT_WEIGHT = stringPreferencesKey("app_text_weight")
+        val APP_FONT = stringPreferencesKey("app_font")
+        val LETTER_SIZE = stringPreferencesKey("letter_size")
+        val LETTER_FONT = stringPreferencesKey("letter_font")
         val CLOCK_ALIGN = stringPreferencesKey("clock_align")
         val CLOCK_BACKGROUND = stringPreferencesKey("clock_background")
         val BACKDROP = stringPreferencesKey("backdrop")

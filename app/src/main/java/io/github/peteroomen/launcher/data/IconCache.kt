@@ -2,6 +2,7 @@ package io.github.peteroomen.launcher.data
 
 import android.content.Context
 import android.content.pm.LauncherActivityInfo
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
@@ -17,9 +18,10 @@ class IconCache(private val context: Context) {
 
     /**
      * [adaptive] icons are drawn unmasked (full square) so the launcher can cut them to its own icon
-     * shape. Older non-adaptive icons keep their own outline.
+     * shape. Older non-adaptive icons come in any outline: [fullBleed] ones fill their square (so
+     * they can be cut to shape too); the rest get set on a plate of the icon shape.
      */
-    class Icons(val full: ImageBitmap, val mono: ImageBitmap?, val adaptive: Boolean)
+    class Icons(val full: ImageBitmap, val mono: ImageBitmap?, val adaptive: Boolean, val fullBleed: Boolean = adaptive)
 
     private val cache = object : LruCache<String, Icons>(24 * 1024 * 1024) {
         override fun sizeOf(key: String, value: Icons) =
@@ -41,10 +43,19 @@ class IconCache(private val context: Context) {
                 adaptive = true,
             )
         } else {
-            Icons(drawable.toBitmap(sizePx, sizePx).asImageBitmap(), mono = null, adaptive = false)
+            val bitmap = drawable.toBitmap(sizePx, sizePx)
+            Icons(bitmap.asImageBitmap(), mono = null, adaptive = false, fullBleed = fillsSquare(bitmap))
         }
         cache.put("$key@$sizePx", icons)
         return icons
+    }
+
+    /** True when the icon is opaque right into its corners, i.e. a full square picture. */
+    private fun fillsSquare(bitmap: Bitmap): Boolean {
+        val e = (bitmap.width * 0.04f).toInt().coerceAtLeast(1)
+        val w = bitmap.width - 1 - e
+        val h = bitmap.height - 1 - e
+        return listOf(e to e, w to e, e to h, w to h).all { (x, y) -> android.graphics.Color.alpha(bitmap.getPixel(x, y)) > 200 }
     }
 
     /** Adaptive icon layers are 108dp with the middle 72dp visible, so crop a quarter off each side. */

@@ -180,4 +180,8 @@
     <string name="reason_searched">You often search for this</string>
     <string name="reason_used">You open this often</string>
     <string name="reason_favourite">In your favourites</string>
+    <string name="app_font">Font</string>
+    <string name="font_same">Same as the main font</string>
+    <string name="letter_headings">A–Z list letters</string>
+    <string name="letter_headings_footer">The letters heading each group in the A–Z list.</string>
 </resources>

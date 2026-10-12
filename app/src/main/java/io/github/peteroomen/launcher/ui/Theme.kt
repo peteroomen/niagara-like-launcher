@@ -57,6 +57,9 @@ data class Palette(
     val backdrop: Color,
     val shadow: Shadow?,
     val font: FontFamily,
+    /** Fonts for app names and for the A–Z list's letter headings (the main font unless chosen). */
+    val appFont: FontFamily = font,
+    val letterFont: FontFamily = font,
     val iconShape: Shape,
     /** Liquid glass panels instead of flat translucent ones */
     val glass: Boolean,

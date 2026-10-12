@@ -75,6 +75,8 @@ object PaletteSource {
             backdrop = opposite,
             shadow = shadow(a.textShadow, opposite),
             font = font(a.font),
+            appFont = font(a.appFont ?: a.font),
+            letterFont = font(a.letterFont ?: a.font),
             iconShape = when (a.iconShape) {
                 IconShape.ROUNDED -> RoundedCornerShape(percent = 32)
                 IconShape.CIRCLE -> CircleShape
