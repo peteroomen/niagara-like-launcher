@@ -53,6 +53,8 @@ data class Appearance(
     val listStyle: ListStyle = ListStyle.PANEL,
     /** Keep the home screen upright even when the phone is turned sideways. */
     val lockPortrait: Boolean = true,
+    /** Hide the A–Z letters until the right edge is touched. */
+    val hideLetters: Boolean = false,
 )
 
 /** Everything the launcher remembers. */
@@ -98,6 +100,7 @@ class LauncherStore(private val context: Context) {
                 clockWeight = p.enumOf(CLOCK_WEIGHT, d.clockWeight),
                 backdrop = p.enumOf(BACKDROP, d.backdrop),
                 lockPortrait = p[LOCK_PORTRAIT] ?: d.lockPortrait,
+                hideLetters = p[HIDE_LETTERS] ?: d.hideLetters,
                 glass = p[GLASS] ?: d.glass,
                 glassStyle = p.enumOf(GLASS_STYLE, d.glassStyle),
                 listStyle = p.enumOf(LIST_STYLE, d.listStyle),
@@ -124,6 +127,7 @@ class LauncherStore(private val context: Context) {
         p[CLOCK_WEIGHT] = a.clockWeight.name
         p[BACKDROP] = a.backdrop.name
         p[LOCK_PORTRAIT] = a.lockPortrait
+        p[HIDE_LETTERS] = a.hideLetters
         p[GLASS] = a.glass
         p[GLASS_STYLE] = a.glassStyle.name
         p[LIST_STYLE] = a.listStyle.name
@@ -147,6 +151,7 @@ class LauncherStore(private val context: Context) {
         val CLOCK_WEIGHT = stringPreferencesKey("clock_weight")
         val BACKDROP = stringPreferencesKey("backdrop")
         val LOCK_PORTRAIT = booleanPreferencesKey("lock_portrait")
+        val HIDE_LETTERS = booleanPreferencesKey("hide_letters")
         val GLASS = booleanPreferencesKey("glass")
         val GLASS_STYLE = stringPreferencesKey("glass_style")
         val LIST_STYLE = stringPreferencesKey("list_style")

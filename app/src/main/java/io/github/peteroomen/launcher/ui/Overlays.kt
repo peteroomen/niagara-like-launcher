@@ -1,5 +1,6 @@
 package io.github.peteroomen.launcher.ui
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -77,6 +78,9 @@ fun AzStrip(
     onSelect: (Float) -> Unit,
     onRelease: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Only show the letters while the strip is touched, or while [shown] (the app list is open). */
+    hidden: Boolean = false,
+    shown: Boolean = false,
 ) {
     val palette = LocalPalette.current
     val haptics = LocalHapticFeedback.current
@@ -84,13 +88,17 @@ fun AzStrip(
     val select by rememberUpdatedState(onSelect)
     val release by rememberUpdatedState(onRelease)
     var active by remember { mutableStateOf<Char?>(null) }
+    var touching by remember { mutableStateOf(false) }
+    val alpha by animateFloatAsState(if (!hidden || touching || shown) 1f else 0f, label = "letters")
     Column(
         modifier
             .width(30.dp)
+            .graphicsLayer { this.alpha = alpha }
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown()
                     down.consume()
+                    touching = true
                     fun pick(y: Float) {
                         val i = (y / size.height * AzLetters.size).toInt().coerceIn(0, AzLetters.lastIndex)
                         val letter = AzLetters[i]
@@ -114,6 +122,7 @@ fun AzStrip(
                         change.consume()
                     }
                     active = null
+                    touching = false
                     release()
                 }
             },

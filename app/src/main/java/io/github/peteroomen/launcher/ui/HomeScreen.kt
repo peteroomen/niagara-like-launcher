@@ -255,6 +255,8 @@ fun HomeScreen(vm: LauncherViewModel) {
                         .padding(end = 4.dp)
                         .fillMaxHeight(0.62f)
                         .onGloballyPositioned { stripTop = it.positionInRoot().y },
+                    hidden = state.appearance.hideLetters,
+                    shown = overlay == Overlay.ALL_APPS,
                 )
 
                 pie?.let { PieMenu(state, it, pieSlots) }

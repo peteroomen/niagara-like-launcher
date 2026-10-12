@@ -196,6 +196,13 @@ private fun SettingsScreen(vm: LauncherViewModel) {
             Text(stringResource(R.string.lock_portrait), Modifier.weight(1f))
             Switch(checked = a.lockPortrait, onCheckedChange = { set(a.copy(lockPortrait = it)) })
         }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                Text(stringResource(R.string.hide_letters))
+                Text(stringResource(R.string.hide_letters_summary), style = MaterialTheme.typography.bodySmall)
+            }
+            Switch(checked = a.hideLetters, onCheckedChange = { set(a.copy(hideLetters = it)) })
+        }
 
         HorizontalDivider(Modifier.padding(vertical = 8.dp))
         Text(stringResource(R.string.icons), style = MaterialTheme.typography.titleMedium)

@@ -98,6 +98,8 @@
     <string name="font_serif">Serif</string>
     <string name="font_mono">Mono</string>
     <string name="lock_portrait">Keep the home screen upright (no landscape)</string>
+    <string name="hide_letters">Hide the A–Z letters</string>
+    <string name="hide_letters_summary">They appear when you touch the right edge of the screen, and while the app list is open.</string>
     <string name="clock_size">Clock size</string>
     <string name="clock_weight">Clock weight</string>
     <string name="weight_light">Light</string>

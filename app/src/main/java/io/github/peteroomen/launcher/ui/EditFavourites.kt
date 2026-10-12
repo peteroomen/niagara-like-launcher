@@ -32,8 +32,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -105,9 +107,12 @@ fun EditFavouritesDialog(state: HomeUiState, vm: LauncherViewModel, onDismiss: (
     val haptics = LocalHapticFeedback.current
     var dragId by remember { mutableStateOf<String?>(null) }
     var dragOffset by remember { mutableFloatStateOf(0f) }
+    // Where the other rows have made room; kept while hovering over a folder so it doesn't move away
+    var gap by remember { mutableIntStateOf(-1) }
     val from = ids.indexOf(dragId)
     val draggingApp = favs.getOrNull(from) is Fav.App
-    val target: DropTarget? = if (from < 0) null else EditDrag.resolve(heights, rowPx, from, dragOffset) { draggingApp }
+    val target: DropTarget? = if (from < 0) null else EditDrag.resolve(heights, rowPx, from, dragOffset, gap.takeIf { it >= 0 } ?: from) { draggingApp }
+    SideEffect { if (target is DropTarget.At) gap = target.index }
     LaunchedEffect(target) { if (target is DropTarget.Into) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
 
     Dialog(
@@ -152,12 +157,13 @@ fun EditFavouritesDialog(state: HomeUiState, vm: LauncherViewModel, onDismiss: (
                             val index = ids.indexOf(id)
                             val dragging = id == dragId
                             val dropInto = (target as? DropTarget.Into)?.index == index
-                            val shift by animateFloatAsState(EditDrag.shift(index, from, target, heights.getOrElse(from) { 0f }), label = "shift")
+                            val shift by animateFloatAsState(EditDrag.shift(index, from, gap.takeIf { it >= 0 } ?: from, heights.getOrElse(from) { 0f }), label = "shift")
                             val handle = if (!canDrag) null else Modifier.dragHandle(
                                 onStart = {
                                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                     dragId = id
                                     dragOffset = 0f
+                                    gap = -1
                                 },
                                 onDrag = { dragOffset += it },
                                 onEnd = {
@@ -178,6 +184,7 @@ fun EditFavouritesDialog(state: HomeUiState, vm: LauncherViewModel, onDismiss: (
                                     }
                                     dragId = null
                                     dragOffset = 0f
+                                    gap = -1
                                 },
                             )
                             Box(
