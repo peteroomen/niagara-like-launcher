@@ -83,7 +83,7 @@ fun ClockAndDate(appearance: Appearance) {
         ClockAlign.RIGHT -> Alignment.End
     }
     // The home screen keeps more room on the right (for the A–Z letters): centre on the screen, not that space
-    val nudge = if (appearance.clockAlign == ClockAlign.CENTER) 12.dp else 0.dp
+    val nudge = if (appearance.clockAlign == ClockAlign.CENTER && !appearance.hideLetters) 12.dp else 0.dp
     Column(Modifier.fillMaxWidth().offset(x = nudge), horizontalAlignment = align) {
         ClockPanel(appearance.clockBackground) {
             Column(horizontalAlignment = align) {
@@ -212,7 +212,7 @@ fun MusicWidget(nowPlaying: NowPlaying?, hasAccess: Boolean, appLabel: String?, 
     val shape = RoundedCornerShape(20.dp)
     Column(
         Modifier
-            .widthIn(max = 340.dp)
+            .widthIn(max = 480.dp) // the full width on a phone; not stretched across a tablet
             .fillMaxWidth()
             .panel(shape, palette.card)
             .quietClick {

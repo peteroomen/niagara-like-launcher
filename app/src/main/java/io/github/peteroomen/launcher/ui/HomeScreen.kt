@@ -94,7 +94,6 @@ fun HomeScreen(vm: LauncherViewModel) {
     var openFolder by remember { mutableStateOf<String?>(null) }
     var menu by remember { mutableStateOf<MenuTarget?>(null) }
     var editingFavourites by remember { mutableStateOf(false) }
-    var scrubLetter by remember { mutableStateOf<Char?>(null) }
     var jumpLetter by remember { mutableStateOf<Char?>(null) }
     var scrubY by remember { mutableFloatStateOf(0f) }
     var stripTop by remember { mutableFloatStateOf(0f) }
@@ -188,7 +187,8 @@ fun HomeScreen(vm: LauncherViewModel) {
                         .fillMaxSize()
                         .graphicsLayer { alpha = homeAlpha }
                         .systemBarsPadding()
-                        .padding(start = 24.dp, end = 48.dp, top = 28.dp, bottom = 16.dp),
+                        // Room on the right for the A–Z letters, unless they're hidden
+                        .padding(start = 24.dp, end = if (state.appearance.hideLetters) 24.dp else 48.dp, top = 28.dp, bottom = 16.dp),
                 ) {
                     ClockAndDate(state.appearance)
                     // Favourites sit centred on the left between the clock and the music player (unless they live in the pie)
@@ -234,20 +234,17 @@ fun HomeScreen(vm: LauncherViewModel) {
                         selectY = null
                         overlay = Overlay.ALL_APPS
                         openFolder = null
-                        scrubLetter = letter
                         jumpLetter = letter
                         fingerDown = true
                         scrubY = y
                     },
                     onSelect = { y ->
-                        scrubLetter = null
                         selectY = stripTop + y
                     },
                     onRelease = {
                         // Letting go over a name opens it, like Niagara
                         val key = highlighted.takeIf { selectY != null }
                         fingerDown = false
-                        scrubLetter = null
                         selectY = null
                         highlighted = null
                         if (key != null) {
@@ -267,16 +264,6 @@ fun HomeScreen(vm: LauncherViewModel) {
 
                 pie?.let { PieMenu(state, it, pieSlots) }
 
-                scrubLetter?.let { letter ->
-                    Text(
-                        letter.toString(),
-                        color = palette.accent,
-                        style = palette.style(64.sp, FontWeight.SemiBold),
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .offset { IntOffset(-with(density) { 52.dp.roundToPx() }, (stripTop + scrubY).toInt() - with(density) { 40.dp.roundToPx() }) },
-                    )
-                }
 
                 AnimatedVisibility(overlay == Overlay.SEARCH, enter = fadeIn(), exit = fadeOut()) {
                     SearchOverlay(

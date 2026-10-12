@@ -2,6 +2,7 @@ package io.github.peteroomen.launcher.ui
 
 import android.os.Build
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -177,6 +178,11 @@ fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false): Modi
             }
         }
 }
+
+/** The glass rim on its own, for things inside a glass panel (like the search box); nothing with flat panels. */
+@Composable
+fun Modifier.glassRim(shape: Shape): Modifier =
+    if (LocalPalette.current.glass) border(RimWidth, RimBrush, shape) else this
 
 /**
  * A panel behind something: liquid glass when that's switched on, otherwise a flat [fill]. A

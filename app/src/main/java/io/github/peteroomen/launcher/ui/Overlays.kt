@@ -1,6 +1,8 @@
 package io.github.peteroomen.launcher.ui
 
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -21,12 +23,14 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -56,6 +60,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -73,13 +78,16 @@ import io.github.peteroomen.launcher.indexLetter
 import io.github.peteroomen.launcher.model.FavOps
 import io.github.peteroomen.launcher.model.Reason
 import io.github.peteroomen.launcher.model.Suggestions
+import kotlin.math.exp
 import kotlin.math.roundToInt
 
 val AzLetters = listOf('#') + ('A'..'Z')
 
 /**
- * Letters down the right edge. Dragging along them reports the letter under the finger and its y position.
- * Sliding left off the strip reports [onSelect] instead, so a name in the list can be picked by letting go.
+ * The A–Z strip, Niagara style. Touching it bends the letters out to the left around the finger,
+ * further the further the finger goes, magnifies the letter under it and shows that letter in a
+ * bubble beside the finger. Sliding off to the left picks from the list instead ([onSelect]), and
+ * letting go over a name opens it ([onRelease]).
  */
 @Composable
 fun AzStrip(
@@ -94,21 +102,42 @@ fun AzStrip(
 ) {
     val palette = LocalPalette.current
     val haptics = LocalHapticFeedback.current
+    val density = LocalDensity.current
     val scrub by rememberUpdatedState(onScrub)
     val select by rememberUpdatedState(onSelect)
     val release by rememberUpdatedState(onRelease)
     var active by remember { mutableStateOf<Char?>(null) }
     var touching by remember { mutableStateOf(false) }
+    // The finger, in the strip's own coordinates: x goes negative as it moves left off the strip
+    var fingerX by remember { mutableFloatStateOf(0f) }
+    var fingerY by remember { mutableFloatStateOf(0f) }
+    var height by remember { mutableIntStateOf(1) }
+
+    val bulge = with(density) { 22.dp.toPx() }
+    val reach = with(density) { 220.dp.toPx() }
+    val pull by animateFloatAsState(
+        if (touching) (bulge - fingerX.coerceAtMost(0f)).coerceAtMost(reach) else 0f,
+        spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMedium),
+        label = "pull",
+    )
+    val focus by animateFloatAsState(if (touching) 1f else 0f, spring(stiffness = Spring.StiffnessMedium), label = "focus")
     val alpha by animateFloatAsState(if (!hidden || touching || shown) 1f else 0f, label = "letters")
-    Column(
+
+    Box(
         modifier
             .width(30.dp)
+            .onSizeChanged { height = it.height.coerceAtLeast(1) }
             .graphicsLayer { this.alpha = alpha }
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown()
                     down.consume()
                     touching = true
+                    var picking = false
+                    fun follow(x: Float, y: Float) {
+                        fingerX = x
+                        fingerY = y.coerceIn(0f, size.height.toFloat())
+                    }
                     fun pick(y: Float) {
                         val i = (y / size.height * AzLetters.size).toInt().coerceIn(0, AzLetters.lastIndex)
                         val letter = AzLetters[i]
@@ -119,40 +148,79 @@ fun AzStrip(
                         scrub(letter, y)
                     }
                     val leaveDistance = 24.dp.toPx()
+                    follow(down.position.x, down.position.y)
                     pick(down.position.y)
-                    while (true) {
-                        val change = awaitPointerEvent().changes.firstOrNull() ?: break
-                        if (!change.pressed) break
-                        if (change.position.x < -leaveDistance) {
-                            active = null
-                            select(change.position.y)
-                        } else {
-                            pick(change.position.y)
+                    try {
+                        while (true) {
+                            val change = awaitPointerEvent().changes.firstOrNull() ?: break
+                            if (!change.pressed) break
+                            follow(change.position.x, change.position.y)
+                            // Off the strip to the left: the letter stays put and the finger picks a name
+                            if (picking || change.position.x < -leaveDistance) {
+                                picking = true
+                                select(change.position.y)
+                            } else {
+                                pick(change.position.y)
+                            }
+                            change.consume()
                         }
-                        change.consume()
+                    } finally {
+                        touching = false
+                        active = null
+                        release()
                     }
-                    active = null
-                    touching = false
-                    release()
                 }
             },
-        verticalArrangement = Arrangement.SpaceBetween,
-        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        AzLetters.forEach { letter ->
-            Text(
-                letter.toString(),
-                color = when {
-                    letter == active -> palette.accent
-                    letter in available -> palette.muted
-                    else -> palette.muted.copy(alpha = palette.muted.alpha * 0.35f)
-                },
-                modifier = Modifier.graphicsLayer {
-                    scaleX = if (letter == active) 1.5f else 1f
-                    scaleY = scaleX
-                },
-                style = palette.style(10.sp, FontWeight.SemiBold),
-            )
+        val slot = height.toFloat() / AzLetters.size
+        val spread = height * 0.2f // how far up and down the bend reaches
+        Column(Modifier.fillMaxSize()) {
+            AzLetters.forEachIndexed { i, letter ->
+                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Text(
+                        letter.toString(),
+                        color = when {
+                            letter == active -> palette.accent
+                            letter in available -> palette.text.copy(alpha = palette.muted.alpha + (1f - palette.muted.alpha) * focus)
+                            else -> palette.muted.copy(alpha = palette.muted.alpha * 0.35f)
+                        },
+                        modifier = Modifier.graphicsLayer {
+                            val d = (i + 0.5f) * slot - fingerY
+                            val near = exp(-(d * d) / (2 * spread * spread))
+                            translationX = -pull * near
+                            val scale = 1f + focus * (0.35f * near + if (letter == active) 0.9f else 0f)
+                            scaleX = scale
+                            scaleY = scale
+                        },
+                        style = palette.style(10.sp, FontWeight.SemiBold),
+                    )
+                }
+            }
+        }
+        // The letter, big, in a bubble just left of the bent strip
+        val shownLetter = active
+        if (shownLetter != null) {
+            val bubble = with(density) { 60.dp.toPx() }
+            val gap = with(density) { 28.dp.toPx() }
+            Box(
+                Modifier
+                    .offset {
+                        IntOffset(
+                            (with(density) { 15.dp.toPx() } - pull - gap - bubble).roundToInt(),
+                            (fingerY - bubble / 2).roundToInt(),
+                        )
+                    }
+                    .size(60.dp)
+                    .graphicsLayer {
+                        scaleX = 0.6f + 0.4f * focus
+                        scaleY = scaleX
+                        this.alpha = focus
+                    }
+                    .background(palette.backdrop.copy(alpha = 0.45f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(shownLetter.toString(), color = palette.text, style = palette.style(32.sp, FontWeight.Medium))
+            }
         }
     }
 }
@@ -414,6 +482,7 @@ fun SearchOverlay(
                     .fillMaxWidth()
                     .focusRequester(focus)
                     .background(ink.copy(alpha = 0.1f), RoundedCornerShape(14.dp))
+                    .glassRim(RoundedCornerShape(14.dp))
                     .padding(horizontal = 14.dp, vertical = 12.dp),
                 decorationBox = { field ->
                     Box {
