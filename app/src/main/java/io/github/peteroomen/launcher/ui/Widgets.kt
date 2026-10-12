@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.peteroomen.launcher.R
 import io.github.peteroomen.launcher.data.Appearance
+import io.github.peteroomen.launcher.data.appNameWeight
 import io.github.peteroomen.launcher.data.ClockAlign
 import io.github.peteroomen.launcher.data.ClockBackground
 import io.github.peteroomen.launcher.data.ClockStyle
@@ -331,7 +332,7 @@ fun AppRow(
             color = if (highlighted) palette.accent else palette.text,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            style = palette.style(20.sp, FontWeight.Medium),
+            style = palette.style(appearance.appTextSize.sp.sp, appearance.appNameWeight),
         )
     }
 }

@@ -23,8 +23,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -48,8 +48,10 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import io.github.peteroomen.launcher.HomeUiState
 import io.github.peteroomen.launcher.R
+import io.github.peteroomen.launcher.data.Appearance
 import io.github.peteroomen.launcher.data.IconCache
 import io.github.peteroomen.launcher.data.IconStyle
+import io.github.peteroomen.launcher.data.appNameWeight
 import io.github.peteroomen.launcher.model.Fav
 
 private val Greyscale = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
@@ -129,14 +131,14 @@ fun Modifier.pressable(label: String, onClick: () -> Unit, onLongClick: () -> Un
 }
 
 @Composable
-private fun NameLabel(text: String, size: Int = 17) {
+private fun NameLabel(text: String, appearance: Appearance) {
     val palette = LocalPalette.current
     Text(
         text,
         color = palette.text,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
-        style = palette.style(size.sp, FontWeight.Medium),
+        style = palette.style(appearance.appTextSize.sp.sp, appearance.appNameWeight),
     )
 }
 
@@ -146,7 +148,7 @@ fun FavouriteApp(key: String, state: HomeUiState, modifier: Modifier = Modifier)
         AppIcon(key, state.appearance.iconStyle, state.appearance.iconSizeDp.dp, badge = state.hasDot(key))
         if (state.appearance.showNames) {
             Spacer(Modifier.width(12.dp))
-            NameLabel(state.label(key))
+            NameLabel(state.label(key), state.appearance)
         }
     }
 }
@@ -174,7 +176,7 @@ fun FolderEntry(
             FolderIcon(folder, state, size, open)
             if (appearance.showNames) {
                 Spacer(Modifier.width(12.dp))
-                NameLabel(folder.name)
+                NameLabel(folder.name, appearance)
             }
         }
         if (open) {

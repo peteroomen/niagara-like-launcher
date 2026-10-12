@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBars
@@ -36,6 +37,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -51,19 +54,23 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.peteroomen.launcher.HomeUiState
 import io.github.peteroomen.launcher.R
 import io.github.peteroomen.launcher.data.ListStyle
+import io.github.peteroomen.launcher.data.appNameWeight
 import io.github.peteroomen.launcher.indexLetter
 import io.github.peteroomen.launcher.model.FavOps
+import kotlin.math.roundToInt
 
 val AzLetters = listOf('#') + ('A'..'Z')
 
@@ -160,6 +167,12 @@ fun AllAppsOverlay(
     jumpTo: Char?,
     /** While the finger slides off the A–Z strip: its y in root coordinates. */
     selectY: Float?,
+    /**
+     * While a finger is on the A–Z strip (or sliding off it to pick): only this letter's apps show,
+     * grouped beside the finger at [anchorY] (root coordinates), like Niagara.
+     */
+    onlyLetter: Char?,
+    anchorY: Float,
     onHighlight: (String?) -> Unit,
     onLaunch: (String) -> Unit,
     onLongClick: (String) -> Unit,
@@ -179,12 +192,19 @@ fun AllAppsOverlay(
             ?: rows.indexOfLast { it is ListRow.Header }
         if (index >= 0) listState.scrollToItem(index)
     }
+    // The letter's apps (or the next letter that has any), while the finger is down
+    val letterGroup = remember(onlyLetter, rows) {
+        onlyLetter?.let { target ->
+            val letter = rows.filterIsInstance<ListRow.Header>().firstOrNull { it.letter >= target }?.letter
+                ?: rows.filterIsInstance<ListRow.Header>().lastOrNull()?.letter
+            letter?.let { l -> l to state.apps.filter { indexLetter(state.label(it.key)) == l }.map { it.key } }
+        }
+    }
     // Where each visible name is on screen, to find the one under a finger coming off the A–Z strip
     val rowBounds = remember { HashMap<String, ClosedFloatingPointRange<Float>>() }
     val highlighted = selectY?.let { y ->
-        listState.layoutInfo.visibleItemsInfo
-            .mapNotNull { it.key as? String }
-            .firstOrNull { rowBounds[it]?.contains(y) == true }
+        val candidates = letterGroup?.second ?: listState.layoutInfo.visibleItemsInfo.mapNotNull { it.key as? String }
+        candidates.firstOrNull { rowBounds[it]?.contains(y) == true }
     }
     val haptics = LocalHapticFeedback.current
     LaunchedEffect(highlighted) {
@@ -194,6 +214,18 @@ fun AllAppsOverlay(
     val bars = WindowInsets.systemBars.asPaddingValues()
     val sheet = state.appearance.listStyle == ListStyle.PANEL
     ListContainer(sheet, onDismiss) {
+        if (letterGroup != null) {
+            LetterGroup(
+                letter = letterGroup.first,
+                keys = letterGroup.second,
+                state = state,
+                highlighted = highlighted,
+                anchorY = anchorY,
+                rowBounds = rowBounds,
+                onLaunch = onLaunch,
+            )
+            return@ListContainer
+        }
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
@@ -235,6 +267,76 @@ fun AllAppsOverlay(
                                 onClick = { onLaunch(row.key) },
                                 onLongClick = { onLongClick(row.key) },
                             )
+                            .padding(vertical = 5.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * One letter's apps, centred on the finger's height so sliding left lands on them. Clamped to stay
+ * on screen; a long group starts at the top.
+ */
+@Composable
+private fun LetterGroup(
+    letter: Char,
+    keys: List<String>,
+    state: HomeUiState,
+    highlighted: String?,
+    anchorY: Float,
+    rowBounds: HashMap<String, ClosedFloatingPointRange<Float>>,
+    onLaunch: (String) -> Unit,
+) {
+    val palette = LocalPalette.current
+    val bars = WindowInsets.systemBars.asPaddingValues()
+    var areaTop by remember { mutableFloatStateOf(0f) }
+    var areaHeight by remember { mutableIntStateOf(0) }
+    var groupHeight by remember { mutableIntStateOf(0) }
+    Box(
+        Modifier
+            .fillMaxSize()
+            .padding(top = bars.calculateTopPadding() + 16.dp, bottom = bars.calculateBottomPadding() + 16.dp)
+            .onGloballyPositioned {
+                areaTop = it.positionInRoot().y
+                areaHeight = it.size.height
+            },
+    ) {
+        val top = (anchorY - areaTop - groupHeight / 2f).coerceIn(0f, (areaHeight - groupHeight).coerceAtLeast(0).toFloat())
+        Column(
+            Modifier
+                .offset { IntOffset(0, top.roundToInt()) }
+                .onSizeChanged { groupHeight = it.height }
+                .padding(start = 24.dp, end = 48.dp)
+                .fillMaxWidth(),
+        ) {
+            Text(
+                letter.toString(),
+                color = palette.accent,
+                modifier = Modifier.padding(bottom = 4.dp),
+                style = palette.style(12.sp, FontWeight.SemiBold, 1.sp),
+            )
+            keys.forEach { key ->
+                key(key) {
+                    AppRow(
+                        key = key,
+                        label = state.label(key),
+                        appearance = state.appearance,
+                        highlighted = key == highlighted,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onGloballyPositioned {
+                                val y = it.positionInRoot().y
+                                rowBounds[key] = y..(y + it.size.height)
+                            }
+                            .graphicsLayer {
+                                val scale = if (key == highlighted) 1.08f else 1f
+                                scaleX = scale
+                                scaleY = scale
+                                transformOrigin = TransformOrigin(0f, 0.5f)
+                            }
+                            .quietClick { onLaunch(key) }
                             .padding(vertical = 5.dp),
                     )
                 }
@@ -287,7 +389,8 @@ fun SearchOverlay(
                 value = query,
                 onValueChange = { query = it },
                 singleLine = true,
-                textStyle = TextStyle(color = ink, fontSize = 22.sp, fontWeight = FontWeight.Medium, fontFamily = palette.font),
+                // The same size and weight as the names below it, and in the A–Z list
+                textStyle = TextStyle(color = ink, fontSize = state.appearance.appTextSize.sp.sp, fontWeight = state.appearance.appNameWeight, fontFamily = palette.font),
                 cursorBrush = SolidColor(palette.accent),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
                 keyboardActions = KeyboardActions(onGo = {
@@ -300,7 +403,15 @@ fun SearchOverlay(
                     .padding(horizontal = 14.dp, vertical = 12.dp),
                 decorationBox = { field ->
                     Box {
-                        if (query.isEmpty()) Text(stringResource(R.string.search_apps), color = ink.copy(alpha = 0.5f), fontSize = 22.sp, fontFamily = palette.font)
+                        if (query.isEmpty()) {
+                            Text(
+                                stringResource(R.string.search_apps),
+                                color = ink.copy(alpha = 0.5f),
+                                fontSize = state.appearance.appTextSize.sp.sp,
+                                fontWeight = state.appearance.appNameWeight,
+                                fontFamily = palette.font,
+                            )
+                        }
                         field()
                     }
                 },

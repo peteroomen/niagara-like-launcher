@@ -21,9 +21,19 @@ enum class LauncherFont { SYSTEM, CONDENSED, SERIF, MONO }
 enum class ClockSize(val sp: Int) { SMALL(44), MEDIUM(56), LARGE(72) }
 enum class ClockWeight { LIGHT, REGULAR, BOLD }
 enum class ClockStyle { DIGITAL, ANALOG }
+/** App names in the A–Z list, search and favourites. */
+enum class AppTextSize(val sp: Int) { SMALL(16), MEDIUM(18), LARGE(20) }
+enum class AppTextWeight { LIGHT, REGULAR, MEDIUM }
 enum class ClockAlign { LEFT, CENTER, RIGHT }
 /** A panel behind the clock, in any of the panel looks, whatever the Panels setting is. */
 enum class ClockBackground { NONE, GLASS, BLUR, FLAT }
+
+/** The style for app names, wherever they're listed. */
+val Appearance.appNameWeight get() = when (appTextWeight) {
+    AppTextWeight.LIGHT -> androidx.compose.ui.text.font.FontWeight.Light
+    AppTextWeight.REGULAR -> androidx.compose.ui.text.font.FontWeight.Normal
+    AppTextWeight.MEDIUM -> androidx.compose.ui.text.font.FontWeight.Medium
+}
 
 /** Whether anything on screen shows the wallpaper through glass, so its copies need loading. */
 val Appearance.needsGlassBackdrop get() = glass || clockBackground == ClockBackground.GLASS || clockBackground == ClockBackground.BLUR
@@ -54,6 +64,8 @@ data class Appearance(
     val clockSize: ClockSize = ClockSize.MEDIUM,
     val clockWeight: ClockWeight = ClockWeight.LIGHT,
     val clockStyle: ClockStyle = ClockStyle.DIGITAL,
+    val appTextSize: AppTextSize = AppTextSize.SMALL,
+    val appTextWeight: AppTextWeight = AppTextWeight.REGULAR,
     val clockAlign: ClockAlign = ClockAlign.LEFT,
     val clockBackground: ClockBackground = ClockBackground.NONE,
     val backdrop: Backdrop = Backdrop.NONE,
@@ -109,6 +121,8 @@ class LauncherStore(private val context: Context) {
                 clockSize = p.enumOf(CLOCK_SIZE, d.clockSize),
                 clockWeight = p.enumOf(CLOCK_WEIGHT, d.clockWeight),
                 clockStyle = p.enumOf(CLOCK_STYLE, d.clockStyle),
+                appTextSize = p.enumOf(APP_TEXT_SIZE, d.appTextSize),
+                appTextWeight = p.enumOf(APP_TEXT_WEIGHT, d.appTextWeight),
                 clockAlign = p.enumOf(CLOCK_ALIGN, d.clockAlign),
                 clockBackground = p.enumOf(CLOCK_BACKGROUND, d.clockBackground),
                 backdrop = p.enumOf(BACKDROP, d.backdrop),
@@ -139,6 +153,8 @@ class LauncherStore(private val context: Context) {
         p[CLOCK_SIZE] = a.clockSize.name
         p[CLOCK_WEIGHT] = a.clockWeight.name
         p[CLOCK_STYLE] = a.clockStyle.name
+        p[APP_TEXT_SIZE] = a.appTextSize.name
+        p[APP_TEXT_WEIGHT] = a.appTextWeight.name
         p[CLOCK_ALIGN] = a.clockAlign.name
         p[CLOCK_BACKGROUND] = a.clockBackground.name
         p[BACKDROP] = a.backdrop.name
@@ -166,6 +182,8 @@ class LauncherStore(private val context: Context) {
         val CLOCK_SIZE = stringPreferencesKey("clock_size")
         val CLOCK_WEIGHT = stringPreferencesKey("clock_weight")
         val CLOCK_STYLE = stringPreferencesKey("clock_style")
+        val APP_TEXT_SIZE = stringPreferencesKey("app_text_size")
+        val APP_TEXT_WEIGHT = stringPreferencesKey("app_text_weight")
         val CLOCK_ALIGN = stringPreferencesKey("clock_align")
         val CLOCK_BACKGROUND = stringPreferencesKey("clock_background")
         val BACKDROP = stringPreferencesKey("backdrop")

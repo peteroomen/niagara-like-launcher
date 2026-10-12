@@ -100,6 +100,8 @@ fun HomeScreen(vm: LauncherViewModel) {
     var stripTop by remember { mutableFloatStateOf(0f) }
     var selectY by remember { mutableStateOf<Float?>(null) }
     var highlighted by remember { mutableStateOf<String?>(null) }
+    // A finger is on the A–Z strip, or sliding off it to pick a name
+    var fingerDown by remember { mutableStateOf(false) }
     var pie by remember { mutableStateOf<PieState?>(null) }
     var screenSize by remember { mutableStateOf(IntSize.Zero) }
     val usePie = state.appearance.favouritesLayout == FavouritesLayout.PIE
@@ -217,6 +219,8 @@ fun HomeScreen(vm: LauncherViewModel) {
                         state = state,
                         jumpTo = jumpLetter,
                         selectY = selectY,
+                        onlyLetter = jumpLetter.takeIf { fingerDown },
+                        anchorY = stripTop + scrubY,
                         onHighlight = { highlighted = it },
                         onLaunch = { vm.launch(it); goHome() },
                         onLongClick = { menu = MenuTarget.App(it) },
@@ -232,6 +236,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                         openFolder = null
                         scrubLetter = letter
                         jumpLetter = letter
+                        fingerDown = true
                         scrubY = y
                     },
                     onSelect = { y ->
@@ -241,6 +246,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                     onRelease = {
                         // Letting go over a name opens it, like Niagara
                         val key = highlighted.takeIf { selectY != null }
+                        fingerDown = false
                         scrubLetter = null
                         selectY = null
                         highlighted = null
