@@ -102,6 +102,15 @@
     <string name="hide_letters_summary">They appear when you touch the right edge of the screen, and while the app list is open.</string>
     <string name="clock_size">Clock size</string>
     <string name="clock_weight">Clock weight</string>
+    <string name="clock_style">Clock style</string>
+    <string name="clock_digital">Digital</string>
+    <string name="clock_analog">Analog</string>
+    <string name="clock_align">Clock position</string>
+    <string name="align_left">Left</string>
+    <string name="align_center">Centre</string>
+    <string name="align_right">Right</string>
+    <string name="clock_background">Clock background</string>
+    <string name="clock_background_none">None</string>
     <string name="weight_light">Light</string>
     <string name="weight_regular">Regular</string>
     <string name="weight_bold">Bold</string>

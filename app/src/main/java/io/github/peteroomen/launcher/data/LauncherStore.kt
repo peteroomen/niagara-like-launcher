@@ -20,6 +20,13 @@ enum class TextTone { AUTO, LIGHT, DARK }
 enum class LauncherFont { SYSTEM, CONDENSED, SERIF, MONO }
 enum class ClockSize(val sp: Int) { SMALL(44), MEDIUM(56), LARGE(72) }
 enum class ClockWeight { LIGHT, REGULAR, BOLD }
+enum class ClockStyle { DIGITAL, ANALOG }
+enum class ClockAlign { LEFT, CENTER, RIGHT }
+/** A panel behind the clock, in any of the panel looks, whatever the Panels setting is. */
+enum class ClockBackground { NONE, GLASS, BLUR, FLAT }
+
+/** Whether anything on screen shows the wallpaper through glass, so its copies need loading. */
+val Appearance.needsGlassBackdrop get() = glass || clockBackground == ClockBackground.GLASS || clockBackground == ClockBackground.BLUR
 enum class FavouritesLayout { COLUMN, PIE }
 /** Clear: barely blurred, the whole panel bends what's behind like a lens (like Apple's). Frosted: blurred and tinted. */
 enum class GlassStyle { CLEAR, FROSTED }
@@ -46,6 +53,9 @@ data class Appearance(
     val font: LauncherFont = LauncherFont.SYSTEM,
     val clockSize: ClockSize = ClockSize.MEDIUM,
     val clockWeight: ClockWeight = ClockWeight.LIGHT,
+    val clockStyle: ClockStyle = ClockStyle.DIGITAL,
+    val clockAlign: ClockAlign = ClockAlign.LEFT,
+    val clockBackground: ClockBackground = ClockBackground.NONE,
     val backdrop: Backdrop = Backdrop.NONE,
     /** Panels (icon tiles, folders, music card, search, pie) drawn as liquid glass. */
     val glass: Boolean = false,
@@ -98,6 +108,9 @@ class LauncherStore(private val context: Context) {
                 font = p.enumOf(FONT, d.font),
                 clockSize = p.enumOf(CLOCK_SIZE, d.clockSize),
                 clockWeight = p.enumOf(CLOCK_WEIGHT, d.clockWeight),
+                clockStyle = p.enumOf(CLOCK_STYLE, d.clockStyle),
+                clockAlign = p.enumOf(CLOCK_ALIGN, d.clockAlign),
+                clockBackground = p.enumOf(CLOCK_BACKGROUND, d.clockBackground),
                 backdrop = p.enumOf(BACKDROP, d.backdrop),
                 lockPortrait = p[LOCK_PORTRAIT] ?: d.lockPortrait,
                 hideLetters = p[HIDE_LETTERS] ?: d.hideLetters,
@@ -125,6 +138,9 @@ class LauncherStore(private val context: Context) {
         p[FONT] = a.font.name
         p[CLOCK_SIZE] = a.clockSize.name
         p[CLOCK_WEIGHT] = a.clockWeight.name
+        p[CLOCK_STYLE] = a.clockStyle.name
+        p[CLOCK_ALIGN] = a.clockAlign.name
+        p[CLOCK_BACKGROUND] = a.clockBackground.name
         p[BACKDROP] = a.backdrop.name
         p[LOCK_PORTRAIT] = a.lockPortrait
         p[HIDE_LETTERS] = a.hideLetters
@@ -149,6 +165,9 @@ class LauncherStore(private val context: Context) {
         val FONT = stringPreferencesKey("font")
         val CLOCK_SIZE = stringPreferencesKey("clock_size")
         val CLOCK_WEIGHT = stringPreferencesKey("clock_weight")
+        val CLOCK_STYLE = stringPreferencesKey("clock_style")
+        val CLOCK_ALIGN = stringPreferencesKey("clock_align")
+        val CLOCK_BACKGROUND = stringPreferencesKey("clock_background")
         val BACKDROP = stringPreferencesKey("backdrop")
         val LOCK_PORTRAIT = booleanPreferencesKey("lock_portrait")
         val HIDE_LETTERS = booleanPreferencesKey("hide_letters")

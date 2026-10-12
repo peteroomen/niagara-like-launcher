@@ -53,7 +53,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.peteroomen.launcher.data.Accent
 import io.github.peteroomen.launcher.data.Appearance
 import io.github.peteroomen.launcher.data.Backdrop
+import io.github.peteroomen.launcher.data.ClockAlign
+import io.github.peteroomen.launcher.data.ClockBackground
 import io.github.peteroomen.launcher.data.ClockSize
+import io.github.peteroomen.launcher.data.ClockStyle
 import io.github.peteroomen.launcher.data.ClockWeight
 import io.github.peteroomen.launcher.data.FavouritesLayout
 import io.github.peteroomen.launcher.data.GlassStyle
@@ -191,6 +194,18 @@ private fun SettingsScreen(vm: LauncherViewModel) {
         Chips(stringResource(R.string.clock_weight), a.clockWeight, listOf(
             ClockWeight.LIGHT to R.string.weight_light, ClockWeight.REGULAR to R.string.weight_regular, ClockWeight.BOLD to R.string.weight_bold,
         )) { set(a.copy(clockWeight = it)) }
+        Chips(stringResource(R.string.clock_style), a.clockStyle, listOf(
+            ClockStyle.DIGITAL to R.string.clock_digital, ClockStyle.ANALOG to R.string.clock_analog,
+        )) { set(a.copy(clockStyle = it)) }
+        Chips(stringResource(R.string.clock_align), a.clockAlign, listOf(
+            ClockAlign.LEFT to R.string.align_left, ClockAlign.CENTER to R.string.align_center, ClockAlign.RIGHT to R.string.align_right,
+        )) { set(a.copy(clockAlign = it)) }
+        Chips(stringResource(R.string.clock_background), a.clockBackground, listOfNotNull(
+            ClockBackground.NONE to R.string.clock_background_none,
+            if (Build.VERSION.SDK_INT >= 33) ClockBackground.GLASS to R.string.panels_glass else null,
+            ClockBackground.BLUR to R.string.panels_blur,
+            ClockBackground.FLAT to R.string.panels_flat,
+        )) { set(a.copy(clockBackground = it)) }
 
         Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.lock_portrait), Modifier.weight(1f))

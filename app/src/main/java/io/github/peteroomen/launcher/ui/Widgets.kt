@@ -1,6 +1,7 @@
 package io.github.peteroomen.launcher.ui
 
 import android.text.format.DateFormat
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -20,12 +22,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -33,16 +39,23 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.peteroomen.launcher.R
 import io.github.peteroomen.launcher.data.Appearance
+import io.github.peteroomen.launcher.data.ClockAlign
+import io.github.peteroomen.launcher.data.ClockBackground
+import io.github.peteroomen.launcher.data.ClockStyle
 import io.github.peteroomen.launcher.data.ClockWeight
 import io.github.peteroomen.launcher.system.MediaState
 import io.github.peteroomen.launcher.system.NowPlaying
 import io.github.peteroomen.launcher.system.SystemActions
-import kotlinx.coroutines.delay
+import java.util.Calendar
 import java.util.Locale
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlinx.coroutines.delay
 
 /** Clickable without a ripple, so nothing flashes over the wallpaper. */
 @Composable
@@ -59,26 +72,113 @@ fun ClockAndDate(appearance: Appearance) {
             delay(60_000 - value % 60_000) // tick on the minute
         }
     }
-    val timePattern = if (DateFormat.is24HourFormat(context)) "H:mm" else "h:mm"
     val datePattern = remember { DateFormat.getBestDateTimePattern(Locale.getDefault(), "EEEEdMMMM") }
-    val weight = when (appearance.clockWeight) {
-        ClockWeight.LIGHT -> FontWeight.Light
-        ClockWeight.REGULAR -> FontWeight.Normal
-        ClockWeight.BOLD -> FontWeight.SemiBold
+    val align = when (appearance.clockAlign) {
+        ClockAlign.LEFT -> Alignment.Start
+        ClockAlign.CENTER -> Alignment.CenterHorizontally
+        ClockAlign.RIGHT -> Alignment.End
     }
-    Column {
-        Text(
-            DateFormat.format(timePattern, now).toString(),
-            color = palette.text,
-            modifier = Modifier.quietClick { SystemActions.openAlarms(context) },
-            style = palette.style(appearance.clockSize.sp.sp, weight, (-1).sp),
-        )
-        Text(
-            DateFormat.format(datePattern, now).toString(),
-            color = palette.muted,
-            modifier = Modifier.quietClick { SystemActions.openCalendar(context) },
-            style = palette.style(14.sp),
-        )
+    // The home screen keeps more room on the right (for the A–Z letters): centre on the screen, not that space
+    val nudge = if (appearance.clockAlign == ClockAlign.CENTER) 12.dp else 0.dp
+    Column(Modifier.fillMaxWidth().offset(x = nudge), horizontalAlignment = align) {
+        ClockPanel(appearance.clockBackground) {
+            Column(horizontalAlignment = align) {
+                when (appearance.clockStyle) {
+                    ClockStyle.DIGITAL -> {
+                        val timePattern = if (DateFormat.is24HourFormat(context)) "H:mm" else "h:mm"
+                        val weight = when (appearance.clockWeight) {
+                            ClockWeight.LIGHT -> FontWeight.Light
+                            ClockWeight.REGULAR -> FontWeight.Normal
+                            ClockWeight.BOLD -> FontWeight.SemiBold
+                        }
+                        Text(
+                            DateFormat.format(timePattern, now).toString(),
+                            color = palette.text,
+                            modifier = Modifier.quietClick { SystemActions.openAlarms(context) },
+                            style = palette.style(appearance.clockSize.sp.sp, weight, (-1).sp),
+                        )
+                    }
+                    ClockStyle.ANALOG -> AnalogClock(
+                        now = now,
+                        size = appearance.clockSize.sp.dp * 2,
+                        weight = appearance.clockWeight,
+                        modifier = Modifier.padding(bottom = 10.dp).quietClick { SystemActions.openAlarms(context) },
+                    )
+                }
+                Text(
+                    DateFormat.format(datePattern, now).toString(),
+                    color = palette.muted,
+                    modifier = Modifier.quietClick { SystemActions.openCalendar(context) },
+                    style = palette.style(14.sp),
+                )
+            }
+        }
+    }
+}
+
+/** The clock's optional panel, in its own look whatever the Panels setting is. */
+@Composable
+private fun ClockPanel(background: ClockBackground, content: @Composable () -> Unit) {
+    if (background == ClockBackground.NONE) {
+        content()
+        return
+    }
+    val base = LocalPalette.current
+    val palette = when (background) {
+        ClockBackground.GLASS -> base.copy(glass = true, glassClear = true)
+        ClockBackground.BLUR -> base.copy(glass = true, glassClear = false)
+        else -> base.copy(glass = false)
+    }
+    CompositionLocalProvider(LocalPalette provides palette) {
+        Box(Modifier.panel(RoundedCornerShape(26.dp), palette.card).padding(horizontal = 22.dp, vertical = 16.dp)) {
+            content()
+        }
+    }
+}
+
+/** A clock face: twelve marks, hour and minute hands, in the text colour with its shadow. */
+@Composable
+private fun AnalogClock(now: Long, size: Dp, weight: ClockWeight, modifier: Modifier = Modifier) {
+    val palette = LocalPalette.current
+    val calendar = remember(now) { Calendar.getInstance().apply { timeInMillis = now } }
+    val minutes = calendar.get(Calendar.MINUTE)
+    val hours = calendar.get(Calendar.HOUR) + minutes / 60f
+    val stroke = when (weight) {
+        ClockWeight.LIGHT -> 1f
+        ClockWeight.REGULAR -> 1.5f
+        ClockWeight.BOLD -> 2.2f
+    }
+    val shadow = palette.shadow
+    Canvas(modifier.size(size)) {
+        val r = this.size.minDimension / 2
+        val c = center
+        val unit = r / 40f * stroke
+        fun hand(angle: Float, length: Float, width: Float, color: Color, offset: Offset = Offset.Zero) {
+            val rad = Math.toRadians(angle.toDouble() - 90)
+            val end = Offset(c.x + cos(rad).toFloat() * length, c.y + sin(rad).toFloat() * length)
+            drawLine(color, c + offset, end + offset, strokeWidth = width, cap = StrokeCap.Round)
+        }
+        fun face(color: Color, offset: Offset) {
+            for (i in 0 until 12) {
+                val major = i % 3 == 0
+                val rad = Math.toRadians(i * 30.0)
+                val outer = r * 0.96f
+                val inner = r * (if (major) 0.80f else 0.86f)
+                drawLine(
+                    color.copy(alpha = color.alpha * (if (major) 1f else 0.6f)),
+                    Offset(c.x + sin(rad).toFloat() * inner, c.y - cos(rad).toFloat() * inner) + offset,
+                    Offset(c.x + sin(rad).toFloat() * outer, c.y - cos(rad).toFloat() * outer) + offset,
+                    strokeWidth = unit * (if (major) 2.2f else 1.4f),
+                    cap = StrokeCap.Round,
+                )
+            }
+            hand(hours * 30f, r * 0.5f, unit * 3.4f, color, offset)
+            hand(minutes * 6f, r * 0.74f, unit * 2.4f, color, offset)
+        }
+        // A plain offset shadow under everything, for contrast like the text's
+        shadow?.let { face(it.color, Offset(0f, maxOf(1f, it.offset.y * 1.5f))) }
+        face(palette.text, Offset.Zero)
+        drawCircle(palette.accent, radius = unit * 3.2f, center = c)
     }
 }
 

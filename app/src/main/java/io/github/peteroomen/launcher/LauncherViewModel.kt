@@ -14,6 +14,7 @@ import io.github.peteroomen.launcher.data.DefaultFavourites
 import io.github.peteroomen.launcher.data.IconCache
 import io.github.peteroomen.launcher.data.LauncherStore
 import io.github.peteroomen.launcher.data.Saved
+import io.github.peteroomen.launcher.data.needsGlassBackdrop
 import io.github.peteroomen.launcher.model.Fav
 import io.github.peteroomen.launcher.model.FavOps
 import io.github.peteroomen.launcher.system.NotificationDots
@@ -128,7 +129,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun refreshGlassBackdrop() {
         viewModelScope.launch {
             // Read the saved setting, not ui.value, which is still a placeholder at start-up
-            val glassOn = store.saved.first().appearance.glass
+            val glassOn = store.saved.first().appearance.needsGlassBackdrop
             glassBackdrop.value = if (!glassOn) null else withContext(Dispatchers.IO) { WallpaperBackdrop.load(app) }
         }
     }
@@ -206,7 +207,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun hide(key: String) = edit { it.copy(hidden = it.hidden + key) }
     fun unhide(key: String) = edit { it.copy(hidden = it.hidden - key) }
     fun setAppearance(appearance: Appearance) {
-        val glassChanged = appearance.glass != ui.value.appearance.glass
+        val glassChanged = appearance.needsGlassBackdrop != ui.value.appearance.needsGlassBackdrop
         viewModelScope.launch {
             store.update { it.copy(appearance = appearance) }
             if (glassChanged) refreshGlassBackdrop()
