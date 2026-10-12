@@ -299,7 +299,7 @@ fun HomeScreen(vm: LauncherViewModel) {
 
 /** Darkens (or lightens, for dark text) the wallpaper behind the launcher's text. */
 @Composable
-private fun ReadabilityBackdrop(backdrop: Backdrop) {
+internal fun ReadabilityBackdrop(backdrop: Backdrop) {
     val palette = LocalPalette.current
     when (backdrop) {
         Backdrop.NONE -> Unit
@@ -314,7 +314,7 @@ private fun ReadabilityBackdrop(backdrop: Backdrop) {
 
 /** The favourites column. Tap opens; hold opens the menu. Reordering lives in Edit favourites. */
 @Composable
-private fun Favourites(
+internal fun Favourites(
     state: HomeUiState,
     openFolder: String?,
     onToggleFolder: (String) -> Unit,

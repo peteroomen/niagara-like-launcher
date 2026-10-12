@@ -3,6 +3,7 @@ package io.github.peteroomen.launcher.data
 import android.content.ComponentName
 import android.content.Context
 import android.content.pm.LauncherActivityInfo
+import android.content.pm.PackageManager
 import android.content.pm.LauncherApps
 import android.os.Handler
 import android.os.Looper
@@ -55,8 +56,14 @@ class AppRepository(context: Context, private val scope: CoroutineScope) {
         scope.launch(Dispatchers.IO) {
             val list = launcherApps.getActivityList(null, Process.myUserHandle())
             infos = list.associateBy { it.componentName.flattenToShortString() }
+            _apps.value = toApps(list, packageManager)
+        }
+    }
+
+    companion object {
+        fun toApps(list: List<LauncherActivityInfo>, packageManager: PackageManager): List<AppInfo> {
             val installed = HashMap<String, Long>()
-            _apps.value = list.map {
+            return list.map {
                 val pkg = it.componentName.packageName
                 val at = installed.getOrPut(pkg) { runCatching { packageManager.getPackageInfo(pkg, 0).firstInstallTime }.getOrDefault(0L) }
                 AppInfo(it.componentName.flattenToShortString(), it.label.toString(), pkg, it.componentName, it.user, at)

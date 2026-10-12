@@ -36,6 +36,10 @@
             android:stateNotNeeded="true"
             android:theme="@style/Theme.Launcher.Home"
             android:windowSoftInputMode="adjustResize">
+            <!-- Where the system wallpaper picker asks for a preview of this home screen -->
+            <meta-data
+                android:name="com.android.launcher3.grid_control"
+                android:value="${applicationId}.grid_control" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.HOME" />
@@ -52,6 +56,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Draws the home screen into the wallpaper picker's preview; only for callers that can bind wallpapers -->
+        <provider
+            android:name=".system.HomePreviewProvider"
+            android:authorities="${applicationId}.grid_control"
+            android:exported="true" />
 
         <service
             android:name=".system.NotificationListener"

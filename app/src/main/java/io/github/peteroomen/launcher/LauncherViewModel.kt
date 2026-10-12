@@ -62,6 +62,22 @@ data class HomeUiState(
     fun folder(id: String) = folders.firstOrNull { it.id == id }
 }
 
+/** What the home screen shows, from the installed apps and what the launcher remembers. */
+fun homeUiState(apps: List<AppInfo>, saved: Saved, dots: Set<String> = emptySet()): HomeUiState {
+    val byKey = apps.associateBy { it.key }
+    val label = { key: String -> saved.renames[key] ?: byKey[key]?.label ?: key }
+    return HomeUiState(
+        apps = apps.filter { it.key !in saved.hidden }.sortedBy { label(it.key).lowercase() },
+        byKey = byKey,
+        favs = FavOps.visible(saved.favs) { it in byKey && it !in saved.hidden },
+        hidden = saved.hidden,
+        renames = saved.renames,
+        appearance = saved.appearance,
+        dots = dots,
+        usage = saved.usage,
+    )
+}
+
 /** First letter for the A–Z list; accented letters count as their base letter, anything else as '#'. */
 fun indexLetter(label: String): Char {
     val c = Normalizer.normalize(label.take(1), Normalizer.Form.NFD).firstOrNull()?.uppercaseChar() ?: '#'
@@ -90,18 +106,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
 
     val ui: StateFlow<HomeUiState> = combine(repo.apps, store.saved, NotificationDots.packages) { apps, saved, dots ->
-        val byKey = apps.associateBy { it.key }
-        val label = { key: String -> saved.renames[key] ?: byKey[key]?.label ?: key }
-        HomeUiState(
-            apps = apps.filter { it.key !in saved.hidden }.sortedBy { label(it.key).lowercase() },
-            byKey = byKey,
-            favs = FavOps.visible(saved.favs) { it in byKey && it !in saved.hidden },
-            hidden = saved.hidden,
-            renames = saved.renames,
-            appearance = saved.appearance,
-            dots = dots,
-            usage = saved.usage,
-        )
+        homeUiState(apps, saved, dots)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeUiState())
 
     /** Colours, shadows, font and icon shape: the wallpaper's colours combined with the appearance settings. */
