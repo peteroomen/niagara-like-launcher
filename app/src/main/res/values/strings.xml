@@ -127,7 +127,7 @@
     <string name="panels_glass">Glass</string>
     <string name="panels_blur">Blur</string>
     <string name="panels_flat">Flat</string>
-    <string name="panels_glass_summary">Icon tiles, folders, the music card, search and the pie are liquid glass, like Apple\'s: a lens over the wallpaper, barely blurred and bent at the rim. Big panels like search keep a light tint so text stays readable.</string>
+    <string name="panels_glass_summary">Icon tiles, folders, the music card, search and the pie are liquid glass, like Apple\'s: a lens over the wallpaper, barely blurred and bent at the rim, under a light tint so text stays readable.</string>
     <string name="panels_blur_summary">Icon tiles, folders, the music card, search and the pie blur the wallpaper behind them under a light tint.</string>
     <string name="panels_flat_summary">Icon tiles, folders, the music card, search and the pie sit on plain see-through panels.</string>
     <string name="glass_source_checking">Checking whether glass can see your wallpaper…</string>

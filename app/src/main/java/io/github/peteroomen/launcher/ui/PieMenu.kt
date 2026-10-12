@@ -88,7 +88,7 @@ fun PieMenu(state: HomeUiState, pie: PieState, slots: List<Fav>) {
             Modifier
                 .offset { IntOffset((c.x - radiusPx).roundToInt(), (c.y - radiusPx).roundToInt()) }
                 .size(PieRadius * 2)
-                .panel(CircleShape, palette.pill, rim = 1.5.dp),
+                .panel(CircleShape, palette.pill),
         )
         for (slot in 0 until Pie.SLOTS) {
             val fav = slots.getOrNull(slot)

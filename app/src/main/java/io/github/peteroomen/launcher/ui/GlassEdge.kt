@@ -26,7 +26,7 @@ class GlassEdge(sharp: ImageBitmap) {
 
     /**
      * Clear glass, after Apple's: the whole panel is a lens. The wallpaper shows through barely
-     * blurred and a little magnified; towards the rim it's pulled inwards (a rounded bevel), with
+     * blurred; towards the rim it's pulled inwards (a rounded bevel), with
      * red, green and blue bending by slightly different amounts for faint colour fringes. A thin rim
      * catches the light from the top-left and bottom-right, with a soft glow just inside it.
      */

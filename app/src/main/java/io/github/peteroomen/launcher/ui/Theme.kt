@@ -30,7 +30,6 @@ import androidx.compose.ui.layout.positionOnScreen
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import io.github.peteroomen.launcher.data.IconCache
@@ -82,8 +81,9 @@ val LocalGlassBackdrop = staticCompositionLocalOf<GlassBackdrop?> { null }
 
 private val Vibrancy = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(1.5f) })
 
-/** Panels at least this small (in their shortest side) are buttons and tiles; bigger ones are sheets. */
-private val SheetSize = 200.dp
+/** Every glass panel's rim, and the depth of the frosted top glow, the same whatever the panel's size. */
+private val RimWidth = 1.dp
+private val GlowDepth = 24.dp
 
 private val RimBrush = Brush.linearGradient(
     0f to Color.White.copy(alpha = 0.55f),
@@ -95,12 +95,12 @@ private val RimBrush = Brush.linearGradient(
 /**
  * Liquid glass, after Apple's. In the clear style every panel is a lens: the wallpaper behind is
  * barely blurred and bent inwards at the rim with faint colour fringes, under a lit rim (Android
- * 13+). Small panels also magnify a little; big ones (the search and app list sheet, the pie) keep
- * a light tint so their text stays readable. Otherwise panels are frosted: the wallpaper blurred
- * and more vivid under a light tint, with a faint glow at the top and a hairline rim.
+ * 13+), under a light tint so text and icons stay readable. Otherwise panels are frosted: the
+ * wallpaper blurred and more vivid under a light tint, with a faint glow at the top and a hairline
+ * rim. Every panel gets the same recipe, whatever its size.
  */
 @Composable
-fun Modifier.glass(shape: Shape, palette: Palette, rim: Dp = 1.dp, sheet: Boolean = false): Modifier {
+fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false): Modifier {
     val backdrop = LocalGlassBackdrop.current
     val position = remember { mutableStateOf(Offset.Zero) }
     val sharp = backdrop?.sharp
@@ -118,7 +118,6 @@ fun Modifier.glass(shape: Shape, palette: Palette, rim: Dp = 1.dp, sheet: Boolea
                 is Outline.Rectangle -> 0f
                 is Outline.Generic -> size.minDimension / 2
             }
-            val small = size.minDimension < SheetSize.toPx()
             var clearDrawn = false
             if (backdrop != null) {
                 // The sharp copy, laid out centre-cropped to the screen like the system does
@@ -139,8 +138,8 @@ fun Modifier.glass(shape: Shape, palette: Palette, rim: Dp = 1.dp, sheet: Boolea
                         // (A deep bevel stretches everything behind a short panel like the music card.)
                         bevel = minOf(shortest * 0.25f, 12.dp.toPx()),
                         strength = minOf(shortest * 0.12f, 6.dp.toPx()),
-                        // Big panels don't magnify: even a little moves things a long way across them
-                        zoom = if (small) 1.03f else 1f,
+                        // No magnifying: on a big panel even a little moves things a long way
+                        zoom = 1f,
                         panelOrigin = position.value,
                         imageOrigin = sharpOrigin,
                         imageScale = sharpScale,
@@ -150,8 +149,8 @@ fun Modifier.glass(shape: Shape, palette: Palette, rim: Dp = 1.dp, sheet: Boolea
                     )
                     if (shader != null) {
                         drawRect(ShaderBrush(shader))
-                        // Big panels hold text: a light tint keeps it readable over clear glass
-                        if (!small) drawRect(palette.glassTint)
+                        // A light tint keeps text and icons readable over clear glass
+                        drawRect(palette.glassTint)
                         clearDrawn = true
                     }
                 }
@@ -173,8 +172,8 @@ fun Modifier.glass(shape: Shape, palette: Palette, rim: Dp = 1.dp, sheet: Boolea
             }
             if (!clearDrawn) {
                 // Clear glass lights its own rim; frosted gets a faint top glow and a hairline rim
-                drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.15f), 0.35f to Color.Transparent))
-                drawOutline(outline, RimBrush, style = Stroke(width = rim.toPx() * 2)) // half of it falls outside the clip
+                drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.15f), 1f to Color.Transparent, endY = GlowDepth.toPx()))
+                drawOutline(outline, RimBrush, style = Stroke(width = RimWidth.toPx() * 2)) // half of it falls outside the clip
             }
         }
 }
@@ -184,9 +183,9 @@ fun Modifier.glass(shape: Shape, palette: Palette, rim: Dp = 1.dp, sheet: Boolea
  * [sheet] sits against the sides and bottom of the screen, so only its top edge is a glass edge.
  */
 @Composable
-fun Modifier.panel(shape: Shape, fill: Color, rim: Dp = 1.dp, sheet: Boolean = false): Modifier {
+fun Modifier.panel(shape: Shape, fill: Color, sheet: Boolean = false): Modifier {
     val palette = LocalPalette.current
-    return if (palette.glass) glass(shape, palette, rim, sheet) else clip(shape).background(fill)
+    return if (palette.glass) glass(shape, palette, sheet) else clip(shape).background(fill)
 }
 
 interface IconLoader {
