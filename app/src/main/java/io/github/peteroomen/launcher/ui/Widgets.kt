@@ -1,6 +1,9 @@
 package io.github.peteroomen.launcher.ui
 
 import android.text.format.DateFormat
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -302,8 +305,10 @@ private fun Progress(nowPlaying: NowPlaying) {
         value = nowPlaying.positionNow()
     }
     val fraction = (position.toFloat() / nowPlaying.durationMs).coerceIn(0f, 1f)
-    Box(Modifier.fillMaxWidth().height(3.dp).background(palette.text.copy(alpha = 0.15f))) {
-        Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().background(palette.accent))
+    // Along the bottom edge of the card, in the accent colour; smooth between the once-a-second ticks
+    val shown by animateFloatAsState(fraction, tween(1000, easing = LinearEasing), label = "progress")
+    Box(Modifier.fillMaxWidth().height(4.dp).background(palette.text.copy(alpha = 0.18f))) {
+        Box(Modifier.fillMaxWidth(shown).fillMaxHeight().background(palette.accent))
     }
 }
 

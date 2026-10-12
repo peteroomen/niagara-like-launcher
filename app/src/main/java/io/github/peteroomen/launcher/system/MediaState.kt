@@ -54,6 +54,15 @@ object MediaState {
     private val startedAt = mutableMapOf<String, Long>()
     private val callbacks = mutableMapOf<MediaController, MediaController.Callback>()
 
+    /** Artwork from each player's media notification, by package. */
+    private var notificationArt: Map<String, Bitmap> = emptyMap()
+
+    fun setNotificationArt(art: Map<String, Bitmap>) {
+        val changed = art.keys != notificationArt.keys || art.any { (k, v) -> notificationArt[k]?.sameAs(v) != true }
+        notificationArt = art
+        if (changed) publish()
+    }
+
     /** Art some apps only give as a link to an image, loaded off the main thread and kept here. */
     private val loadedArt = mutableMapOf<String, Bitmap?>()
     private val artLoader = Executors.newSingleThreadExecutor()
@@ -153,7 +162,8 @@ object MediaState {
             art = meta.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
                 ?: meta.getBitmap(MediaMetadata.METADATA_KEY_ART)
                 ?: meta.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)
-                ?: artFromLink(meta),
+                ?: artFromLink(meta)
+                ?: notificationArt[c.packageName],
             playing = c.isPlaying(),
             packageName = c.packageName,
             durationMs = meta.getLong(MediaMetadata.METADATA_KEY_DURATION),
