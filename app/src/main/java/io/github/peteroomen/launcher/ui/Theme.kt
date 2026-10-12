@@ -60,12 +60,12 @@ data class Palette(
     val iconShape: Shape,
     /** Liquid glass panels instead of flat translucent ones */
     val glass: Boolean,
-    /** Tint over the blurred wallpaper inside glass, for text contrast */
+    /** Tint over big clear glass panels, for text contrast */
     val glassTint: Color,
     /** Heavier tint used when the wallpaper can't be seen, so text stays readable */
     val glassTintNoBlur: Color,
-    /** Bend the wallpaper at glass edges like a lens (Android 13+) */
-    val glassBend: Boolean,
+    /** Tint over frosted glass */
+    val glassFrostedTint: Color,
     /** Clear glass: lightly blurred, the whole panel acts as a lens (Android 13+) */
     val glassClear: Boolean,
 ) {
@@ -76,11 +76,11 @@ data class Palette(
 val LocalPalette = staticCompositionLocalOf<Palette> { error("No palette") }
 
 /** The wallpaper copies and the screen they're drawn across, for glass panels to show through. */
-class GlassBackdrop(val frosted: ImageBitmap, val edge: ImageBitmap, val sharp: ImageBitmap, val screen: Size)
+class GlassBackdrop(val frosted: ImageBitmap, val sharp: ImageBitmap, val screen: Size)
 
 val LocalGlassBackdrop = staticCompositionLocalOf<GlassBackdrop?> { null }
 
-private val Vibrancy = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(1.35f) })
+private val Vibrancy = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(1.5f) })
 
 /** Panels at least this small (in their shortest side) are buttons and tiles; bigger ones are sheets. */
 private val SheetSize = 200.dp
@@ -97,17 +97,16 @@ private val RimBrush = Brush.linearGradient(
  * barely blurred and bent inwards at the rim with faint colour fringes, under a lit rim (Android
  * 13+). Small panels also magnify a little; big ones (the search and app list sheet, the pie) keep
  * a light tint so their text stays readable. Otherwise panels are frosted: the wallpaper blurred
- * and a little more vivid under a light tint, and frosted panels can bend at their edges.
+ * and more vivid under a light tint, with a faint glow at the top and a hairline rim.
  */
 @Composable
 fun Modifier.glass(shape: Shape, palette: Palette, rim: Dp = 1.dp, sheet: Boolean = false): Modifier {
     val backdrop = LocalGlassBackdrop.current
     val position = remember { mutableStateOf(Offset.Zero) }
     val sharp = backdrop?.sharp
-    val edge = backdrop?.edge
-    val lens = remember(sharp, edge, palette.glassBend, palette.glassClear) {
-        // The shaders compile on the phone; if that ever fails, fall back to plain frosted glass
-        if (sharp != null && edge != null && (palette.glassBend || palette.glassClear) && Build.VERSION.SDK_INT >= 33) runCatching { GlassEdge(sharp, edge) }.getOrNull() else null
+    val lens = remember(sharp, palette.glassClear) {
+        // The shader compiles on the phone; if that ever fails, fall back to frosted glass
+        if (sharp != null && palette.glassClear && Build.VERSION.SDK_INT >= 33) runCatching { GlassEdge(sharp) }.getOrNull() else null
     }
     return this
         .onGloballyPositioned { position.value = it.positionOnScreen() }
@@ -167,26 +166,14 @@ fun Modifier.glass(shape: Shape, palette: Palette, rim: Dp = 1.dp, sheet: Boolea
                             drawImage(image, colorFilter = Vibrancy, filterQuality = FilterQuality.High)
                         }
                     }
-                    drawRect(palette.glassTint)
-                    if (palette.glassBend && lens != null && Build.VERSION.SDK_INT >= 33) {
-                        val edgeImage = backdrop.edge
-                        val edgeScale = max(backdrop.screen.width / edgeImage.width, backdrop.screen.height / edgeImage.height)
-                        val edgeOrigin = Offset(
-                            (backdrop.screen.width - edgeImage.width * edgeScale) / 2,
-                            (backdrop.screen.height - edgeImage.height * edgeScale) / 2,
-                        )
-                        val shortest = size.minDimension
-                        val fade = minOf(16.dp.toPx(), shortest / 3.5f)
-                        val strength = minOf(10.dp.toPx(), shortest / 5f)
-                        drawRect(ShaderBrush(lens.shaderFor(size, corner, fade, strength, position.value, edgeOrigin, edgeScale)))
-                    }
+                    drawRect(palette.glassFrostedTint)
                 }
             } else {
                 drawRect(palette.glassTintNoBlur)
             }
             if (!clearDrawn) {
                 // Clear glass lights its own rim; frosted gets a faint top glow and a hairline rim
-                drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.10f), 0.35f to Color.Transparent))
+                drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.15f), 0.35f to Color.Transparent))
                 drawOutline(outline, RimBrush, style = Stroke(width = rim.toPx() * 2)) // half of it falls outside the clip
             }
         }

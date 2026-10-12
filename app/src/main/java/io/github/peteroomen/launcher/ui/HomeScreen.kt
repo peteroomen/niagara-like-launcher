@@ -140,7 +140,7 @@ fun HomeScreen(vm: LauncherViewModel) {
         val fullScreen = remember(configuration) {
             (context as? Activity)?.windowManager?.currentWindowMetrics?.bounds?.let { Size(it.width().toFloat(), it.height().toFloat()) }
         }
-        val backdrop = glassImage?.let { images -> fullScreen?.let { GlassBackdrop(images.frosted, images.edge, images.sharp, it) } }
+        val backdrop = glassImage?.let { images -> fullScreen?.let { GlassBackdrop(images.frosted, images.sharp, it) } }
         CompositionLocalProvider(LocalPalette provides palette, LocalIconLoader provides vm, LocalGlassBackdrop provides backdrop) {
             Box(
                 Modifier

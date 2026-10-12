@@ -21,11 +21,13 @@ import java.io.File
  */
 object WallpaperBackdrop {
 
-    /** Width of the blurred copy. Small is fine: it's drawn blurry anyway. */
-    private const val WIDTH = 160
-    private const val RADIUS = 5
+    /**
+     * The frosted copy: about 1.1dp per pixel across a phone screen, so three box passes of radius 3
+     * come to a blur of about 4dp, as tuned in the prototype.
+     */
+    private const val WIDTH = 360
+    private const val RADIUS = 3
     private const val SHARP_WIDTH = 720
-    private const val EDGE_WIDTH = 540
 
     enum class Source { SYSTEM, PICKED, NONE }
 
@@ -47,11 +49,10 @@ object WallpaperBackdrop {
     }
 
     /**
-     * Copies of the wallpaper for glass: [frosted] is small and heavily blurred for the body of a
-     * frosted panel, [edge] is crisper for frosted panels' bent edges, and [sharp] is larger and
-     * lightly softened, for clear glass to show through.
+     * Two copies of the wallpaper for glass: [frosted] is blurred for frosted panels; [sharp] is
+     * larger and only lightly softened, for clear glass to show through.
      */
-    class Images(val frosted: ImageBitmap, val edge: ImageBitmap, val sharp: ImageBitmap)
+    class Images(val frosted: ImageBitmap, val sharp: ImageBitmap)
 
     /** The wallpaper copies, or null if we can't see it (no access, or a live wallpaper). */
     fun load(context: Context): Images? {
@@ -61,7 +62,6 @@ object WallpaperBackdrop {
         if (w <= 0 || h <= 0) return null
         return Images(
             frosted = scaledAndBlurred(drawable, WIDTH, RADIUS, passes = 3),
-            edge = scaledAndBlurred(drawable, EDGE_WIDTH, radius = 1, passes = 1),
             sharp = scaledAndBlurred(drawable, SHARP_WIDTH, radius = 1, passes = 2), // a light blur, as seen through clear glass
         )
     }

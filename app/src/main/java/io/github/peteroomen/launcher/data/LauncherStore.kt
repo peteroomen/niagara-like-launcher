@@ -49,8 +49,6 @@ data class Appearance(
     val backdrop: Backdrop = Backdrop.NONE,
     /** Panels (icon tiles, folders, music card, search, pie) drawn as liquid glass. */
     val glass: Boolean = false,
-    /** With glass: bend the wallpaper at panel edges like a lens (Android 13+). */
-    val glassBend: Boolean = true,
     val glassStyle: GlassStyle = GlassStyle.CLEAR,
     val listStyle: ListStyle = ListStyle.PANEL,
     /** Keep the home screen upright even when the phone is turned sideways. */
@@ -101,7 +99,6 @@ class LauncherStore(private val context: Context) {
                 backdrop = p.enumOf(BACKDROP, d.backdrop),
                 lockPortrait = p[LOCK_PORTRAIT] ?: d.lockPortrait,
                 glass = p[GLASS] ?: d.glass,
-                glassBend = p[GLASS_BEND] ?: d.glassBend,
                 glassStyle = p.enumOf(GLASS_STYLE, d.glassStyle),
                 listStyle = p.enumOf(LIST_STYLE, d.listStyle),
             ),
@@ -128,7 +125,6 @@ class LauncherStore(private val context: Context) {
         p[BACKDROP] = a.backdrop.name
         p[LOCK_PORTRAIT] = a.lockPortrait
         p[GLASS] = a.glass
-        p[GLASS_BEND] = a.glassBend
         p[GLASS_STYLE] = a.glassStyle.name
         p[LIST_STYLE] = a.listStyle.name
         p[SEEDED] = s.seeded
@@ -152,7 +148,6 @@ class LauncherStore(private val context: Context) {
         val BACKDROP = stringPreferencesKey("backdrop")
         val LOCK_PORTRAIT = booleanPreferencesKey("lock_portrait")
         val GLASS = booleanPreferencesKey("glass")
-        val GLASS_BEND = booleanPreferencesKey("glass_bend")
         val GLASS_STYLE = stringPreferencesKey("glass_style")
         val LIST_STYLE = stringPreferencesKey("list_style")
         val SEEDED = booleanPreferencesKey("seeded")

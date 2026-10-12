@@ -174,15 +174,6 @@ private fun SettingsScreen(vm: LauncherViewModel) {
                     stringResource(if (a.glassStyle == GlassStyle.CLEAR) R.string.glass_clear_summary else R.string.glass_frosted_summary),
                     style = MaterialTheme.typography.bodySmall,
                 )
-                if (a.glassStyle == GlassStyle.FROSTED) {
-                    Row(Modifier.fillMaxWidth().padding(start = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                            Text(stringResource(R.string.glass_bend))
-                            Text(stringResource(R.string.glass_bend_summary), style = MaterialTheme.typography.bodySmall)
-                        }
-                        Switch(checked = a.glassBend, onCheckedChange = { set(a.copy(glassBend = it)) })
-                    }
-                }
             }
             GlassSource(vm, resumes)
         }
