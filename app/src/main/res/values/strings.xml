@@ -132,8 +132,13 @@
     <string name="layout_pie">Pie (hold anywhere)</string>
     <string name="pie_folder_hint">%1$s · slide out to choose</string>
     <string name="pick_folder_apps">Apps in this folder</string>
-    <string name="liquid_glass">Liquid glass</string>
-    <string name="liquid_glass_summary">Icon tiles, folders, the music card, search and the pie become glass, showing the wallpaper blurred behind them.</string>
+    <string name="panels">Panels</string>
+    <string name="panels_glass">Glass</string>
+    <string name="panels_blur">Blur</string>
+    <string name="panels_flat">Flat</string>
+    <string name="panels_glass_summary">Icon tiles, folders, the music card, search and the pie are liquid glass, like Apple\'s: a lens over the wallpaper, barely blurred and bent at the rim. Big panels like search keep a light tint so text stays readable.</string>
+    <string name="panels_blur_summary">Icon tiles, folders, the music card, search and the pie blur the wallpaper behind them under a light tint.</string>
+    <string name="panels_flat_summary">Icon tiles, folders, the music card, search and the pie sit on plain see-through panels.</string>
     <string name="glass_source_checking">Checking whether glass can see your wallpaper…</string>
     <string name="glass_source_system">Glass is blurring your wallpaper.</string>
     <string name="glass_source_picked">Glass is blurring the photo you picked here. If you set a different wallpaper somewhere else, pick it here again.</string>
@@ -144,9 +149,4 @@
     <string name="list_style">Search and app list</string>
     <string name="list_style_panel">Panel from the bottom</string>
     <string name="list_style_wallpaper">Wallpaper only</string>
-    <string name="glass_style">Glass style</string>
-    <string name="glass_clear">Clear (like Apple)</string>
-    <string name="glass_frosted">Frosted</string>
-    <string name="glass_clear_summary">Glass acts like a lens: the wallpaper barely blurred and bent at the rim, and small things like icons a little magnified. Big panels like search and the app list keep a light tint so text stays readable.</string>
-    <string name="glass_frosted_summary">Panels blur the wallpaper behind them under a light tint.</string>
 </resources>

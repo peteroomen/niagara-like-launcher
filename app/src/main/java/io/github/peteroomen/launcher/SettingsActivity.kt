@@ -158,23 +158,32 @@ private fun SettingsScreen(vm: LauncherViewModel) {
 
         HorizontalDivider(Modifier.padding(vertical = 8.dp))
         Text(stringResource(R.string.appearance), style = MaterialTheme.typography.titleMedium)
-        Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                Text(stringResource(R.string.liquid_glass))
-                Text(stringResource(R.string.liquid_glass_summary), style = MaterialTheme.typography.bodySmall)
-            }
-            Switch(checked = a.glass, onCheckedChange = { set(a.copy(glass = it)) })
+        // One choice for panels, stored as glass on/off plus its style. Clear glass needs Android 13.
+        val panels = when {
+            !a.glass -> Panels.FLAT
+            a.glassStyle == GlassStyle.CLEAR && Build.VERSION.SDK_INT >= 33 -> Panels.GLASS
+            else -> Panels.BLUR
         }
+        Chips(stringResource(R.string.panels), panels, listOfNotNull(
+            if (Build.VERSION.SDK_INT >= 33) Panels.GLASS to R.string.panels_glass else null,
+            Panels.BLUR to R.string.panels_blur,
+            Panels.FLAT to R.string.panels_flat,
+        )) {
+            set(when (it) {
+                Panels.GLASS -> a.copy(glass = true, glassStyle = GlassStyle.CLEAR)
+                Panels.BLUR -> a.copy(glass = true, glassStyle = GlassStyle.FROSTED)
+                Panels.FLAT -> a.copy(glass = false)
+            })
+        }
+        Text(
+            stringResource(when (panels) {
+                Panels.GLASS -> R.string.panels_glass_summary
+                Panels.BLUR -> R.string.panels_blur_summary
+                Panels.FLAT -> R.string.panels_flat_summary
+            }),
+            style = MaterialTheme.typography.bodySmall,
+        )
         if (a.glass) {
-            if (Build.VERSION.SDK_INT >= 33) {
-                Chips(stringResource(R.string.glass_style), a.glassStyle, listOf(
-                    GlassStyle.CLEAR to R.string.glass_clear, GlassStyle.FROSTED to R.string.glass_frosted,
-                )) { set(a.copy(glassStyle = it)) }
-                Text(
-                    stringResource(if (a.glassStyle == GlassStyle.CLEAR) R.string.glass_clear_summary else R.string.glass_frosted_summary),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
             GlassSource(vm, resumes)
         }
         Chips(stringResource(R.string.accent_colour), a.accent, listOf(
@@ -298,3 +307,5 @@ private fun <T> Chips(title: String, selected: T, options: List<Pair<T, Int>>, o
 private fun openAppInfo(context: Context) {
     context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)))
 }
+
+private enum class Panels { GLASS, BLUR, FLAT }
