@@ -107,6 +107,17 @@ object FavOps {
         return saved.map { if (idOf(it) in shown && queue.isNotEmpty()) queue.removeFirst() else it }
     }
 
+    /**
+     * A new order for the apps shown in folder [id]. Apps that aren't shown (hidden or uninstalled)
+     * keep their slots, as in [reorder].
+     */
+    fun reorderInFolder(favs: List<Fav>, id: String, shownOrder: List<String>): List<Fav> = favs.map { fav ->
+        if (fav !is Fav.Folder || fav.id != id) return@map fav
+        val shown = shownOrder.toSet()
+        val queue = ArrayDeque(shownOrder.filter { it in fav.apps })
+        fav.copy(apps = fav.apps.map { if (it in shown && queue.isNotEmpty()) queue.removeFirst() else it })
+    }
+
     fun <T> move(list: List<T>, from: Int, to: Int): List<T> = list.toMutableList().apply { add(to, removeAt(from)) }
 
     fun nextFolderId(favs: List<Fav>): String {

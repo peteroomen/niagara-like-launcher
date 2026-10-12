@@ -64,6 +64,7 @@ import io.github.peteroomen.launcher.model.DropTarget
 import io.github.peteroomen.launcher.model.EditDrag
 import io.github.peteroomen.launcher.model.Fav
 import io.github.peteroomen.launcher.model.FavOps
+import kotlin.math.roundToInt
 
 private val RowHeight = 60.dp
 private val ChildHeight = 52.dp
@@ -210,6 +211,8 @@ fun EditFavouritesDialog(state: HomeUiState, vm: LauncherViewModel, onDismiss: (
                                         onRemove = { vm.removeFolder(fav.id) },
                                         onMoveOut = vm::moveOutOfFolder,
                                         onRemoveApp = vm::removeFavourite,
+                                        canDrag = canDrag,
+                                        onReorder = { order -> vm.reorderFolder(fav.id, order) },
                                     )
                                 }
                             }
@@ -307,7 +310,19 @@ private fun FolderBlock(
     onRemove: () -> Unit,
     onMoveOut: (String) -> Unit,
     onRemoveApp: (String) -> Unit,
+    canDrag: Boolean,
+    onReorder: (List<String>) -> Unit,
 ) {
+    // Dragging an app within the folder: its own little reorderable list
+    val haptics = LocalHapticFeedback.current
+    val childPx = with(LocalDensity.current) { ChildHeight.toPx() }
+    var pending by remember { mutableStateOf<List<String>?>(null) }
+    LaunchedEffect(folder.apps) { pending = null }
+    val apps = pending?.takeIf { it.toSet() == folder.apps.toSet() } ?: folder.apps
+    var dragKey by remember { mutableStateOf<String?>(null) }
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+    val from = apps.indexOf(dragKey)
+    val to = if (from < 0) -1 else (from + (dragOffset / childPx).roundToInt()).coerceIn(0, apps.lastIndex)
     Column {
         Row(
             Modifier
@@ -330,16 +345,42 @@ private fun FolderBlock(
             }
             Checkbox(checked = true, onCheckedChange = { onRemove() })
         }
-        folder.apps.forEach { key ->
+        apps.forEachIndexed { index, key ->
+            val dragging = key == dragKey
+            val shift by animateFloatAsState(EditDrag.shift(index, from, to, childPx), label = "childShift")
+            val handle = if (!canDrag || apps.size < 2) null else Modifier.dragHandle(
+                onStart = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    dragKey = key
+                    dragOffset = 0f
+                },
+                onDrag = { dragOffset += it },
+                onEnd = {
+                    if (from >= 0 && to != from) {
+                        val order = FavOps.move(apps, from, to)
+                        pending = order
+                        onReorder(order)
+                    }
+                    dragKey = null
+                    dragOffset = 0f
+                },
+            )
             Row(
                 Modifier
+                    .zIndex(if (dragging) 1f else 0f)
+                    .graphicsLayer {
+                        translationY = if (dragging) dragOffset else shift
+                        shadowElevation = if (dragging) 8.dp.toPx() else 0f
+                    }
+                    .then(if (dragging) Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh) else Modifier)
                     .fillMaxWidth()
                     .height(ChildHeight)
                     .clickable(role = Role.Checkbox) { onRemoveApp(key) }
-                    .padding(start = 60.dp, end = 24.dp),
+                    .padding(start = 36.dp, end = 24.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                Handle(handle)
                 AppIcon(key, state.appearance.iconStyle, 26.dp, badge = false)
                 Text(state.label(key), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                 IconButton(onClick = { onMoveOut(key) }) {

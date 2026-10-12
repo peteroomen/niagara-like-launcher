@@ -114,4 +114,11 @@ class FavOpsTest {
         val renames = mapOf("a/.B" to "Bee")
         assertEquals(renames, FavJson.decodeMap(FavJson.encodeMap(renames)))
     }
+
+    @Test fun reorderWithinAFolderKeepsHiddenAppsInPlace() {
+        val favs = listOf(Fav.App("x"), Fav.Folder("f1", "F", listOf("a", "hidden", "b", "c")))
+        val result = FavOps.reorderInFolder(favs, "f1", listOf("c", "a", "b"))
+        assertEquals(listOf("c", "hidden", "a", "b"), (result[1] as Fav.Folder).apps)
+        assertEquals(Fav.App("x"), result[0])
+    }
 }
