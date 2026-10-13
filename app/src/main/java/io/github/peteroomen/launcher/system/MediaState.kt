@@ -1,5 +1,6 @@
 package io.github.peteroomen.launcher.system
 
+import android.app.ActivityOptions
 import android.content.ComponentName
 import android.content.Context
 import android.graphics.Bitmap
@@ -9,6 +10,7 @@ import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.net.Uri
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -100,8 +102,25 @@ object MediaState {
         controller?.transportControls?.skipToPrevious()
     }
 
-    /** Opens the player's own screen, if the session offers one. */
-    fun openPlayer(): Boolean = runCatching { controller?.sessionActivity?.send() != null }.getOrDefault(false)
+    /**
+     * Opens the player's own screen, if the session offers one. Since Android 14 a pending intent
+     * only gets the sender's right to start activities if the sender opts in; without that it
+     * silently does nothing unless the player itself is on screen (as YouTube is in picture in
+     * picture). The launcher is on screen, so lend it that right.
+     */
+    fun openPlayer(): Boolean {
+        val activity = controller?.sessionActivity ?: return false
+        val options = ActivityOptions.makeBasic().apply {
+            when {
+                Build.VERSION.SDK_INT >= 36 ->
+                    setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOW_IF_VISIBLE)
+                Build.VERSION.SDK_INT >= 34 ->
+                    @Suppress("DEPRECATION")
+                    setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
+            }
+        }.toBundle()
+        return runCatching { activity.send(appContext, 0, null, null, null, null, options) }.isSuccess
+    }
 
     private fun watch(active: List<MediaController>) {
         val tokens = active.map { it.sessionToken }.toSet()
