@@ -276,6 +276,7 @@ private fun SettingsScreen(vm: LauncherViewModel) {
                         Accent.WALLPAPER to R.string.accent_wallpaper, Accent.AMBER to R.string.accent_amber, Accent.CORAL to R.string.accent_coral,
                         Accent.PINK to R.string.accent_pink, Accent.VIOLET to R.string.accent_violet, Accent.BLUE to R.string.accent_blue,
                         Accent.TEAL to R.string.accent_teal, Accent.GREEN to R.string.accent_green, Accent.MONO to R.string.accent_mono,
+                        Accent.POP_GARDEN to R.string.accent_pop_garden, Accent.BABY_BLUE to R.string.accent_baby_blue, Accent.RAVE to R.string.accent_rave,
                     )) { set(a.copy(accent = it)) }
                     // One choice for panels, stored as glass on/off plus its style. Clear glass needs Android 13.
                     val panels = when {
