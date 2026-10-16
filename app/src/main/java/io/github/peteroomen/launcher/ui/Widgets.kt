@@ -33,9 +33,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -221,7 +229,7 @@ fun MusicWidget(nowPlaying: NowPlaying?, hasAccess: Boolean, appLabel: String?, 
         Modifier
             .widthIn(max = 480.dp) // the full width on a phone; not stretched across a tablet
             .fillMaxWidth()
-            .panel(shape, palette.card)
+            .panel(shape, palette.card, rimOver = true)
             .quietClick {
                 when {
                     !hasAccess -> onNeedAccess()
@@ -235,39 +243,52 @@ fun MusicWidget(nowPlaying: NowPlaying?, hasAccess: Boolean, appLabel: String?, 
         val density = LocalDensity.current
         var contentHeight by remember { mutableIntStateOf(0) }
         val artSize = maxOf(with(density) { contentHeight.toDp() }, MinArtSize)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            AlbumArt(nowPlaying, artSize)
-            Row(
-                Modifier.weight(1f).onSizeChanged { contentHeight = it.height }.padding(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f).padding(start = 2.dp)) {
-                    when {
-                        !hasAccess -> {
-                            WidgetLabel(stringResource(R.string.music))
-                            WidgetText(stringResource(R.string.music_needs_access), muted = true, size = 13)
-                        }
-                        nowPlaying == null -> {
-                            WidgetLabel(stringResource(R.string.music))
-                            WidgetText(stringResource(R.string.nothing_playing), muted = true)
-                        }
-                        else -> {
-                            WidgetLabel(appLabel ?: stringResource(R.string.music))
-                            WidgetText(nowPlaying.title, weight = FontWeight.Medium)
-                            nowPlaying.artist?.let { WidgetText(it, muted = true, size = 13) }
+        val art = nowPlaying?.art
+        val image = remember(art) { art?.asImageBitmap() }
+        Box {
+            // On glass, the art's colours glow softly through the whole card, so it sits in the glass
+            if (image != null && palette.glass) {
+                Image(
+                    image,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.matchParentSize().blur(36.dp).alpha(0.3f),
+                )
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AlbumArt(image, artSize)
+                Row(
+                    Modifier.weight(1f).onSizeChanged { contentHeight = it.height }.padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f).padding(start = 2.dp)) {
+                        when {
+                            !hasAccess -> {
+                                WidgetLabel(stringResource(R.string.music))
+                                WidgetText(stringResource(R.string.music_needs_access), muted = true, size = 13)
+                            }
+                            nowPlaying == null -> {
+                                WidgetLabel(stringResource(R.string.music))
+                                WidgetText(stringResource(R.string.nothing_playing), muted = true)
+                            }
+                            else -> {
+                                WidgetLabel(appLabel ?: stringResource(R.string.music))
+                                WidgetText(nowPlaying.title, weight = FontWeight.Medium)
+                                nowPlaying.artist?.let { WidgetText(it, muted = true, size = 13) }
+                            }
                         }
                     }
-                }
-                if (hasAccess && nowPlaying != null) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        ControlButton(R.drawable.ic_skip_previous, R.string.previous, 36) { MediaState.skipPrevious() }
-                        ControlButton(
-                            if (nowPlaying.playing) R.drawable.ic_pause else R.drawable.ic_play,
-                            if (nowPlaying.playing) R.string.pause else R.string.play,
-                            44,
-                            filled = true,
-                        ) { MediaState.togglePlayPause() }
-                        ControlButton(R.drawable.ic_skip_next, R.string.next, 36) { MediaState.skipNext() }
+                    if (hasAccess && nowPlaying != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            ControlButton(R.drawable.ic_skip_previous, R.string.previous, 36) { MediaState.skipPrevious() }
+                            ControlButton(
+                                if (nowPlaying.playing) R.drawable.ic_pause else R.drawable.ic_play,
+                                if (nowPlaying.playing) R.string.pause else R.string.play,
+                                44,
+                                filled = true,
+                            ) { MediaState.togglePlayPause() }
+                            ControlButton(R.drawable.ic_skip_next, R.string.next, 36) { MediaState.skipNext() }
+                        }
                     }
                 }
             }
@@ -278,13 +299,26 @@ fun MusicWidget(nowPlaying: NowPlaying?, hasAccess: Boolean, appLabel: String?, 
 
 private val MinArtSize = 72.dp
 
+/** Fades the right-hand third out to transparent. */
+private fun Modifier.fadeOutEnd(): Modifier = graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+    .drawWithContent {
+        drawContent()
+        drawRect(Brush.horizontalGradient(0.6f to Color.Black, 1f to Color.Transparent), blendMode = BlendMode.DstIn)
+    }
+
 @Composable
-private fun AlbumArt(nowPlaying: NowPlaying?, size: Dp) {
+private fun AlbumArt(image: ImageBitmap?, size: Dp) {
     val palette = LocalPalette.current
-    val art = nowPlaying?.art
-    val image = remember(art) { art?.asImageBitmap() }
     if (image != null) {
-        Image(image, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(size))
+        Image(
+            image,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(size)
+                // On glass, the art's inner edge fades into the glass instead of stopping hard
+                .then(if (palette.glass) Modifier.fadeOutEnd() else Modifier),
+        )
     } else {
         Box(Modifier.size(size).background(palette.tileBg), contentAlignment = Alignment.Center) {
             Icon(painterResource(R.drawable.ic_music_note), contentDescription = null, tint = palette.tileFg, modifier = Modifier.size(24.dp))

@@ -628,7 +628,7 @@ fun ListContainer(sheet: Boolean, onDismiss: () -> Unit, content: @Composable ()
                     .fillMaxHeight(0.8f)
                     .panel(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), palette.scrim, sheet = true)
                     .pointerInput(Unit) { detectTapGestures { } }, // taps on the sheet itself don't close it
-            ) { content() }
+            ) { OnGlass(content) }
         } else {
             content()
         }

@@ -214,7 +214,7 @@ fun FolderEntry(
                         color = palette.accent,
                         style = palette.style(10.5.sp, FontWeight.SemiBold, 1.sp).copy(shadow = null),
                     )
-                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OnGlass { Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         folder.apps.forEach { key ->
                             val label = state.label(key)
                             Column(
@@ -236,7 +236,7 @@ fun FolderEntry(
                                 }
                             }
                         }
-                    }
+                    } }
                 }
             }
         }
@@ -260,9 +260,11 @@ fun FolderIcon(folder: Fav.Folder, state: HomeUiState, size: Dp, open: Boolean =
                 .padding(padding),
             verticalArrangement = Arrangement.spacedBy(gap),
         ) {
-            folder.apps.take(4).chunked(2).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    row.forEach { AppIcon(it, style, mini, badge = false) }
+            OnGlass {
+                folder.apps.take(4).chunked(2).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                        row.forEach { AppIcon(it, style, mini, badge = false) }
+                    }
                 }
             }
         }

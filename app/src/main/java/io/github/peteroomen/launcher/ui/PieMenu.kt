@@ -169,21 +169,24 @@ fun PieMenu(state: HomeUiState, pie: PieState, slots: List<Fav>) {
                 // With Loud on, the panel is solid with its own outline and hard shadow
                 .panel(CircleShape, palette.pill),
         )
-        for (slot in 0 until Pie.SLOTS) {
-            val fav = slots.getOrNull(slot)
-            val p = ring[slot]
-            Placed(
-                // Out from the centre along a curve: it starts a little round and swings into its slot.
-                // Loud punches straight out instead.
-                at = { pointAt(Pie.angleOf(slot) + if (loud) 0.0 else (1 - p.value) * SwoopDegrees, RingRadius * p.value) },
-                size = PieIconSize,
-                selected = hit.slot == slot && hit.folderIndex == null,
-                reveal = { p.value },
-            ) {
-                when (fav) {
-                    is Fav.App -> AppIcon(fav.key, state.appearance.iconStyle, PieIconSize, badge = state.hasDot(fav.key))
-                    is Fav.Folder -> FolderIcon(fav, state, PieIconSize, open = hit.slot == slot)
-                    null -> Box(Modifier.fillMaxSize().border(1.dp, palette.muted.copy(alpha = 0.35f), palette.iconShape))
+        // The ring sits on the glass disc: its tiles are flat, not more glass (the folder fan reaches past it)
+        OnGlass {
+            for (slot in 0 until Pie.SLOTS) {
+                val fav = slots.getOrNull(slot)
+                val p = ring[slot]
+                Placed(
+                    // Out from the centre along a curve: it starts a little round and swings into its slot.
+                    // Loud punches straight out instead.
+                    at = { pointAt(Pie.angleOf(slot) + if (loud) 0.0 else (1 - p.value) * SwoopDegrees, RingRadius * p.value) },
+                    size = PieIconSize,
+                    selected = hit.slot == slot && hit.folderIndex == null,
+                    reveal = { p.value },
+                ) {
+                    when (fav) {
+                        is Fav.App -> AppIcon(fav.key, state.appearance.iconStyle, PieIconSize, badge = state.hasDot(fav.key))
+                        is Fav.Folder -> FolderIcon(fav, state, PieIconSize, open = hit.slot == slot)
+                        null -> Box(Modifier.fillMaxSize().border(1.dp, palette.muted.copy(alpha = 0.35f), palette.iconShape))
+                    }
                 }
             }
         }
@@ -214,7 +217,6 @@ fun PieMenu(state: HomeUiState, pie: PieState, slots: List<Fav>) {
                 }
             }
         }
-
         // Centre: let go here for the home menu
         Box(
             Modifier
