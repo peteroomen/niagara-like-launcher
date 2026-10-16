@@ -117,7 +117,7 @@ fun HomeScreen(vm: LauncherViewModel) {
     // With liquid glass, the wallpaper itself blurs behind search, the A–Z list and the pie
     // (Only behind the sheet: "wallpaper only" lists show the wallpaper as it is)
     val sheetLists = state.appearance.listStyle == ListStyle.PANEL
-    WallpaperBlur(on = state.appearance.glass && ((overlay != Overlay.NONE && sheetLists) || pie != null))
+    WallpaperBlur(on = state.appearance.glass && !state.appearance.accent.loud && ((overlay != Overlay.NONE && sheetLists) || pie != null))
     // With "wallpaper only" lists, the rest of the home screen steps aside while they're open
     val homeAlpha by animateFloatAsState(if (overlay != Overlay.NONE && !sheetLists) 0f else 1f, label = "home")
 

@@ -196,8 +196,30 @@ fun Modifier.glassRim(shape: Shape): Modifier =
 @Composable
 fun Modifier.panel(shape: Shape, fill: Color, sheet: Boolean = false): Modifier {
     val palette = LocalPalette.current
-    return if (palette.glass) glass(shape, palette, sheet) else clip(shape).background(fill)
+    return when {
+        palette.loud -> loudPanel(shape, fill, palette.text, sheet)
+        palette.glass -> glass(shape, palette, sheet)
+        else -> clip(shape).background(fill)
+    }
 }
+
+private val LoudStroke = 2.5.dp
+private val LoudShadow = 4.dp
+
+/**
+ * Loud's neubrutal panel: a solid fill, an outline and a hard offset shadow in the text colour (ink
+ * on bright panels, pale on deep ones, like Loud's Night Brutal). A sheet only shadows upwards.
+ */
+fun Modifier.loudPanel(shape: Shape, fill: Color, line: Color, sheet: Boolean = false): Modifier =
+    drawBehind {
+        val offset = LoudShadow.toPx()
+        translate(if (sheet) 0f else offset, if (sheet) -offset else offset) {
+            drawOutline(shape.createOutline(size, layoutDirection, this), line)
+        }
+    }
+        .clip(shape)
+        .background(fill.copy(alpha = 1f))
+        .border(LoudStroke, line, shape)
 
 interface IconLoader {
     fun cached(key: String, sizePx: Int): IconCache.Icons?

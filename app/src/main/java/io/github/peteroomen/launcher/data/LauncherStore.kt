@@ -50,11 +50,17 @@ enum class Backdrop { NONE, LEFT_FADE, DIM }
 
 /**
  * Accent colour: taken from the wallpaper, a fixed hue, or plain white/black ([MONO]). The combos,
- * matching Loud's bolder palettes, also give themed icons a fixed opaque [tile] and [glyph] colour.
+ * matching Loud's bolder palettes, go fully Loud: themed icons get a fixed opaque [tile] and
+ * [glyph] colour, and glass gives way to solid outlined panels with hard shadows, filled [bright]
+ * under dark text or [deep] under light text.
  */
-enum class Accent(val hue: Float?, val tile: Long? = null, val glyph: Long? = null) {
+enum class Accent(val hue: Float?, val tile: Long? = null, val glyph: Long? = null, val bright: Long? = null, val deep: Long? = null) {
     WALLPAPER(null), AMBER(36f), CORAL(10f), PINK(330f), VIOLET(265f), BLUE(212f), TEAL(172f), GREEN(128f), MONO(null),
-    POP_GARDEN(330f, 0xFF4BE37A, 0xFF171714), BABY_BLUE(205f, 0xFF9FD8FF, 0xFFAD1457), RAVE(85f, 0xFFFF6FB5, 0xFF0E3B2C),
+    POP_GARDEN(330f, 0xFF4BE37A, 0xFF171714, 0xFFFF9ACB, 0xFF0E3B2C),
+    BABY_BLUE(205f, 0xFF9FD8FF, 0xFFAD1457, 0xFFD6EEFF, 0xFF123A5C),
+    RAVE(85f, 0xFFFF6FB5, 0xFF0E3B2C, 0xFFB8F25C, 0xFF0E3B2C);
+
+    val loud get() = tile != null
 }
 
 data class Appearance(
