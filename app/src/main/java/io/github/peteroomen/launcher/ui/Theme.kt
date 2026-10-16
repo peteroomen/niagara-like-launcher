@@ -106,7 +106,7 @@ private val RimBrush = Brush.linearGradient(
  * rim. Every panel gets the same recipe, whatever its size.
  */
 @Composable
-fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false): Modifier {
+fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false, bendScale: Float = 1f): Modifier {
     val backdrop = LocalGlassBackdrop.current
     val position = remember { mutableStateOf(Offset.Zero) }
     val sharp = backdrop?.sharp
@@ -142,8 +142,8 @@ fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false): Modi
                         radius = corner,
                         // A thin bevel at the rim, so the middle shows the wallpaper as it is.
                         // (A deep bevel stretches everything behind a short panel like the music card.)
-                        bevel = minOf(shortest * 0.25f, 16.dp.toPx()),
-                        strength = minOf(shortest * 0.16f, 9.dp.toPx()),
+                        bevel = minOf(shortest * 0.25f, 16.dp.toPx()) * bendScale.coerceAtLeast(0.3f),
+                        strength = minOf(shortest * 0.16f, 9.dp.toPx()) * bendScale,
                         // No magnifying: on a big panel even a little moves things a long way
                         zoom = 1f,
                         panelOrigin = position.value,
@@ -187,13 +187,14 @@ fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false): Modi
 /**
  * A panel behind something: liquid glass when that's switched on, otherwise a flat [fill]. A
  * [sheet] sits against the sides and bottom of the screen, so only its top edge is a glass edge.
+ * [lens] scales how strongly clear glass bends at its rim (1 = the music card).
  */
 @Composable
-fun Modifier.panel(shape: Shape, fill: Color, sheet: Boolean = false): Modifier {
+fun Modifier.panel(shape: Shape, fill: Color, sheet: Boolean = false, lens: Float = 1f): Modifier {
     val palette = LocalPalette.current
     return when {
         palette.loud -> loudPanel(shape, fill, palette.text, sheet)
-        palette.glass -> glass(shape, palette, sheet)
+        palette.glass -> glass(shape, palette, sheet, lens)
         else -> clip(shape).background(fill)
     }
 }

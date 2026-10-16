@@ -6,6 +6,12 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.Icon
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -82,6 +88,7 @@ import kotlin.math.exp
 import kotlin.math.roundToInt
 
 val AzLetters = listOf('#') + ('A'..'Z')
+private val SearchCapsule = RoundedCornerShape(percent = 50)
 
 /** How wide the A–Z strip's touch zone is (the letters themselves take the right 30dp). */
 val StripTouchWidth = 44.dp
@@ -227,9 +234,10 @@ fun AzStrip(
                         scaleY = scaleX
                         this.alpha = focus
                     }
-                    // Glass like the music card when glass is on (or Loud's solid panel); a dim disc otherwise
+                    // Glass when glass is on (or Loud's solid panel); a dim disc otherwise
                     .then(
-                        if (palette.glass || palette.loud) Modifier.panel(CircleShape, palette.card)
+                        // A gentler lens than the music card: it's small, and the letter shouldn't wobble
+                        if (palette.glass || palette.loud) Modifier.panel(CircleShape, palette.card, lens = 0.5f)
                         else Modifier.background(palette.backdrop.copy(alpha = 0.45f), CircleShape),
                     ),
                 contentAlignment = Alignment.Center,
@@ -496,21 +504,58 @@ fun SearchOverlay(
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focus)
-                    // The same glass as the music card (or Loud's solid panel); a faint fill otherwise
-                    .panel(RoundedCornerShape(14.dp), if (palette.loud) palette.card else ink.copy(alpha = 0.1f))
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                decorationBox = { field ->
-                    Box {
-                        if (query.isEmpty()) {
-                            Text(
-                                stringResource(R.string.search_apps),
-                                color = ink.copy(alpha = 0.5f),
-                                fontSize = state.appearance.appTextSize.sp.sp,
-                                fontWeight = state.appearance.appNameWeight,
-                                fontFamily = palette.appFont,
+                    .then(
+                        when {
+                            palette.loud -> Modifier.panel(SearchCapsule, palette.card)
+                            // Inside the glass sheet, like iOS: no glass on glass, just a faint capsule
+                            sheet -> Modifier.background(
+                                if (palette.darkText) Color.Black.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.12f),
+                                SearchCapsule,
                             )
+                            // Straight on the wallpaper it's the one glass thing, like the music card
+                            else -> Modifier.panel(RoundedCornerShape(14.dp), ink.copy(alpha = 0.1f))
+                        },
+                    )
+                    .padding(start = 14.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+                decorationBox = { field ->
+                    Row(Modifier.heightIn(min = 36.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            painterResource(R.drawable.ic_search),
+                            contentDescription = null,
+                            tint = ink.copy(alpha = 0.55f),
+                            modifier = Modifier.padding(end = 8.dp).size(18.dp),
+                        )
+                        Box(Modifier.weight(1f)) {
+                            if (query.isEmpty()) {
+                                Text(
+                                    stringResource(R.string.search_apps),
+                                    color = ink.copy(alpha = 0.5f),
+                                    fontSize = state.appearance.appTextSize.sp.sp,
+                                    fontWeight = state.appearance.appNameWeight,
+                                    fontFamily = palette.appFont,
+                                )
+                            }
+                            field()
                         }
-                        field()
+                        if (query.isNotEmpty()) {
+                            // A small round clear button at the end, as on iOS (48dp to tap, 20dp to see)
+                            Box(
+                                Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .clickable(onClickLabel = stringResource(R.string.clear_search)) { query = "" },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Box(Modifier.size(20.dp).background(ink.copy(alpha = 0.25f), CircleShape), contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        painterResource(R.drawable.ic_close),
+                                        contentDescription = stringResource(R.string.clear_search),
+                                        tint = ink,
+                                        modifier = Modifier.size(13.dp),
+                                    )
+                                }
+                            }
+                        }
                     }
                 },
             )

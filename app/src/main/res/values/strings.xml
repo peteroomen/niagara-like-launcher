@@ -8,6 +8,7 @@
     <string name="play">Play</string>
     <string name="pause">Pause</string>
 
+    <string name="clear_search">Clear search</string>
     <string name="search_apps">Search apps</string>
     <string name="search_web">Search the web for “%1$s”</string>
     <string name="folder_description">%1$s folder</string>
