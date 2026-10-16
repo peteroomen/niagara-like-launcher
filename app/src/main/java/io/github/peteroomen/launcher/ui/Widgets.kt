@@ -28,7 +28,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,6 +44,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -226,35 +230,45 @@ fun MusicWidget(nowPlaying: NowPlaying?, hasAccess: Boolean, appLabel: String?, 
                 }
             },
     ) {
-        Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            AlbumArt(nowPlaying)
-            Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                when {
-                    !hasAccess -> {
-                        WidgetLabel(stringResource(R.string.music))
-                        WidgetText(stringResource(R.string.music_needs_access), muted = true, size = 13)
-                    }
-                    nowPlaying == null -> {
-                        WidgetLabel(stringResource(R.string.music))
-                        WidgetText(stringResource(R.string.nothing_playing), muted = true)
-                    }
-                    else -> {
-                        WidgetLabel(appLabel ?: stringResource(R.string.music))
-                        WidgetText(nowPlaying.title, weight = FontWeight.Medium)
-                        nowPlaying.artist?.let { WidgetText(it, muted = true, size = 13) }
+        // The art fills the card's whole height above the progress line, edge to edge (the card's
+        // corners round it). It's sized from the text and controls beside it, never the other way.
+        val density = LocalDensity.current
+        var contentHeight by remember { mutableIntStateOf(0) }
+        val artSize = maxOf(with(density) { contentHeight.toDp() }, MinArtSize)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            AlbumArt(nowPlaying, artSize)
+            Row(
+                Modifier.weight(1f).onSizeChanged { contentHeight = it.height }.padding(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f).padding(start = 2.dp)) {
+                    when {
+                        !hasAccess -> {
+                            WidgetLabel(stringResource(R.string.music))
+                            WidgetText(stringResource(R.string.music_needs_access), muted = true, size = 13)
+                        }
+                        nowPlaying == null -> {
+                            WidgetLabel(stringResource(R.string.music))
+                            WidgetText(stringResource(R.string.nothing_playing), muted = true)
+                        }
+                        else -> {
+                            WidgetLabel(appLabel ?: stringResource(R.string.music))
+                            WidgetText(nowPlaying.title, weight = FontWeight.Medium)
+                            nowPlaying.artist?.let { WidgetText(it, muted = true, size = 13) }
+                        }
                     }
                 }
-            }
-            if (hasAccess && nowPlaying != null) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    ControlButton(R.drawable.ic_skip_previous, R.string.previous, 36) { MediaState.skipPrevious() }
-                    ControlButton(
-                        if (nowPlaying.playing) R.drawable.ic_pause else R.drawable.ic_play,
-                        if (nowPlaying.playing) R.string.pause else R.string.play,
-                        44,
-                        filled = true,
-                    ) { MediaState.togglePlayPause() }
-                    ControlButton(R.drawable.ic_skip_next, R.string.next, 36) { MediaState.skipNext() }
+                if (hasAccess && nowPlaying != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        ControlButton(R.drawable.ic_skip_previous, R.string.previous, 36) { MediaState.skipPrevious() }
+                        ControlButton(
+                            if (nowPlaying.playing) R.drawable.ic_pause else R.drawable.ic_play,
+                            if (nowPlaying.playing) R.string.pause else R.string.play,
+                            44,
+                            filled = true,
+                        ) { MediaState.togglePlayPause() }
+                        ControlButton(R.drawable.ic_skip_next, R.string.next, 36) { MediaState.skipNext() }
+                    }
                 }
             }
         }
@@ -262,16 +276,17 @@ fun MusicWidget(nowPlaying: NowPlaying?, hasAccess: Boolean, appLabel: String?, 
     }
 }
 
+private val MinArtSize = 72.dp
+
 @Composable
-private fun AlbumArt(nowPlaying: NowPlaying?) {
+private fun AlbumArt(nowPlaying: NowPlaying?, size: Dp) {
     val palette = LocalPalette.current
     val art = nowPlaying?.art
     val image = remember(art) { art?.asImageBitmap() }
-    val shape = RoundedCornerShape(12.dp)
     if (image != null) {
-        Image(image, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(52.dp).clip(shape))
+        Image(image, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(size))
     } else {
-        Box(Modifier.size(52.dp).panel(shape, palette.tileBg), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(size).background(palette.tileBg), contentAlignment = Alignment.Center) {
             Icon(painterResource(R.drawable.ic_music_note), contentDescription = null, tint = palette.tileFg, modifier = Modifier.size(24.dp))
         }
     }
