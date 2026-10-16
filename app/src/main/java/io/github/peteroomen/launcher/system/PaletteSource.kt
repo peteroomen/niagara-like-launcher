@@ -90,6 +90,7 @@ object PaletteSource {
             glassFrostedTint = if (darkText) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.12f),
             glassClear = a.glassStyle == GlassStyle.CLEAR,
             glassTintNoBlur = if (darkText) Color.White.copy(alpha = 0.62f) else Color.Black.copy(alpha = 0.42f),
+            loud = a.accent.tile != null,
         )
     }
 

@@ -71,6 +71,8 @@ data class Palette(
     val glassFrostedTint: Color,
     /** Clear glass: lightly blurred, the whole panel acts as a lens (Android 13+) */
     val glassClear: Boolean,
+    /** A Loud combo accent is on: punchier, sticker-slap motion where the launcher animates. */
+    val loud: Boolean = false,
 ) {
     fun style(size: TextUnit, weight: FontWeight = FontWeight.Normal, letterSpacing: TextUnit = TextUnit.Unspecified) =
         TextStyle(fontSize = size, fontWeight = weight, fontFamily = font, letterSpacing = letterSpacing, shadow = shadow)
