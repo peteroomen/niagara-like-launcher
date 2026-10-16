@@ -102,17 +102,17 @@ class GlassEdge(sharp: ImageBitmap) {
                 // Each colour bends a little differently: faint fringes at the rim
                 half3 c;
                 c.r = wallpaperAt(base - n * bend).r;
-                c.g = wallpaperAt(base - n * bend * 1.08).g;
-                c.b = wallpaperAt(base - n * bend * 1.16).b;
+                c.g = wallpaperAt(base - n * bend * 1.1).g;
+                c.b = wallpaperAt(base - n * bend * 1.2).b;
 
                 half lum = dot(c, half3(0.2126, 0.7152, 0.0722));
                 c = mix(half3(lum), c, 1.2);
 
                 // Light catching the rim, brightest where it faces the top-left or bottom-right
                 float facing = abs(dot(n, float2(-0.7071, -0.7071)));
-                float rim = (1.0 - smoothstep(0.0, 3.0, inside)) * (0.3 + 0.7 * facing);
-                float glow = (1.0 - smoothstep(0.0, bevel * 0.8, inside)) * 0.07;
-                c = c * 0.95 + 0.05 + half(rim * 0.55 + glow);
+                float rim = (1.0 - smoothstep(0.0, 4.5, inside)) * (0.35 + 0.65 * facing);
+                float glow = (1.0 - smoothstep(0.0, bevel * 0.8, inside)) * 0.12;
+                c = c * 0.95 + 0.05 + half(rim * 0.8 + glow);
                 return half4(clamp(c, 0.0, 1.0), 1.0);
             }
         """

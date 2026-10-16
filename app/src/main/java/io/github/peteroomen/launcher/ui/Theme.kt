@@ -92,10 +92,10 @@ private val RimWidth = 1.dp
 private val GlowDepth = 24.dp
 
 private val RimBrush = Brush.linearGradient(
-    0f to Color.White.copy(alpha = 0.55f),
-    0.3f to Color.White.copy(alpha = 0.12f),
-    0.7f to Color.White.copy(alpha = 0.06f),
-    1f to Color.White.copy(alpha = 0.32f),
+    0f to Color.White.copy(alpha = 0.7f),
+    0.3f to Color.White.copy(alpha = 0.16f),
+    0.7f to Color.White.copy(alpha = 0.08f),
+    1f to Color.White.copy(alpha = 0.45f),
 )
 
 /**
@@ -142,8 +142,8 @@ fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false): Modi
                         radius = corner,
                         // A thin bevel at the rim, so the middle shows the wallpaper as it is.
                         // (A deep bevel stretches everything behind a short panel like the music card.)
-                        bevel = minOf(shortest * 0.25f, 12.dp.toPx()),
-                        strength = minOf(shortest * 0.12f, 6.dp.toPx()),
+                        bevel = minOf(shortest * 0.25f, 16.dp.toPx()),
+                        strength = minOf(shortest * 0.16f, 9.dp.toPx()),
                         // No magnifying: on a big panel even a little moves things a long way
                         zoom = 1f,
                         panelOrigin = position.value,
@@ -178,16 +178,11 @@ fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false): Modi
             }
             if (!clearDrawn) {
                 // Clear glass lights its own rim; frosted gets a faint top glow and a hairline rim
-                drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.15f), 1f to Color.Transparent, endY = GlowDepth.toPx()))
+                drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.2f), 1f to Color.Transparent, endY = GlowDepth.toPx()))
                 drawOutline(outline, RimBrush, style = Stroke(width = RimWidth.toPx() * 2)) // half of it falls outside the clip
             }
         }
 }
-
-/** The glass rim on its own, for things inside a glass panel (like the search box); nothing with flat panels. */
-@Composable
-fun Modifier.glassRim(shape: Shape): Modifier =
-    if (LocalPalette.current.glass) border(RimWidth, RimBrush, shape) else this
 
 /**
  * A panel behind something: liquid glass when that's switched on, otherwise a flat [fill]. A
