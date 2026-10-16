@@ -128,10 +128,13 @@ private fun ClockPanel(background: ClockBackground, content: @Composable () -> U
         return
     }
     val base = LocalPalette.current
-    val palette = when (background) {
-        ClockBackground.GLASS -> base.copy(glass = true, glassClear = true)
-        ClockBackground.BLUR -> base.copy(glass = true, glassClear = false)
-        else -> base.copy(glass = false)
+    val palette = when {
+        base.loud -> base
+        else -> when (background) {
+            ClockBackground.GLASS -> base.copy(glass = true, glassClear = true)
+            ClockBackground.BLUR -> base.copy(glass = true, glassClear = false)
+            else -> base.copy(glass = false)
+        }
     }
     CompositionLocalProvider(LocalPalette provides palette) {
         Box(Modifier.panel(RoundedCornerShape(26.dp), palette.card).padding(horizontal = 22.dp, vertical = 16.dp)) {

@@ -20,7 +20,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -66,8 +65,8 @@ private val SwoopSpring = spring<Float>(dampingRatio = 0.62f, stiffness = 380f)
 private val SelectSpring = spring<Float>(dampingRatio = 0.55f, stiffness = 600f)
 
 /*
- * Loud motion, with a Loud combo accent: the disc is stamped down (it lands big and tilted, bounces
- * to size and drops a hard ink shadow), and icons punch straight out with a big overshoot, slapped
+ * Loud motion, with a Loud combo accent: the disc is stamped down (it lands big and tilted and
+ * bounces to size), and icons punch straight out with a big overshoot, slapped
  * on like stickers from a tilt. Nothing fades: things are either there or not.
  */
 private val LoudStampSpring = spring<Float>(dampingRatio = 0.42f, stiffness = 700f)
@@ -75,8 +74,6 @@ private val LoudPunchSpring = spring<Float>(dampingRatio = 0.4f, stiffness = 520
 private val LoudSelectSpring = spring<Float>(dampingRatio = 0.35f, stiffness = 900f)
 private const val LoudStaggerMs = 28L
 private const val LoudTiltDegrees = -18f
-private val LoudShadowOffset = 6.dp
-private val LoudInk = Color(0xFF171714)
 
 /**
  * Up to eight favourites in a ring around the finger; the one it's on grows and gets a ring. A
@@ -151,19 +148,6 @@ fun PieMenu(state: HomeUiState, pie: PieState, slots: List<Fav>) {
                 .graphicsLayer { alpha = disc.value.coerceIn(0f, 1f) }
                 .background(palette.scrim.copy(alpha = palette.scrim.alpha * if (palette.glass) 0.25f else 0.5f)),
         )
-        if (loud) {
-            // The hard shadow the disc lands on, sliding out as the stamp comes down
-            Box(
-                Modifier
-                    .offset {
-                        val drop = LoudShadowOffset.toPx() * disc.value.coerceIn(0f, 1f)
-                        IntOffset((c.x - radiusPx + drop).roundToInt(), (c.y - radiusPx + drop).roundToInt())
-                    }
-                    .size(PieRadius * 2)
-                    .graphicsLayer { alpha = if (disc.value > 0.02f) 1f else 0f }
-                    .background(LoudInk, CircleShape),
-            )
-        }
         Box(
             Modifier
                 .offset { IntOffset((c.x - radiusPx).roundToInt(), (c.y - radiusPx).roundToInt()) }
@@ -182,8 +166,8 @@ fun PieMenu(state: HomeUiState, pie: PieState, slots: List<Fav>) {
                         alpha = p.coerceIn(0f, 1f)
                     }
                 }
-                .panel(CircleShape, palette.pill)
-                .then(if (loud) Modifier.border(3.dp, LoudInk, CircleShape) else Modifier),
+                // With Loud on, the panel is solid with its own outline and hard shadow
+                .panel(CircleShape, palette.pill),
         )
         for (slot in 0 until Pie.SLOTS) {
             val fav = slots.getOrNull(slot)
