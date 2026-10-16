@@ -4,12 +4,14 @@ import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -185,18 +187,43 @@ fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false, bendS
 }
 
 /**
+ * True inside something that's already glass (a folder, the folder row, the pie, a sheet). Like
+ * iOS, glass isn't stacked on glass: panels in there are flat fills instead.
+ */
+val LocalOnGlass = staticCompositionLocalOf { false }
+
+/** [content] sits on glass, if glass is on: its own panels drop to flat fills. */
+@Composable
+fun OnGlass(content: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalOnGlass provides LocalPalette.current.glass, content = content)
+}
+
+/**
  * A panel behind something: liquid glass when that's switched on, otherwise a flat [fill]. A
  * [sheet] sits against the sides and bottom of the screen, so only its top edge is a glass edge.
- * [lens] scales how strongly clear glass bends at its rim (1 = the music card).
+ * [lens] scales how strongly clear glass bends at its rim (1 = the music card). [rimOver] draws
+ * the lit rim and an inner glow over the content too, for content that runs to the edge (like
+ * the music card's album art), so the edges still read as glass.
  */
 @Composable
-fun Modifier.panel(shape: Shape, fill: Color, sheet: Boolean = false, lens: Float = 1f): Modifier {
+fun Modifier.panel(shape: Shape, fill: Color, sheet: Boolean = false, lens: Float = 1f, rimOver: Boolean = false): Modifier {
     val palette = LocalPalette.current
     return when {
         palette.loud -> loudPanel(shape, fill, palette.text, sheet)
-        palette.glass -> glass(shape, palette, sheet, lens)
+        palette.glass && LocalOnGlass.current -> clip(shape).background(fill)
+        palette.glass -> glass(shape, palette, sheet, lens).then(if (rimOver) Modifier.rimOver(shape) else Modifier)
         else -> clip(shape).background(fill)
     }
+}
+
+/** The glass rim and a soft inner glow, drawn over the content (inside the panel's clip). */
+private fun Modifier.rimOver(shape: Shape): Modifier = drawWithContent {
+    drawContent()
+    val outline = shape.createOutline(size, layoutDirection, this)
+    // Half of each stroke falls outside the clip: a wide faint glow inside, then the lit rim
+    drawOutline(outline, Color.White.copy(alpha = 0.1f), style = Stroke(width = 12.dp.toPx()))
+    drawOutline(outline, Color.White.copy(alpha = 0.06f), style = Stroke(width = 24.dp.toPx()))
+    drawOutline(outline, RimBrush, style = Stroke(width = RimWidth.toPx() * 3))
 }
 
 private val LoudStroke = 2.5.dp
