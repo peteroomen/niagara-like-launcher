@@ -227,7 +227,11 @@ fun AzStrip(
                         scaleY = scaleX
                         this.alpha = focus
                     }
-                    .background(palette.backdrop.copy(alpha = 0.45f), CircleShape),
+                    // Glass like the music card when glass is on (or Loud's solid panel); a dim disc otherwise
+                    .then(
+                        if (palette.glass || palette.loud) Modifier.panel(CircleShape, palette.card)
+                        else Modifier.background(palette.backdrop.copy(alpha = 0.45f), CircleShape),
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(shownLetter.toString(), color = palette.text, style = palette.style(32.sp, FontWeight.Medium))
@@ -492,8 +496,8 @@ fun SearchOverlay(
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focus)
-                    .background(ink.copy(alpha = 0.1f), RoundedCornerShape(14.dp))
-                    .glassRim(RoundedCornerShape(14.dp))
+                    // The same glass as the music card (or Loud's solid panel); a faint fill otherwise
+                    .panel(RoundedCornerShape(14.dp), if (palette.loud) palette.card else ink.copy(alpha = 0.1f))
                     .padding(horizontal = 14.dp, vertical = 12.dp),
                 decorationBox = { field ->
                     Box {
