@@ -49,16 +49,22 @@ enum class ListStyle { WALLPAPER, PANEL }
 enum class Backdrop { NONE, LEFT_FADE, DIM }
 
 /**
- * Accent colour: taken from the wallpaper, a fixed hue, or plain white/black ([MONO]). The combos,
- * matching Loud's bolder palettes, go fully Loud: themed icons get a fixed opaque [tile] and
+ * Accent colour: taken from the wallpaper, a fixed hue, or plain white/black ([MONO]). The Loud
+ * palettes, one for each of the Loud launcher's palettes, go fully Loud: themed icons get a fixed opaque [tile] and
  * [glyph] colour, and glass gives way to solid outlined panels with hard shadows, filled [bright]
  * under dark text or [deep] under light text.
  */
 enum class Accent(val hue: Float?, val tile: Long? = null, val glyph: Long? = null, val bright: Long? = null, val deep: Long? = null) {
     WALLPAPER(null), AMBER(36f), CORAL(10f), PINK(330f), VIOLET(265f), BLUE(212f), TEAL(172f), GREEN(128f), MONO(null),
+    // Appended so stored names never change meaning; listed in Loud's order in settings
     POP_GARDEN(330f, 0xFF4BE37A, 0xFF171714, 0xFFFF9ACB, 0xFF0E3B2C),
     BABY_BLUE(205f, 0xFF9FD8FF, 0xFFAD1457, 0xFFD6EEFF, 0xFF123A5C),
-    RAVE(85f, 0xFFFF6FB5, 0xFF0E3B2C, 0xFFB8F25C, 0xFF0E3B2C);
+    RAVE(85f, 0xFFFF6FB5, 0xFF0E3B2C, 0xFFB8F25C, 0xFF0E3B2C),
+    TAXI(54f, 0xFFFFE600, 0xFF171714, 0xFFF5F0E5, 0xFF171714),
+    RISO(338f, 0xFFFF88B3, 0xFF171714, 0xFFFFF5EC, 0xFF171714),
+    ACID(75f, 0xFFD1F555, 0xFF171714, 0xFFF0F1DF, 0xFF171714),
+    NIGHT_BRUTAL(72f, 0xFFE0FC67, 0xFF171714, 0xFFE8E5DC, 0xFF202023),
+    CANDY(45f, 0xFFF8DE8B, 0xFF171714, 0xFFFFF2E8, 0xFF171714);
 
     val loud get() = tile != null
 }

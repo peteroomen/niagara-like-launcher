@@ -89,9 +89,14 @@
     <string name="accent_teal">Teal</string>
     <string name="accent_green">Green</string>
     <string name="accent_mono">White or black</string>
-    <string name="accent_pop_garden">Pop Garden (pink, green icons)</string>
-    <string name="accent_baby_blue">Baby Blue (baby blue icons)</string>
-    <string name="accent_rave">Rave (lime, hot pink icons)</string>
+    <string name="accent_taxi">Loud · Taxi (yellow)</string>
+    <string name="accent_riso">Loud · Riso (pink)</string>
+    <string name="accent_acid">Loud · Acid (lime)</string>
+    <string name="accent_night_brutal">Loud · Night Brutal</string>
+    <string name="accent_candy">Loud · Candy (pastel)</string>
+    <string name="accent_pop_garden">Loud · Pop Garden (pink, green icons)</string>
+    <string name="accent_baby_blue">Loud · Baby Blue</string>
+    <string name="accent_rave">Loud · Rave (lime, hot pink icons)</string>
     <string name="font">Font</string>
     <string name="font_system">System</string>
     <string name="font_condensed">Condensed</string>
