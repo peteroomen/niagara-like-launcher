@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -64,6 +65,19 @@ private const val SwoopDegrees = 40.0
 private val SwoopSpring = spring<Float>(dampingRatio = 0.62f, stiffness = 380f)
 private val SelectSpring = spring<Float>(dampingRatio = 0.55f, stiffness = 600f)
 
+/*
+ * Loud motion, with a Loud combo accent: the disc is stamped down (it lands big and tilted, bounces
+ * to size and drops a hard ink shadow), and icons punch straight out with a big overshoot, slapped
+ * on like stickers from a tilt. Nothing fades: things are either there or not.
+ */
+private val LoudStampSpring = spring<Float>(dampingRatio = 0.42f, stiffness = 700f)
+private val LoudPunchSpring = spring<Float>(dampingRatio = 0.4f, stiffness = 520f)
+private val LoudSelectSpring = spring<Float>(dampingRatio = 0.35f, stiffness = 900f)
+private const val LoudStaggerMs = 28L
+private const val LoudTiltDegrees = -18f
+private val LoudShadowOffset = 6.dp
+private val LoudInk = Color(0xFF171714)
+
 /**
  * Up to eight favourites in a ring around the finger; the one it's on grows and gets a ring. A
  * folder's apps fan out in an arc beyond it while the finger is on it.
@@ -79,11 +93,14 @@ fun PieMenu(state: HomeUiState, pie: PieState, slots: List<Fav>) {
     val hit = pie.hit
     val radiusPx = with(density) { PieRadius.toPx() }
 
+    val loud = palette.loud
+    val stagger = if (loud) LoudStaggerMs else StaggerMs
+    val swoop = if (loud) LoudPunchSpring else SwoopSpring
     val disc = remember { Animatable(0f) }
     val ring = remember { List(Pie.SLOTS) { Animatable(0f) } }
     LaunchedEffect(Unit) {
-        launch { disc.animateTo(1f, spring(dampingRatio = 0.8f, stiffness = 500f)) }
-        ring.forEachIndexed { i, a -> launch { delay(i * StaggerMs); a.animateTo(1f, SwoopSpring) } }
+        launch { disc.animateTo(1f, if (loud) LoudStampSpring else spring(dampingRatio = 0.8f, stiffness = 500f)) }
+        ring.forEachIndexed { i, a -> launch { delay(i * stagger); a.animateTo(1f, swoop) } }
     }
 
     fun pointAt(angleDegrees: Double, radius: Dp): Offset {
@@ -96,21 +113,34 @@ fun PieMenu(state: HomeUiState, pie: PieState, slots: List<Fav>) {
     @Composable
     fun Placed(at: () -> Offset, size: Dp, selected: Boolean, reveal: () -> Float, content: @Composable () -> Unit) {
         val half = with(density) { size.toPx() / 2 }
-        val grow by animateFloatAsState(if (selected) 1.25f else 1f, SelectSpring, label = "pie select")
+        val grow by animateFloatAsState(
+            if (selected) (if (loud) 1.35f else 1.25f) else 1f,
+            if (loud) LoudSelectSpring else SelectSpring,
+            label = "pie select",
+        )
         Box(
             Modifier
                 .offset { at().let { IntOffset((it.x - half).roundToInt(), (it.y - half).roundToInt()) } }
                 .size(size)
                 .graphicsLayer {
                     val p = reveal()
-                    val scale = grow * (0.35f + 0.65f * p)
-                    scaleX = scale
-                    scaleY = scale
-                    alpha = p.coerceIn(0f, 1f)
+                    if (loud) {
+                        // Slapped on: full size from the first frame, tilted until it lands
+                        val scale = grow * (0.6f + 0.4f * p)
+                        scaleX = scale
+                        scaleY = scale
+                        rotationZ = LoudTiltDegrees * (1 - p)
+                        alpha = if (p > 0.02f) 1f else 0f
+                    } else {
+                        val scale = grow * (0.35f + 0.65f * p)
+                        scaleX = scale
+                        scaleY = scale
+                        alpha = p.coerceIn(0f, 1f)
+                    }
                 },
         ) {
             content()
-            if (selected) Box(Modifier.fillMaxSize().border(2.dp, palette.accent, palette.iconShape))
+            if (selected) Box(Modifier.fillMaxSize().border(if (loud) 3.dp else 2.dp, palette.accent, palette.iconShape))
         }
     }
 
@@ -121,24 +151,47 @@ fun PieMenu(state: HomeUiState, pie: PieState, slots: List<Fav>) {
                 .graphicsLayer { alpha = disc.value.coerceIn(0f, 1f) }
                 .background(palette.scrim.copy(alpha = palette.scrim.alpha * if (palette.glass) 0.25f else 0.5f)),
         )
+        if (loud) {
+            // The hard shadow the disc lands on, sliding out as the stamp comes down
+            Box(
+                Modifier
+                    .offset {
+                        val drop = LoudShadowOffset.toPx() * disc.value.coerceIn(0f, 1f)
+                        IntOffset((c.x - radiusPx + drop).roundToInt(), (c.y - radiusPx + drop).roundToInt())
+                    }
+                    .size(PieRadius * 2)
+                    .graphicsLayer { alpha = if (disc.value > 0.02f) 1f else 0f }
+                    .background(LoudInk, CircleShape),
+            )
+        }
         Box(
             Modifier
                 .offset { IntOffset((c.x - radiusPx).roundToInt(), (c.y - radiusPx).roundToInt()) }
                 .size(PieRadius * 2)
                 .graphicsLayer {
                     val p = disc.value
-                    scaleX = 0.4f + 0.6f * p
-                    scaleY = 0.4f + 0.6f * p
-                    alpha = p.coerceIn(0f, 1f)
+                    if (loud) {
+                        // Stamped: lands oversized and tilted, bounces down to size
+                        scaleX = 1.3f - 0.3f * p
+                        scaleY = 1.3f - 0.3f * p
+                        rotationZ = LoudTiltDegrees / 2 * (1 - p)
+                        alpha = if (p > 0.02f) 1f else 0f
+                    } else {
+                        scaleX = 0.4f + 0.6f * p
+                        scaleY = 0.4f + 0.6f * p
+                        alpha = p.coerceIn(0f, 1f)
+                    }
                 }
-                .panel(CircleShape, palette.pill),
+                .panel(CircleShape, palette.pill)
+                .then(if (loud) Modifier.border(3.dp, LoudInk, CircleShape) else Modifier),
         )
         for (slot in 0 until Pie.SLOTS) {
             val fav = slots.getOrNull(slot)
             val p = ring[slot]
             Placed(
-                // Out from the centre along a curve: it starts a little round and swings into its slot
-                at = { pointAt(Pie.angleOf(slot) + (1 - p.value) * SwoopDegrees, RingRadius * p.value) },
+                // Out from the centre along a curve: it starts a little round and swings into its slot.
+                // Loud punches straight out instead.
+                at = { pointAt(Pie.angleOf(slot) + if (loud) 0.0 else (1 - p.value) * SwoopDegrees, RingRadius * p.value) },
                 size = PieIconSize,
                 selected = hit.slot == slot && hit.folderIndex == null,
                 reveal = { p.value },
@@ -160,7 +213,7 @@ fun PieMenu(state: HomeUiState, pie: PieState, slots: List<Fav>) {
                 fan.forEachIndexed { i, a ->
                     // The middle of the arc first, then outwards to both ends
                     val order = abs(i - (count - 1) / 2.0)
-                    launch { delay((order * StaggerMs * 1.5).toLong()); a.animateTo(1f, SwoopSpring) }
+                    launch { delay((order * stagger * 1.5).toLong()); a.animateTo(1f, swoop) }
                 }
             }
             val from = Pie.angleOf(hit.slot)

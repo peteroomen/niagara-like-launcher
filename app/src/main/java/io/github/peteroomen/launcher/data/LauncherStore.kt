@@ -48,9 +48,13 @@ enum class ListStyle { WALLPAPER, PANEL }
 /** Something behind the text to lift it off busy wallpapers. */
 enum class Backdrop { NONE, LEFT_FADE, DIM }
 
-/** Accent colour: taken from the wallpaper, a fixed hue, or plain white/black ([MONO]). */
-enum class Accent(val hue: Float?) {
-    WALLPAPER(null), AMBER(36f), CORAL(10f), PINK(330f), VIOLET(265f), BLUE(212f), TEAL(172f), GREEN(128f), MONO(null)
+/**
+ * Accent colour: taken from the wallpaper, a fixed hue, or plain white/black ([MONO]). The combos,
+ * matching Loud's bolder palettes, also give themed icons a fixed opaque [tile] and [glyph] colour.
+ */
+enum class Accent(val hue: Float?, val tile: Long? = null, val glyph: Long? = null) {
+    WALLPAPER(null), AMBER(36f), CORAL(10f), PINK(330f), VIOLET(265f), BLUE(212f), TEAL(172f), GREEN(128f), MONO(null),
+    POP_GARDEN(330f, 0xFF4BE37A, 0xFF171714), BABY_BLUE(205f, 0xFF9FD8FF, 0xFFAD1457), RAVE(85f, 0xFFFF6FB5, 0xFF0E3B2C),
 }
 
 data class Appearance(

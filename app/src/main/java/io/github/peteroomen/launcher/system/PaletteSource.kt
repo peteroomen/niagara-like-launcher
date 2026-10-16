@@ -38,7 +38,7 @@ object PaletteSource {
         val hsl = FloatArray(3)
         val (h, s) = when {
             a.accent == Accent.MONO -> 0f to 0f
-            a.accent.hue != null -> a.accent.hue to 0.7f
+            a.accent.hue != null -> a.accent.hue to if (a.accent.tile != null) 0.9f else 0.7f
             else -> {
                 // The most vivid of the wallpaper's main colours becomes the accent hue
                 val vivid = listOfNotNull(colors?.primaryColor, colors?.secondaryColor, colors?.tertiaryColor)
@@ -66,8 +66,8 @@ object PaletteSource {
             text = ink,
             muted = ink.copy(alpha = if (darkText) 0.68f else 0.72f),
             accent = accent,
-            tileBg = if (darkText) hsl(0.5f, 0.84f, 0.92f) else hsl(0.35f, 0.14f, 0.55f),
-            tileFg = if (darkText) hsl(0.6f, 0.24f) else hsl(0.85f, 0.84f),
+            tileBg = a.accent.tile?.let { Color(it) } ?: if (darkText) hsl(0.5f, 0.84f, 0.92f) else hsl(0.35f, 0.14f, 0.55f),
+            tileFg = a.accent.glyph?.let { Color(it) } ?: if (darkText) hsl(0.6f, 0.24f) else hsl(0.85f, 0.84f),
             pill = opposite.copy(alpha = if (darkText) 0.6f else 0.4f),
             ring = opposite.copy(alpha = if (darkText) 0.9f else 0.45f),
             scrim = opposite.copy(alpha = if (darkText) 0.6f else 0.45f),
@@ -90,6 +90,7 @@ object PaletteSource {
             glassFrostedTint = if (darkText) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.12f),
             glassClear = a.glassStyle == GlassStyle.CLEAR,
             glassTintNoBlur = if (darkText) Color.White.copy(alpha = 0.62f) else Color.Black.copy(alpha = 0.42f),
+            loud = a.accent.tile != null,
         )
     }
 

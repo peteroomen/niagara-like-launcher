@@ -89,6 +89,9 @@
     <string name="accent_teal">Teal</string>
     <string name="accent_green">Green</string>
     <string name="accent_mono">White or black</string>
+    <string name="accent_pop_garden">Pop Garden (pink, green icons)</string>
+    <string name="accent_baby_blue">Baby Blue (baby blue icons)</string>
+    <string name="accent_rave">Rave (lime, hot pink icons)</string>
     <string name="font">Font</string>
     <string name="font_system">System</string>
     <string name="font_condensed">Condensed</string>
