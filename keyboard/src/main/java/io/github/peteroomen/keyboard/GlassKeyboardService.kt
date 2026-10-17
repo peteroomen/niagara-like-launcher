@@ -1,6 +1,9 @@
 package io.github.peteroomen.keyboard
 
+import android.content.ClipDescription
+import android.content.ClipboardManager
 import android.content.Intent
+import android.graphics.Paint
 import android.graphics.PixelFormat
 import android.graphics.drawable.ColorDrawable
 import android.inputmethodservice.InputMethodService
@@ -25,6 +28,9 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import io.github.peteroomen.keyboard.model.Clip
+import io.github.peteroomen.keyboard.model.ClipHistory
+import io.github.peteroomen.keyboard.model.Emoji
 import io.github.peteroomen.keyboard.model.EnterAction
 import io.github.peteroomen.keyboard.model.FieldKind
 import io.github.peteroomen.keyboard.model.Fields
@@ -53,6 +59,9 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
     override val savedStateRegistry: SavedStateRegistry get() = savedState.savedStateRegistry
 
     private val state = KeyboardState()
+    private val clipboard by lazy { getSystemService(ClipboardManager::class.java) }
+    // The keyboard in use is allowed to read the clipboard; every copy is offered in the toolbar
+    private val clipListener = ClipboardManager.OnPrimaryClipChangedListener { readClipboard() }
     private lateinit var prefs: KeyboardPrefs
     private var view: View? = null
     private var blurOn = true
@@ -82,6 +91,14 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
         blurOn = wm.isCrossWindowBlurEnabled
         wm.addCrossWindowBlurEnabledListener(mainExecutor, blurListener)
         refreshLook()
+        state.recentEmoji = prefs.recentEmoji
+        // The emoji list, less any this phone's font can't draw (checking takes a moment, so off the main thread)
+        Thread {
+            val paint = Paint()
+            val categories = Emoji.parse(assets.open("emoji.txt").bufferedReader().use { it.readText() }) { paint.hasGlyph(it) }
+            mainExecutor.execute { state.emojiCategories = categories }
+        }.start()
+        clipboard.addPrimaryClipChangedListener(clipListener)
     }
 
     override fun onCreateInputView(): View {
@@ -107,7 +124,10 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
         if (!restarting) {
             state.page = Layouts.firstPage(state.field)
             state.shift = Shift.OFF
+            state.emoji = false
         }
+        // Catches copies made while the keyboard wasn't running, and lets old ones expire
+        readClipboard()
         autoCapitalise()
     }
 
@@ -117,6 +137,7 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
     }
 
     override fun onDestroy() {
+        clipboard.removePrimaryClipChangedListener(clipListener)
         getSystemService(WindowManager::class.java).removeCrossWindowBlurEnabledListener(blurListener)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         super.onDestroy()
@@ -225,6 +246,49 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
         startActivity(Intent(this, SetupActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
+    override fun showEmoji(show: Boolean) {
+        state.emoji = show
+        if (!show) autoCapitalise()
+    }
+
+    override fun typeEmoji(emoji: String) {
+        currentInputConnection?.commitText(emoji, 1) ?: return
+        val recents = Emoji.used(state.recentEmoji, emoji)
+        state.recentEmoji = recents
+        prefs.recentEmoji = recents
+    }
+
+    override fun paste(clip: Clip) {
+        currentInputConnection?.commitText(clip.text, 1)
+        autoCapitalise()
+    }
+
+    override fun forgetClip(clip: Clip) {
+        state.clips = state.clips - clip
+    }
+
+    /** The current copy, added to the recent ones (kept in memory only, and only for an hour). */
+    private fun readClipboard() {
+        val now = System.currentTimeMillis()
+        val clip = runCatching { clipboard.primaryClip }.getOrNull()
+        val text = clip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(this)?.toString()
+        state.clips = if (text == null) {
+            ClipHistory.current(state.clips, now)
+        } else {
+            val description = clip.description
+            val sensitive = description.extras?.getBoolean(ClipDescription.EXTRA_IS_SENSITIVE) == true
+            // When it was copied, so a copy from an hour ago isn't offered as new. Read either as a
+            // wall-clock time or as time since boot, whichever it plausibly is.
+            val stamp = description.timestamp
+            val at = when {
+                stamp > EPOCH_2020 -> stamp
+                stamp > 0 -> now - (SystemClock.elapsedRealtime() - stamp)
+                else -> now
+            }.coerceAtMost(now)
+            ClipHistory.add(state.clips, Clip(text, sensitive, at), now)
+        }
+    }
+
     override fun feedback(kind: Feedback) {
         if (prefs.vibrate) {
             view?.performHapticFeedback(
@@ -245,5 +309,9 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
                 )
             }
         }
+    }
+
+    private companion object {
+        const val EPOCH_2020 = 1_577_836_800_000L
     }
 }

@@ -52,7 +52,9 @@ A keyboard of frosted glass, in `keyboard/`, built as its own app (`keyboard-deb
 - Enter matches the app: Search, Send, Go, Next or Done, or a new line.
 - Two quick spaces after a word type a full stop. Hold backspace to keep deleting.
 - Slide along the space bar to move the cursor. Hold it to switch keyboards.
-- A toolbar above the keys, laid out like Gboard's: settings and switch keyboard on the left, hide on the right.
+- A toolbar above the keys, laid out like Gboard's: emoji, settings and switch keyboard on the left, hide on the right.
+- **Emoji:** tap the smiley for emoji in place of the keys, like Gboard's: one scrolling grid, recently used first, with category tabs between ABC and backspace. Emoji the phone's font can't draw are left out. The list comes from Unicode (`keyboard/scripts/build_emoji.py`).
+- **Clipboard strip:** whatever you copy shows as a chip in the toolbar; tap it to paste, hold it to forget it. Something copied in the last minute is highlighted. Copies last an hour and are only kept in memory, and anything an app marks sensitive (like a password) shows as dots.
 - Vibration (on) and click sounds (off), and light, dark or system glass, in the **Glass Keyboard** app.
 
 To set it up, open **Glass Keyboard**, tap **Turn on Glass Keyboard** and switch it on in Android's list, then **Switch to Glass Keyboard**.

@@ -22,6 +22,11 @@ class KeyboardPrefs(context: Context) {
         get() = runCatching { LookChoice.valueOf(prefs.getString("look", null) ?: "") }.getOrDefault(LookChoice.SYSTEM)
         set(value) = prefs.edit { putString("look", value.name) }
 
+    /** Emoji typed lately, most recent first */
+    var recentEmoji: List<String>
+        get() = prefs.getString("recent_emoji", null)?.split('\n')?.filter { it.isNotEmpty() }.orEmpty()
+        set(value) = prefs.edit { putString("recent_emoji", value.joinToString("\n")) }
+
     fun dark(context: Context) = when (look) {
         LookChoice.DARK -> true
         LookChoice.LIGHT -> false

@@ -51,6 +51,8 @@ import io.github.peteroomen.keyboard.R
 import io.github.peteroomen.keyboard.model.Action
 import io.github.peteroomen.keyboard.model.ActionKey
 import io.github.peteroomen.keyboard.model.CharKey
+import io.github.peteroomen.keyboard.model.Clip
+import io.github.peteroomen.keyboard.model.EmojiCategory
 import io.github.peteroomen.keyboard.model.EnterAction
 import io.github.peteroomen.keyboard.model.FieldKind
 import io.github.peteroomen.keyboard.model.Geometry
@@ -70,6 +72,12 @@ class KeyboardState {
     var shift by mutableStateOf(Shift.OFF)
     var enter by mutableStateOf(EnterAction.RETURN)
     var look by mutableStateOf(Look(dark = true, blur = true, accent = Color(0xFF9CCAFF)))
+    /** The emoji panel is showing in place of the keys */
+    var emoji by mutableStateOf(false)
+    var emojiCategories by mutableStateOf<List<EmojiCategory>>(emptyList())
+    var recentEmoji by mutableStateOf<List<String>>(emptyList())
+    /** Recent copies, newest first, offered in the toolbar */
+    var clips by mutableStateOf<List<Clip>>(emptyList())
 
     /** What a character key types right now: capitals while shifted. */
     fun label(key: CharKey) = if (page == Page.LETTERS && shift != Shift.OFF) TextLogic.shifted(key.text) else key.text
@@ -92,15 +100,19 @@ interface KeyboardActions {
     fun hide()
     fun pickKeyboard()
     fun openSettings()
+    fun showEmoji(show: Boolean)
+    fun typeEmoji(emoji: String)
+    fun paste(clip: Clip)
+    fun forgetClip(clip: Clip)
     fun feedback(kind: Feedback)
 }
 
-private val StripHeight = 44.dp
-private val RowHeight = 54.dp
+internal val StripHeight = 44.dp
+internal val RowHeight = 54.dp
 private val SidePadding = 3.dp
 private val GapX = 3.dp
 private val GapY = 5.dp
-private val KeyCorner = 10.dp
+internal val KeyCorner = 10.dp
 
 private const val LongPressMs = 350L
 private const val PickerPressMs = 600L
@@ -150,8 +162,10 @@ fun KeyboardScreen(state: KeyboardState, actions: KeyboardActions) {
                 drawRect(look.edge, size = size.copy(height = 1.dp.toPx()))
             },
         ) {
-            Strip(look, act)
-            Box(
+            Strip(state, look, act)
+            if (state.emoji) {
+                EmojiPanel(state, look, act, Modifier.padding(horizontal = SidePadding).fillMaxWidth().height(RowHeight * layout.rows.size))
+            } else Box(
                 Modifier
                     .padding(horizontal = SidePadding)
                     .fillMaxWidth()
@@ -362,23 +376,25 @@ fun KeyboardScreen(state: KeyboardState, actions: KeyboardActions) {
 }
 
 /**
- * The toolbar above the keys, laid out like Gboard's: settings and switch keyboard on the left,
- * hide on the right. It also gives the bubbles over the top row room to rise into.
+ * The toolbar above the keys, laid out like Gboard's: emoji, settings and switch keyboard on the
+ * left, recent copies to paste in the middle, hide on the right. It also gives the bubbles over
+ * the top row room to rise into.
  */
 @Composable
-private fun Strip(look: Look, actions: KeyboardActions) {
+private fun Strip(state: KeyboardState, look: Look, actions: KeyboardActions) {
     Row(Modifier.fillMaxWidth().height(StripHeight).padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        ToolbarButton(R.drawable.ic_emoji, look, on = state.emoji) { actions.showEmoji(!state.emoji) }
         ToolbarButton(R.drawable.ic_settings, look) { actions.openSettings() }
         ToolbarButton(R.drawable.ic_keyboard, look) { actions.pickKeyboard() }
-        Spacer(Modifier.weight(1f))
+        ClipChips(state.clips, look, actions, Modifier.weight(1f))
         ToolbarButton(R.drawable.ic_keyboard_hide, look) { actions.hide() }
     }
 }
 
 @Composable
-private fun ToolbarButton(@DrawableRes icon: Int, look: Look, onClick: () -> Unit) {
+private fun ToolbarButton(@DrawableRes icon: Int, look: Look, on: Boolean = false, onClick: () -> Unit) {
     Box(Modifier.size(StripHeight).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
-        Icon(icon, look.hint, 22.dp)
+        Icon(icon, if (on) look.accent else look.hint, 22.dp)
     }
 }
 
@@ -444,8 +460,8 @@ private fun enterIcon(action: EnterAction) = when (action) {
 }
 
 /** A frosted key: its fill, a glow along the top, a lit rim; brighter while held. */
-private fun Modifier.keyGlass(look: Look, fill: Color, held: Boolean) = drawBehind {
-    val corner = CornerRadius(KeyCorner.toPx())
+internal fun Modifier.keyGlass(look: Look, fill: Color, held: Boolean, corner: Dp = KeyCorner) = drawBehind {
+    val corner = CornerRadius(corner.toPx())
     drawRoundRect(fill, cornerRadius = corner)
     drawRoundRect(Brush.verticalGradient(0f to look.glow, 1f to Color.Transparent, endY = size.height * 0.6f), cornerRadius = corner)
     if (held) drawRoundRect(look.pressed, cornerRadius = corner)
@@ -476,7 +492,7 @@ private fun Bubble(look: Look, left: Float, top: Float, width: Float, height: Fl
 }
 
 @Composable
-private fun Icon(@DrawableRes id: Int, tint: Color, size: Dp) {
+internal fun Icon(@DrawableRes id: Int, tint: Color, size: Dp) {
     Image(painterResource(id), contentDescription = null, colorFilter = ColorFilter.tint(tint), modifier = Modifier.size(size))
 }
 
