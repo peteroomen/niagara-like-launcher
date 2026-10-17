@@ -16,6 +16,11 @@ import android.view.View
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.view.textservice.SentenceSuggestionsInfo
+import android.view.textservice.SpellCheckerSession
+import android.view.textservice.SuggestionsInfo
+import android.view.textservice.TextInfo
+import android.view.textservice.TextServicesManager
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.ComposeView
@@ -39,6 +44,7 @@ import io.github.peteroomen.keyboard.model.Page
 import io.github.peteroomen.keyboard.model.Shift
 import io.github.peteroomen.keyboard.model.ShiftLogic
 import io.github.peteroomen.keyboard.model.Text
+import io.github.peteroomen.keyboard.model.Words
 import io.github.peteroomen.keyboard.ui.Feedback
 import io.github.peteroomen.keyboard.ui.KeyboardActions
 import io.github.peteroomen.keyboard.ui.KeyboardScreen
@@ -74,6 +80,43 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
     private var lastShiftTap = 0L
     /** When space was last typed by us, for the double-space full stop */
     private var lastSpace = 0L
+
+    /** The word under way: composing text in the app, provisional until it's finished */
+    private val word = StringBuilder()
+    /** This field gets composing text and suggestions (plain text, not passwords or addresses) */
+    private var composes = false
+    private var suggests = false
+    /** When we last changed the text, to tell our own selection updates from the person moving the cursor */
+    private var lastEditAt = 0L
+    /**
+     * The last autocorrect, which a backspace straight after undoes: the text it left before the
+     * cursor, and what goes back (the typed word, and the punctuation that ended it; not a space)
+     */
+    private var correction: Pair<String, String>? = null
+
+    private var spell: SpellCheckerSession? = null
+    private var spellRequest = 0
+    private val spellWords = HashMap<Int, String>()
+    private val spellListener = object : SpellCheckerSession.SpellCheckerSessionListener {
+        @Deprecated("Deprecated in Java")
+        override fun onGetSuggestions(results: Array<out SuggestionsInfo>?) = Unit
+        override fun onGetSentenceSuggestions(results: Array<out SentenceSuggestionsInfo>?) {
+            val sentence = results?.firstOrNull() ?: return
+            if (sentence.suggestionsCount == 0) return
+            val info = sentence.getSuggestionsInfoAt(0)
+            val asked = spellWords.remove(info.sequence) ?: return
+            // Only the answer for the word still being typed matters
+            if (asked != word.toString()) return
+            val attrs = info.suggestionsAttributes
+            val found = (0 until info.suggestionsCount.coerceAtLeast(0)).map { info.getSuggestionAt(it) }
+            state.suggestions = Words.strip(
+                asked,
+                found,
+                looksLikeTypo = attrs and SuggestionsInfo.RESULT_ATTR_LOOKS_LIKE_TYPO != 0,
+                recommended = attrs and SuggestionsInfo.RESULT_ATTR_HAS_RECOMMENDED_SUGGESTIONS != 0,
+            )
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -119,6 +162,12 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         refreshLook()
+        // Whatever was left provisional is kept as it is, so the next letter can't replace it
+        currentInputConnection?.finishComposingText()
+        forgetWord()
+        composes = Words.composes(info.inputType)
+        suggests = Words.suggests(info.inputType) && prefs.suggestions
+        if (suggests && spell == null) spell = openSpellChecker()
         state.field = Fields.kind(info.inputType)
         state.enter = Fields.enterAction(info.imeOptions, info.inputType)
         if (!restarting) {
@@ -133,10 +182,26 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
 
     override fun onUpdateSelection(oldSelStart: Int, oldSelEnd: Int, newSelStart: Int, newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+        // The cursor moved away from the word under way (a tap elsewhere in the text): leave the word
+        // as it is. Updates just after our own edits are those edits arriving, not a move.
+        val ours = SystemClock.uptimeMillis() - lastEditAt < 250
+        val offWord = candidatesStart < 0 || newSelStart != newSelEnd || newSelEnd != candidatesEnd
+        if (word.isNotEmpty() && !ours && offWord) {
+            currentInputConnection?.finishComposingText()
+            forgetWord()
+        }
+        if (!ours) correction = null
         autoCapitalise()
     }
 
+    override fun onFinishInput() {
+        super.onFinishInput()
+        forgetWord()
+        correction = null
+    }
+
     override fun onDestroy() {
+        spell?.close()
         clipboard.removePrimaryClipChangedListener(clipListener)
         getSystemService(WindowManager::class.java).removeCrossWindowBlurEnabledListener(blurListener)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
@@ -162,18 +227,107 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
 
     private val rawKeys get() = (currentInputEditorInfo?.inputType ?: 0) and InputType.TYPE_MASK_CLASS == InputType.TYPE_NULL
 
+    /** Android's spell checker (on a Pixel, usually Gboard's), in the language chosen for it in Settings. */
+    private fun openSpellChecker(): SpellCheckerSession? {
+        val params = SpellCheckerSession.SpellCheckerSessionParams.Builder()
+            .setShouldReferToSpellCheckerLanguageSettings(true)
+            .setSupportedAttributes(
+                SuggestionsInfo.RESULT_ATTR_IN_THE_DICTIONARY or
+                    SuggestionsInfo.RESULT_ATTR_LOOKS_LIKE_TYPO or
+                    SuggestionsInfo.RESULT_ATTR_HAS_RECOMMENDED_SUGGESTIONS,
+            )
+            .build()
+        return runCatching {
+            getSystemService(TextServicesManager::class.java)?.newSpellCheckerSession(params, mainExecutor, spellListener)
+        }.getOrNull()
+    }
+
+    private fun askSpellChecker() {
+        if (!suggests || word.isEmpty()) return
+        val asking = word.toString()
+        // The strip shows the word straight away, keeping the last suggestions until new ones come
+        state.suggestions = Words.typing(state.suggestions, asking)
+        val session = spell ?: return
+        spellRequest++
+        spellWords[spellRequest] = asking
+        session.getSentenceSuggestions(arrayOf(TextInfo(asking, 0, asking.length, 0, spellRequest)), 3)
+    }
+
+    private fun forgetWord() {
+        word.clear()
+        spellWords.clear()
+        state.suggestions = null
+    }
+
+    /**
+     * Ends the word under way: as typed, or, if [autocorrect] and the spell checker was sure of a
+     * fix, with the fix. Returns the fix if it made one.
+     */
+    private fun finishWord(autocorrect: Boolean): String? {
+        if (word.isEmpty()) return null
+        val ic = currentInputConnection
+        val typed = word.toString()
+        val fix = state.suggestions?.takeIf { autocorrect && prefs.autocorrect && it.typed == typed }?.autocorrect
+        if (fix != null) ic?.commitText(fix, 1) else ic?.finishComposingText()
+        lastEditAt = SystemClock.uptimeMillis()
+        forgetWord()
+        return fix
+    }
+
     override fun type(text: String) {
         val ic = currentInputConnection ?: return
-        ic.commitText(text, 1)
+        lastEditAt = SystemClock.uptimeMillis()
+        correction = null
+        val c = text.singleOrNull()
+        if (composes && c != null && Words.isWordChar(c, word.isNotEmpty())) {
+            word.append(text)
+            ic.setComposingText(word, 1)
+            askSpellChecker()
+        } else {
+            val typed = word.toString()
+            val fix = finishWord(autocorrect = c != null && Words.endsSentenceOrClause(c))
+            ic.commitText(text, 1)
+            if (fix != null) correction = fix + text to typed + text
+        }
         state.shift = ShiftLogic.afterTyping(state.shift)
+        autoCapitalise()
+    }
+
+    override fun pickSuggestion(suggestion: String) {
+        val ic = currentInputConnection ?: return
+        lastEditAt = SystemClock.uptimeMillis()
+        ic.commitText("$suggestion ", 1)
+        forgetWord()
+        correction = null
+        lastSpace = 0L
         autoCapitalise()
     }
 
     override fun backspace() {
         val ic = currentInputConnection ?: return
+        lastEditAt = SystemClock.uptimeMillis()
         if (rawKeys) {
             sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
             return
+        }
+        if (word.isNotEmpty()) {
+            word.setLength(word.length - Text.lastCharacterLength(word))
+            ic.setComposingText(word, 1)
+            if (word.isEmpty()) forgetWord() else askSpellChecker()
+            autoCapitalise()
+            return
+        }
+        // Straight after an autocorrect: back to what was typed
+        val undo = correction
+        correction = null
+        if (undo != null) {
+            val (fixed, restored) = undo
+            if (ic.getTextBeforeCursor(fixed.length, 0)?.toString() == fixed) {
+                ic.deleteSurroundingText(fixed.length, 0)
+                ic.commitText(restored, 1)
+                autoCapitalise()
+                return
+            }
         }
         val selected = ic.getSelectedText(0)
         if (!selected.isNullOrEmpty()) {
@@ -188,6 +342,9 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
 
     override fun space() {
         val ic = currentInputConnection ?: return
+        val typed = word.toString()
+        val fix = finishWord(autocorrect = true)
+        lastEditAt = SystemClock.uptimeMillis()
         val now = SystemClock.uptimeMillis()
         val before = ic.getTextBeforeCursor(2, 0) ?: ""
         val textField = state.field == FieldKind.TEXT
@@ -199,11 +356,16 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
             ic.commitText(" ", 1)
             lastSpace = now
         }
+        correction = fix?.let { "$it " to typed }
+        // Like Gboard: a space after symbols goes back to the letters
+        if (state.page == Page.SYMBOLS || state.page == Page.MORE_SYMBOLS) state.page = Page.LETTERS
         autoCapitalise()
     }
 
     override fun enter() {
         val ic = currentInputConnection ?: return
+        finishWord(autocorrect = false)
+        correction = null
         if (state.enter == EnterAction.RETURN) {
             sendDownUpKeyEvents(KeyEvent.KEYCODE_ENTER)
         } else {
@@ -212,6 +374,8 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
     }
 
     override fun moveCursor(steps: Int) {
+        finishWord(autocorrect = false)
+        correction = null
         val key = if (steps < 0) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT
         repeat(kotlin.math.abs(steps)) { sendDownUpKeyEvents(key) }
     }
@@ -252,6 +416,8 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
     }
 
     override fun typeEmoji(emoji: String) {
+        finishWord(autocorrect = false)
+        correction = null
         currentInputConnection?.commitText(emoji, 1) ?: return
         val recents = Emoji.used(state.recentEmoji, emoji)
         state.recentEmoji = recents
@@ -259,6 +425,8 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
     }
 
     override fun paste(clip: Clip) {
+        finishWord(autocorrect = false)
+        correction = null
         currentInputConnection?.commitText(clip.text, 1)
         autoCapitalise()
     }

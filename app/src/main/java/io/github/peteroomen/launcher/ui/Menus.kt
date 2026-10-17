@@ -1,23 +1,21 @@
 package io.github.peteroomen.launcher.ui
 
 import android.content.Intent
-import androidx.compose.foundation.background
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -26,16 +24,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
@@ -117,9 +114,10 @@ fun MenuSheet(target: MenuTarget, state: HomeUiState, vm: LauncherViewModel, onE
 }
 
 /**
- * Material's bottom sheet, or with liquid glass a frosted glass sheet like search's: the sheet is
- * see-through and the glass drawn inside it, with its own handle, reaching down under the
- * navigation bar. Text, fields and buttons take the launcher's colours on the glass.
+ * Material's bottom sheet, or with liquid glass the app drawer's own glass sheet (the same
+ * container, drawn in the home screen's window), sized to the menu: frosted, with the drawer's
+ * heavier tint, a light dim above and the wallpaper blurred behind. Text, fields and buttons take
+ * the launcher's colours on the glass.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -129,32 +127,23 @@ private fun MenuContainer(sheetState: SheetState, onDismiss: () -> Unit, content
         ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) { content() }
         return
     }
-    val shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     val colours = MaterialTheme.colorScheme.copy(
         primary = palette.accent,
         onSurface = palette.text,
         onSurfaceVariant = palette.muted,
         outline = palette.muted,
     )
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        shape = shape,
-        containerColor = Color.Transparent,
-        contentColor = palette.text,
-        tonalElevation = 0.dp,
-        dragHandle = null,
-        contentWindowInsets = { WindowInsets(0) },
-    ) {
-        Column(Modifier.fillMaxWidth().panel(shape, palette.scrim, sheet = true).navigationBarsPadding().imePadding()) {
-            Box(
-                Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .padding(vertical = 22.dp)
-                    .size(width = 32.dp, height = 4.dp)
-                    .background(palette.muted, CircleShape),
-            )
-            MaterialTheme(colorScheme = colours) { OnGlass(content) }
+    // Back closes the menu first, and only the menu (it can sit over search)
+    BackHandler(onBack = onDismiss)
+    // Fades in, like the drawer
+    val shown = remember { MutableTransitionState(false).apply { targetState = true } }
+    AnimatedVisibility(shown, enter = fadeIn()) {
+        ListContainer(sheet = true, onDismiss = onDismiss, wrap = true) {
+            Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(top = 16.dp)) {
+                CompositionLocalProvider(LocalContentColor provides palette.text) {
+                    MaterialTheme(colorScheme = colours) { content() }
+                }
+            }
         }
     }
 }

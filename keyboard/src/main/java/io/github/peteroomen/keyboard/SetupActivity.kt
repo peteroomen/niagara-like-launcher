@@ -71,6 +71,8 @@ private fun Setup() {
     }
     var vibrate by remember { mutableStateOf(prefs.vibrate) }
     var sound by remember { mutableStateOf(prefs.sound) }
+    var suggestions by remember { mutableStateOf(prefs.suggestions) }
+    var autocorrect by remember { mutableStateOf(prefs.autocorrect) }
     var look by remember { mutableStateOf(prefs.look) }
     var trial by remember { mutableStateOf("") }
 
@@ -98,6 +100,9 @@ private fun Setup() {
         Text(stringResource(R.string.settings), style = MaterialTheme.typography.titleMedium)
         Toggle(stringResource(R.string.vibrate), vibrate) { vibrate = it; prefs.vibrate = it }
         Toggle(stringResource(R.string.sound), sound) { sound = it; prefs.sound = it }
+        Toggle(stringResource(R.string.suggestions), suggestions) { suggestions = it; prefs.suggestions = it }
+        Toggle(stringResource(R.string.autocorrect), autocorrect, enabled = suggestions) { autocorrect = it; prefs.autocorrect = it }
+        Text(stringResource(R.string.suggestions_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(stringResource(R.string.look), style = MaterialTheme.typography.titleSmall)
         listOf(
             LookChoice.SYSTEM to R.string.look_system,
@@ -129,9 +134,9 @@ private fun Step(number: Int, text: String, done: Boolean, available: Boolean = 
 }
 
 @Composable
-private fun Toggle(text: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable { onChange(!checked) }, verticalAlignment = Alignment.CenterVertically) {
+private fun Toggle(text: String, checked: Boolean, enabled: Boolean = true, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().clickable(enabled = enabled) { onChange(!checked) }, verticalAlignment = Alignment.CenterVertically) {
         Text(text, Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = onChange)
+        Switch(checked = checked, onCheckedChange = onChange, enabled = enabled)
     }
 }

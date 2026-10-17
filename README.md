@@ -53,6 +53,7 @@ A keyboard of frosted glass, in `keyboard/`, built as its own app (`keyboard-deb
 - Two quick spaces after a word type a full stop. Hold backspace to keep deleting.
 - Slide along the space bar to move the cursor. Hold it to switch keyboards.
 - A toolbar above the keys, laid out like Gboard's: emoji, settings and switch keyboard on the left, hide on the right.
+- **Suggestions and autocorrect:** the word you're typing stays provisional in the app (composing text, as in Gboard) until it's finished, so apps don't re-check and redraw the text around it on every letter. While you type, the toolbar becomes Gboard's three-slot suggestion strip, filled by Android's spell checker (on a Pixel, usually Gboard's). A space or punctuation puts in a fix only when the spell checker is sure it's a typo; backspace straight after undoes it. Both can be turned off in the app.
 - **Emoji:** tap the smiley for emoji in place of the keys, like Gboard's: one scrolling grid, recently used first, with category tabs between ABC and backspace. Emoji the phone's font can't draw are left out. The list comes from Unicode (`keyboard/scripts/build_emoji.py`).
 - **Clipboard strip:** whatever you copy shows as a chip in the toolbar; tap it to paste, hold it to forget it. Something copied in the last minute is highlighted. Copies last an hour and are only kept in memory, and anything an app marks sensitive (like a password) shows as dots.
 - Vibration (on) and click sounds (off), and light, dark or system glass, in the **Glass Keyboard** app.
