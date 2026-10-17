@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.scale
@@ -79,6 +80,8 @@ data class Palette(
     val glassFrostedTint: Color,
     /** Clear glass: lightly blurred, the whole panel acts as a lens (Android 13+) */
     val glassClear: Boolean,
+    /** Bezel glass: slightly blurred, a darker middle framed by a lighter band inside the rim */
+    val glassBezel: Boolean = false,
     /** A Loud combo accent is on: punchier, sticker-slap motion where the launcher animates. */
     val loud: Boolean = false,
 ) {
@@ -179,7 +182,22 @@ fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false, bendS
                         clearDrawn = true
                     }
                 }
-                if (!clearDrawn) {
+                if (!clearDrawn && palette.glassBezel) {
+                    // Bezel: only slightly blurred (the sharp copy, half covered by the frosted one)
+                    translate(sharpOrigin.x - position.value.x, sharpOrigin.y - position.value.y) {
+                        scale(sharpScale, pivot = Offset.Zero) {
+                            drawImage(sharpImage, filterQuality = FilterQuality.High)
+                        }
+                    }
+                    val image = backdrop.frosted
+                    val scale = max(backdrop.screen.width / image.width, backdrop.screen.height / image.height)
+                    translate((backdrop.screen.width - image.width * scale) / 2 - position.value.x, (backdrop.screen.height - image.height * scale) / 2 - position.value.y) {
+                        scale(scale, pivot = Offset.Zero) {
+                            drawImage(image, alpha = 0.5f, filterQuality = FilterQuality.High)
+                        }
+                    }
+                    drawRect(adaptiveTint(palette, bezelMiddle(palette), behind.value))
+                } else if (!clearDrawn) {
                     // Frosted: the blurred copy, shifted so this panel shows the part behind it
                     val image = backdrop.frosted
                     val scale = max(backdrop.screen.width / image.width, backdrop.screen.height / image.height)
@@ -196,6 +214,7 @@ fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false, bendS
             } else {
                 drawRect(palette.glassTintNoBlur)
             }
+            if (palette.glassBezel && !clearDrawn) bezelBand(outline, palette)
             if (!clearDrawn) {
                 // Clear glass lights its own rim; frosted gets a faint top glow and a hairline rim
                 drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.2f), 1f to Color.Transparent, endY = GlowDepth.toPx()))
@@ -230,6 +249,19 @@ fun Modifier.panel(shape: Shape, fill: Color, sheet: Boolean = false, lens: Floa
         palette.glass -> glass(shape, palette, sheet, lens)
         else -> clip(shape).background(fill)
     }
+}
+
+/** Bezel glass's darker middle: dark under light text; under dark text it has to stay light. */
+private fun bezelMiddle(palette: Palette) =
+    if (palette.darkText) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.32f)
+
+private val BezelBand = 5.dp
+
+/** Bezel glass's lighter band, [BezelBand] wide just inside the rim (the rim is drawn after it). */
+private fun DrawScope.bezelBand(outline: Outline, palette: Palette) {
+    val band = if (palette.darkText) Color.White.copy(alpha = 0.4f) else Color.White.copy(alpha = 0.16f)
+    // Centred on the edge, so the clipped half outside leaves exactly the band inside
+    drawOutline(outline, band, style = Stroke(width = BezelBand.toPx() * 2))
 }
 
 /** Luminance below which, and above which, a tenth of the wallpaper behind this rectangle lies. */
@@ -305,9 +337,14 @@ fun Modifier.underGlass(image: ImageBitmap, panelSize: IntSize, panelCorner: Dp)
                 translate(origin.x, origin.y) {
                     scale(scale, pivot = Offset.Zero) { drawImage(image, filterQuality = FilterQuality.High) }
                 }
-                drawRect(palette.glassFrostedTint.copy(alpha = palette.glassFrostedTint.alpha * 0.5f))
-                drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.2f), 1f to Color.Transparent, endY = GlowDepth.toPx()))
                 val outline = RoundedCornerShape(panelCorner).createOutline(panel, layoutDirection, this)
+                if (palette.glassBezel) {
+                    // The art sits under the bezel's band, which frames it like the rest of the card
+                    bezelBand(outline, palette)
+                } else {
+                    drawRect(palette.glassFrostedTint.copy(alpha = palette.glassFrostedTint.alpha * 0.5f))
+                }
+                drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.2f), 1f to Color.Transparent, endY = GlowDepth.toPx()))
                 drawOutline(outline, RimBrush, style = Stroke(width = RimWidth.toPx() * 2))
             }
         }

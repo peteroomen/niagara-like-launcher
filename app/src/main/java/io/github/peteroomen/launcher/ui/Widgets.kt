@@ -143,8 +143,9 @@ private fun ClockPanel(background: ClockBackground, content: @Composable () -> U
     val palette = when {
         base.loud -> base
         else -> when (background) {
-            ClockBackground.GLASS -> base.copy(glass = true, glassClear = true)
-            ClockBackground.BLUR -> base.copy(glass = true, glassClear = false)
+            ClockBackground.GLASS -> base.copy(glass = true, glassClear = true, glassBezel = false)
+            ClockBackground.BLUR -> base.copy(glass = true, glassClear = false, glassBezel = false)
+            ClockBackground.BEZEL -> base.copy(glass = true, glassClear = false, glassBezel = true)
             else -> base.copy(glass = false)
         }
     }

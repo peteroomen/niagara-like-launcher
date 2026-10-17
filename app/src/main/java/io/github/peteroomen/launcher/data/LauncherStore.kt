@@ -29,7 +29,7 @@ enum class AppTextWeight { LIGHT, REGULAR, MEDIUM }
 enum class LetterSize(val sp: Int) { SMALL(14), MEDIUM(20), LARGE(28) }
 enum class ClockAlign { LEFT, CENTER, RIGHT }
 /** A panel behind the clock, in any of the panel looks, whatever the Panels setting is. */
-enum class ClockBackground { NONE, GLASS, BLUR, FLAT }
+enum class ClockBackground { NONE, GLASS, BLUR, FLAT, BEZEL }
 
 /** The style for app names, wherever they're listed. */
 val Appearance.appNameWeight get() = when (appTextWeight) {
@@ -39,10 +39,15 @@ val Appearance.appNameWeight get() = when (appTextWeight) {
 }
 
 /** Whether anything on screen shows the wallpaper through glass, so its copies need loading. */
-val Appearance.needsGlassBackdrop get() = glass || clockBackground == ClockBackground.GLASS || clockBackground == ClockBackground.BLUR
+val Appearance.needsGlassBackdrop get() =
+    glass || clockBackground == ClockBackground.GLASS || clockBackground == ClockBackground.BLUR || clockBackground == ClockBackground.BEZEL
 enum class FavouritesLayout { COLUMN, PIE }
-/** Clear: barely blurred, the whole panel bends what's behind like a lens (like Apple's). Frosted: blurred and tinted. */
-enum class GlassStyle { CLEAR, FROSTED }
+/**
+ * Clear: barely blurred, the whole panel bends what's behind like a lens (like Apple's). Frosted:
+ * blurred and tinted. Bezel: slightly blurred under a darker middle, framed by a lighter band just
+ * inside a bright rim, like a pane of glass set in a glass bezel.
+ */
+enum class GlassStyle { CLEAR, FROSTED, BEZEL }
 /** How search and the A–Z list are shown: straight on the wallpaper, or on a sheet from the bottom. */
 enum class ListStyle { WALLPAPER, PANEL }
 /** Something behind the text to lift it off busy wallpapers. */

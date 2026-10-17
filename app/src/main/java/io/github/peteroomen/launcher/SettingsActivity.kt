@@ -218,6 +218,7 @@ private fun SettingsScreen(vm: LauncherViewModel) {
                         if (Build.VERSION.SDK_INT >= 33) ClockBackground.GLASS to R.string.panels_glass else null,
                         ClockBackground.BLUR to R.string.panels_blur,
                         ClockBackground.FLAT to R.string.panels_flat,
+                        ClockBackground.BEZEL to R.string.panels_bezel,
                     )) { set(a.copy(clockBackground = it)) }
                 }
 
@@ -283,23 +284,27 @@ private fun SettingsScreen(vm: LauncherViewModel) {
                     // One choice for panels, stored as glass on/off plus its style. Clear glass needs Android 13.
                     val panels = when {
                         !a.glass -> Panels.FLAT
+                        a.glassStyle == GlassStyle.BEZEL -> Panels.BEZEL
                         a.glassStyle == GlassStyle.CLEAR && Build.VERSION.SDK_INT >= 33 -> Panels.GLASS
                         else -> Panels.BLUR
                     }
                     ChoiceItem(stringResource(R.string.panels), panels, listOfNotNull(
                         if (Build.VERSION.SDK_INT >= 33) Panels.GLASS to R.string.panels_glass else null,
                         Panels.BLUR to R.string.panels_blur,
+                        Panels.BEZEL to R.string.panels_bezel,
                         Panels.FLAT to R.string.panels_flat,
                     )) {
                         set(when (it) {
                             Panels.GLASS -> a.copy(glass = true, glassStyle = GlassStyle.CLEAR)
                             Panels.BLUR -> a.copy(glass = true, glassStyle = GlassStyle.FROSTED)
+                            Panels.BEZEL -> a.copy(glass = true, glassStyle = GlassStyle.BEZEL)
                             Panels.FLAT -> a.copy(glass = false)
                         })
                     }
                     Footer(stringResource(when (panels) {
                         Panels.GLASS -> R.string.panels_glass_summary
                         Panels.BLUR -> R.string.panels_blur_summary
+                        Panels.BEZEL -> R.string.panels_bezel_summary
                         Panels.FLAT -> R.string.panels_flat_summary
                     }))
                     if (a.needsGlassBackdrop) {
@@ -500,4 +505,4 @@ private fun openAppInfo(context: Context) {
     context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)))
 }
 
-private enum class Panels { GLASS, BLUR, FLAT }
+private enum class Panels { GLASS, BLUR, BEZEL, FLAT }
