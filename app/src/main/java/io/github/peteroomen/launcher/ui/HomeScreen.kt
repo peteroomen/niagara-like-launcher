@@ -114,10 +114,10 @@ fun HomeScreen(vm: LauncherViewModel) {
         Pie.hit(finger.x - center.x, finger.y - center.y, deadZonePx, folderRingPx, folderSize, previous)
     val haptics = LocalHapticFeedback.current
     LaunchedEffect(pie?.hit) { if (pie != null) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
-    // With liquid glass, the wallpaper itself blurs behind search, the A–Z list and the pie
+    // With liquid glass, the wallpaper itself blurs behind search, the A–Z list, the hold menus and the pie
     // (Only behind the sheet: "wallpaper only" lists show the wallpaper as it is)
     val sheetLists = state.appearance.listStyle == ListStyle.PANEL
-    WallpaperBlur(on = state.appearance.glass && !state.appearance.accent.loud && ((overlay != Overlay.NONE && sheetLists) || pie != null))
+    WallpaperBlur(on = state.appearance.glass && !state.appearance.accent.loud && ((overlay != Overlay.NONE && sheetLists) || pie != null || menu != null))
     // With "wallpaper only" lists, the rest of the home screen steps aside while they're open
     val homeAlpha by animateFloatAsState(if (overlay != Overlay.NONE && !sheetLists) 0f else 1f, label = "home")
 

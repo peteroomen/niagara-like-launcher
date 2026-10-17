@@ -632,10 +632,10 @@ private fun SearchResult(key: String, state: HomeUiState, subtitle: String?, onL
  * Where search and the A–Z list sit. As a [sheet]: a panel filling the bottom 80% of the screen,
  * edge to edge with only the top corners rounded (glass when liquid glass is on), with a light dim
  * above it. Otherwise: nothing at all, the wallpaper is the background. Tapping outside the
- * content closes it.
+ * content closes it. A [wrap] sheet is only as tall as its content (the hold menus).
  */
 @Composable
-fun ListContainer(sheet: Boolean, onDismiss: () -> Unit, content: @Composable () -> Unit) {
+fun ListContainer(sheet: Boolean, onDismiss: () -> Unit, wrap: Boolean = false, content: @Composable () -> Unit) {
     val palette = LocalPalette.current
     Box(
         Modifier
@@ -649,7 +649,7 @@ fun ListContainer(sheet: Boolean, onDismiss: () -> Unit, content: @Composable ()
                 Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .fillMaxHeight(0.8f)
+                    .then(if (wrap) Modifier else Modifier.fillMaxHeight(0.8f))
                     .panel(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), palette.scrim, sheet = true)
                     .pointerInput(Unit) { detectTapGestures { } }, // taps on the sheet itself don't close it
             ) { OnGlass(content) }
