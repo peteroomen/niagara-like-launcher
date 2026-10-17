@@ -17,6 +17,12 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.addOutline
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -129,9 +135,11 @@ fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false, bendS
     // What's behind: the darkest and brightest of it (10th and 90th percentile luminance)
     val behind = remember { mutableStateOf<Pair<Float, Float>?>(null) }
     val sharp = backdrop?.sharp
-    val lens = remember(sharp, palette.glassClear, sheet) {
-        // The shader compiles on the phone; if that ever fails, fall back to frosted glass
-        if (!sheet && sharp != null && palette.glassClear && Build.VERSION.SDK_INT >= 33) runCatching { GlassEdge(sharp) }.getOrNull() else null
+    val lens = remember(sharp, palette.glassClear, palette.glassBezel, sheet) {
+        // The shader compiles on the phone; if that ever fails, fall back to frosted glass.
+        // Clear glass isn't used for sheets; bezel glass is, with its facet only along the top.
+        val wanted = (palette.glassClear && !sheet) || palette.glassBezel
+        if (wanted && sharp != null && Build.VERSION.SDK_INT >= 33) runCatching { GlassEdge(sharp) }.getOrNull() else null
     }
     return this
         .onGloballyPositioned {
@@ -155,7 +163,7 @@ fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false, bendS
                     (backdrop.screen.width - sharpImage.width * sharpScale) / 2,
                     (backdrop.screen.height - sharpImage.height * sharpScale) / 2,
                 )
-                if (lens != null && Build.VERSION.SDK_INT >= 33) {
+                if (!palette.glassBezel && lens != null && Build.VERSION.SDK_INT >= 33) {
                     val shortest = size.minDimension
                     // A sheet's sides and bottom sit against the screen: push them out so only its top bends
                     val away = if (sheet) 40.dp.toPx() else 0f
@@ -182,8 +190,30 @@ fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false, bendS
                         clearDrawn = true
                     }
                 }
-                if (!clearDrawn && palette.glassBezel) {
-                    // Bezel: only slightly blurred (the sharp copy, half covered by the frosted one)
+                val bezelShader = if (palette.glassBezel && lens != null && Build.VERSION.SDK_INT >= 33) {
+                    val away = if (sheet) 40.dp.toPx() else 0f
+                    lens.bezelShaderFor(
+                        size = size,
+                        radius = corner,
+                        facet = BezelFacet.toPx(),
+                        shift = BezelShift.toPx(),
+                        panelOrigin = position.value,
+                        imageOrigin = sharpOrigin,
+                        imageScale = sharpScale,
+                        blur = 2.dp.toPx(),
+                        extendLeft = away,
+                        extendRight = away,
+                        extendBottom = away,
+                    )
+                } else {
+                    null
+                }
+                if (bezelShader != null) {
+                    // Bezel, cut: a flat facet round the rim and a softly blurred face
+                    drawRect(ShaderBrush(bezelShader))
+                    drawRect(adaptiveTint(palette, bezelMiddle(palette), behind.value))
+                } else if (!clearDrawn && palette.glassBezel) {
+                    // Bezel without the shader: only slightly blurred (the sharp copy, half covered by the frosted one)
                     translate(sharpOrigin.x - position.value.x, sharpOrigin.y - position.value.y) {
                         scale(sharpScale, pivot = Offset.Zero) {
                             drawImage(sharpImage, filterQuality = FilterQuality.High)
@@ -214,7 +244,16 @@ fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false, bendS
             } else {
                 drawRect(palette.glassTintNoBlur)
             }
-            if (palette.glassBezel && !clearDrawn) bezelBand(outline, palette)
+            if (palette.glassBezel && !clearDrawn) {
+                if (sheet) {
+                    // A sheet's sides and bottom sit against the screen: only its top edge is cut
+                    val away = 40.dp.toPx()
+                    val wide = shape.createOutline(Size(size.width + away * 2, size.height + away), layoutDirection, this)
+                    translate(-away, 0f) { bezelEdges(wide, palette, sheet = true) }
+                } else {
+                    bezelEdges(outline, palette, sheet = false)
+                }
+            }
             if (!clearDrawn) {
                 // Clear glass lights its own rim; frosted gets a faint top glow and a hairline rim
                 drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.2f), 1f to Color.Transparent, endY = GlowDepth.toPx()))
@@ -255,13 +294,79 @@ fun Modifier.panel(shape: Shape, fill: Color, sheet: Boolean = false, lens: Floa
 private fun bezelMiddle(palette: Palette) =
     if (palette.darkText) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.32f)
 
-private val BezelBand = 5.dp
+/** How wide the cut facet round bezel glass is, and how far it shifts what's seen through it. */
+private val BezelFacet = 6.dp
+private val BezelShift = 3.dp
 
-/** Bezel glass's lighter band, [BezelBand] wide just inside the rim (the rim is drawn after it). */
-private fun DrawScope.bezelBand(outline: Outline, palette: Palette) {
-    val band = if (palette.darkText) Color.White.copy(alpha = 0.4f) else Color.White.copy(alpha = 0.16f)
-    // Centred on the edge, so the clipped half outside leaves exactly the band inside
-    drawOutline(outline, band, style = Stroke(width = BezelBand.toPx() * 2))
+/**
+ * Bezel glass's cut edge, lit from the top left like the rim: the facet is bright where it faces
+ * the light and shaded where it faces away, with a faint warm and cool split across it; a crisp
+ * ridge where it meets the face; and a soft shadow just inside, the thickness of the glass. A
+ * [sheet] only shows its top edge, so it's lit from above.
+ */
+private fun DrawScope.bezelEdges(outline: Outline, palette: Palette, sheet: Boolean, panel: Size = size) {
+    val facet = BezelFacet.toPx()
+    val lightEnd = if (sheet) Offset(0f, facet * 2) else Offset(panel.width, panel.height)
+    val lift = if (palette.darkText) 0.55f else 0.4f
+    // The facet: lit, then shaded round the panel (centred on the edge, so only the inner half shows)
+    drawOutline(
+        outline,
+        Brush.linearGradient(
+            0f to Color.White.copy(alpha = lift),
+            0.45f to Color.White.copy(alpha = lift * 0.25f),
+            0.55f to Color.Black.copy(alpha = 0.06f),
+            1f to Color.Black.copy(alpha = 0.28f),
+            start = Offset.Zero,
+            end = lightEnd,
+        ),
+        style = Stroke(width = facet * 2),
+    )
+    // Light split through the cut: warm on the lit side, cool on the shaded side
+    drawOutline(
+        outline,
+        Brush.linearGradient(
+            0f to Color(0xFFFFC27A).copy(alpha = 0.1f),
+            0.5f to Color.Transparent,
+            1f to Color(0xFF7AD3FF).copy(alpha = 0.12f),
+            start = Offset.Zero,
+            end = lightEnd,
+        ),
+        style = Stroke(width = facet * 2),
+    )
+    val face = faceOutline(outline, facet) ?: return
+    // The ridge: dark where the lit facet turns to the face, bright where the shaded one does
+    drawOutline(
+        face,
+        Brush.linearGradient(
+            0f to Color.Black.copy(alpha = 0.3f),
+            0.5f to Color.White.copy(alpha = 0.12f),
+            1f to Color.White.copy(alpha = 0.55f),
+            start = Offset.Zero,
+            end = lightEnd,
+        ),
+        style = Stroke(width = 1.dp.toPx()),
+    )
+    // The thickness: a soft shadow on the face just inside the ridge
+    clipPath(Path().apply { addOutline(face) }) {
+        drawOutline(face, Color.Black.copy(alpha = 0.1f), style = Stroke(width = 8.dp.toPx()))
+        drawOutline(face, Color.Black.copy(alpha = 0.06f), style = Stroke(width = 16.dp.toPx()))
+    }
+}
+
+/** The face inside a facet [inset] wide: the panel's outline, shrunk by that much. */
+private fun faceOutline(outline: Outline, inset: Float): Outline? = when (outline) {
+    is Outline.Rectangle -> outline.rect.deflate(inset).takeIf { it.width > 0 && it.height > 0 }?.let { Outline.Rectangle(it) }
+    is Outline.Rounded -> {
+        val r = outline.roundRect
+        val rect = Rect(r.left + inset, r.top + inset, r.right - inset, r.bottom - inset)
+        if (rect.width <= 0 || rect.height <= 0) {
+            null
+        } else {
+            fun shrink(c: CornerRadius) = CornerRadius((c.x - inset).coerceAtLeast(0f), (c.y - inset).coerceAtLeast(0f))
+            Outline.Rounded(RoundRect(rect, shrink(r.topLeftCornerRadius), shrink(r.topRightCornerRadius), shrink(r.bottomRightCornerRadius), shrink(r.bottomLeftCornerRadius)))
+        }
+    }
+    is Outline.Generic -> null
 }
 
 /** Luminance below which, and above which, a tenth of the wallpaper behind this rectangle lies. */
@@ -307,8 +412,8 @@ private fun adaptiveTint(palette: Palette, base: Color, behind: Pair<Float, Floa
 @Composable
 fun Modifier.underGlass(image: ImageBitmap, panelSize: IntSize, panelCorner: Dp): Modifier {
     val palette = LocalPalette.current
-    val lens = remember(image, palette.glassClear) {
-        if (palette.glassClear && Build.VERSION.SDK_INT >= 33) runCatching { GlassEdge(image) }.getOrNull() else null
+    val lens = remember(image, palette.glassClear, palette.glassBezel) {
+        if ((palette.glassClear || palette.glassBezel) && Build.VERSION.SDK_INT >= 33) runCatching { GlassEdge(image) }.getOrNull() else null
     }
     return drawBehind {
         val scale = max(size.width / image.width, size.height / image.height)
@@ -316,7 +421,19 @@ fun Modifier.underGlass(image: ImageBitmap, panelSize: IntSize, panelCorner: Dp)
         val panel = if (panelSize.width > 0 && panelSize.height > 0) panelSize.toSize() else size
         val shortest = panel.minDimension
         clipRect {
-            val shader = if (lens != null && Build.VERSION.SDK_INT >= 33) {
+            val outline = RoundedCornerShape(panelCorner).createOutline(panel, layoutDirection, this)
+            val shader = if (palette.glassBezel && lens != null && Build.VERSION.SDK_INT >= 33) {
+                lens.bezelShaderFor(
+                    size = panel,
+                    radius = panelCorner.toPx(),
+                    facet = BezelFacet.toPx(),
+                    shift = BezelShift.toPx(),
+                    panelOrigin = Offset.Zero,
+                    imageOrigin = origin,
+                    imageScale = scale,
+                    blur = 0f,
+                )
+            } else if (lens != null && Build.VERSION.SDK_INT >= 33) {
                 lens.clearShaderFor(
                     size = panel,
                     radius = panelCorner.toPx(),
@@ -330,20 +447,25 @@ fun Modifier.underGlass(image: ImageBitmap, panelSize: IntSize, panelCorner: Dp)
             } else {
                 null
             }
-            if (shader != null) {
+            if (palette.glassBezel) {
+                // Under the bezel's cut edge, which frames the art like the rest of the card
+                if (shader != null) {
+                    drawRect(ShaderBrush(shader))
+                } else {
+                    translate(origin.x, origin.y) {
+                        scale(scale, pivot = Offset.Zero) { drawImage(image, filterQuality = FilterQuality.High) }
+                    }
+                }
+                bezelEdges(outline, palette, sheet = false, panel = panel)
+                drawOutline(outline, RimBrush, style = Stroke(width = RimWidth.toPx() * 2))
+            } else if (shader != null) {
                 drawRect(ShaderBrush(shader))
                 drawRect(palette.glassTint.copy(alpha = palette.glassTint.alpha * 0.5f))
             } else {
                 translate(origin.x, origin.y) {
                     scale(scale, pivot = Offset.Zero) { drawImage(image, filterQuality = FilterQuality.High) }
                 }
-                val outline = RoundedCornerShape(panelCorner).createOutline(panel, layoutDirection, this)
-                if (palette.glassBezel) {
-                    // The art sits under the bezel's band, which frames it like the rest of the card
-                    bezelBand(outline, palette)
-                } else {
-                    drawRect(palette.glassFrostedTint.copy(alpha = palette.glassFrostedTint.alpha * 0.5f))
-                }
+                drawRect(palette.glassFrostedTint.copy(alpha = palette.glassFrostedTint.alpha * 0.5f))
                 drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.2f), 1f to Color.Transparent, endY = GlowDepth.toPx()))
                 drawOutline(outline, RimBrush, style = Stroke(width = RimWidth.toPx() * 2))
             }
