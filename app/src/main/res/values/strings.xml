@@ -152,6 +152,7 @@
     <string name="glass_source_checking">Checking whether glass can see your wallpaper…</string>
     <string name="glass_source_system">Glass is blurring your wallpaper.</string>
     <string name="glass_source_picked">Glass is blurring the photo you picked here. If you set a different wallpaper somewhere else, pick it here again.</string>
+    <string name="glass_source_live">Your wallpaper is a live wallpaper, which Android doesn\'t let apps see, so glass uses a frosted tint instead. To blur the real thing, set a still wallpaper, or pick a photo here.</string>
     <string name="glass_source_none">Glass can\'t see your wallpaper, so it uses a frosted tint instead. To blur the real thing, allow wallpaper access or pick your wallpaper photo here.</string>
     <string name="glass_allow_access">Allow wallpaper access</string>
     <string name="glass_access_note">Android lists this as \"All files access\". The launcher only uses it to read your wallpaper.</string>
