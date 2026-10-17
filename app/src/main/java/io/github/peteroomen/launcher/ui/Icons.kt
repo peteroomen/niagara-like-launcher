@@ -251,11 +251,16 @@ fun FolderIcon(folder: Fav.Folder, state: HomeUiState, size: Dp, open: Boolean =
     val padding = size * 0.15f
     val gap = size * 0.07f
     val mini = (size - padding * 2 - gap) / 2
+    // On glass (the pie's disc), a folder looks like the search box on the search sheet
+    val onGlass = palette.glass && LocalOnGlass.current
     Box(Modifier.size(size)) {
         Column(
             Modifier
                 .fillMaxSize()
-                .panel(shape, if (style == IconStyle.THEMED) palette.tileBg else palette.pill)
+                .then(
+                    if (onGlass) Modifier.clip(shape).onGlassField(shape)
+                    else Modifier.panel(shape, if (style == IconStyle.THEMED) palette.tileBg else palette.pill),
+                )
                 .then(if (open) Modifier.border(2.dp, palette.accent, shape) else Modifier)
                 .padding(padding),
             verticalArrangement = Arrangement.spacedBy(gap),

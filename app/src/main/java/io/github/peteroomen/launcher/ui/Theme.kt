@@ -301,6 +301,18 @@ fun Modifier.panel(shape: Shape, fill: Color, sheet: Boolean = false, lens: Floa
     }
 }
 
+/**
+ * Something that sits on glass and needs to stand out from it, like the search box on the search
+ * sheet: no glass on glass, but a light translucent fill with a hairline edge.
+ */
+@Composable
+fun Modifier.onGlassField(shape: Shape): Modifier {
+    val palette = LocalPalette.current
+    return this
+        .background(if (palette.darkText) Color.White.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.2f), shape)
+        .border(1.dp, if (palette.darkText) Color.Black.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.3f), shape)
+}
+
 /** Bezel glass's darker middle: dark under light text; under dark text it has to stay light. */
 private fun bezelMiddle(palette: Palette) =
     if (palette.darkText) Color.White.copy(alpha = 0.53f) else Color.Black.copy(alpha = 0.55f)

@@ -526,16 +526,7 @@ fun SearchOverlay(
                             palette.loud -> Modifier.panel(SearchCapsule, palette.card)
                             // Inside the glass sheet, like iOS: no glass on glass, but a capsule that
                             // clearly stands out from the sheet, with a hairline edge
-                            sheet -> Modifier
-                                .background(
-                                    if (palette.darkText) Color.White.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.2f),
-                                    SearchCapsule,
-                                )
-                                .border(
-                                    1.dp,
-                                    if (palette.darkText) Color.Black.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.3f),
-                                    SearchCapsule,
-                                )
+                            sheet -> Modifier.onGlassField(SearchCapsule)
                             // Straight on the wallpaper it's the one glass thing, like the music card
                             else -> Modifier.panel(RoundedCornerShape(14.dp), ink.copy(alpha = 0.1f))
                         },
