@@ -295,16 +295,16 @@ fun Modifier.panel(shape: Shape, fill: Color, sheet: Boolean = false, lens: Floa
 
 /** Bezel glass's darker middle: dark under light text; under dark text it has to stay light. */
 private fun bezelMiddle(palette: Palette) =
-    if (palette.darkText) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.32f)
+    if (palette.darkText) Color.White.copy(alpha = 0.53f) else Color.Black.copy(alpha = 0.55f)
 
 /** How wide the cut facet round bezel glass is, and how far it shifts what's seen through it. */
-private val BezelFacet = 6.dp
+private val BezelFacet = 5.dp
 private val BezelShift = 3.dp
 
 /**
  * Bezel glass's cut edge, in even, ambient light: a lighter band over the facet all round, a
- * crisp ridge where it meets the face (a bright hairline with a faint dark line just inside),
- * and a soft shadow on the face just inside that, the thickness of the glass. No light
+ * faint bright ridge where it meets the face, and a soft shadow on the face just inside that,
+ * the thickness of the glass. No light
  * direction: the facet's shifted, richer view of the wallpaper (the shader) does the rest.
  */
 private fun DrawScope.bezelEdges(outline: Outline, palette: Palette) {
@@ -313,19 +313,18 @@ private fun DrawScope.bezelEdges(outline: Outline, palette: Palette) {
     drawOutline(outline, Color.White.copy(alpha = if (palette.darkText) 0.4f else 0.16f), style = Stroke(width = facet * 2))
     val face = faceOutline(outline, facet) ?: return
     val hairline = 1.dp.toPx()
-    // The ridge
-    drawOutline(face, Color.White.copy(alpha = if (palette.darkText) 0.6f else 0.42f), style = Stroke(width = hairline))
-    faceOutline(outline, facet + hairline)?.let { drawOutline(it, Color.Black.copy(alpha = 0.14f), style = Stroke(width = hairline)) }
+    // The ridge: a faint bright hairline
+    drawOutline(face, Color.White.copy(alpha = if (palette.darkText) 0.17f else 0.12f), style = Stroke(width = hairline))
     // The thickness: a soft shadow on the face just inside the ridge
     clipPath(Path().apply { addOutline(face) }) {
-        drawOutline(face, Color.Black.copy(alpha = 0.1f), style = Stroke(width = 8.dp.toPx()))
-        drawOutline(face, Color.Black.copy(alpha = 0.06f), style = Stroke(width = 16.dp.toPx()))
+        drawOutline(face, Color.Black.copy(alpha = 0.18f), style = Stroke(width = 8.dp.toPx()))
+        drawOutline(face, Color.Black.copy(alpha = 0.11f), style = Stroke(width = 16.dp.toPx()))
     }
 }
 
 /** Bezel glass's outer rim: the same all round, in keeping with its even light. */
 private fun DrawScope.bezelRim(outline: Outline) {
-    drawOutline(outline, Color.White.copy(alpha = 0.5f), style = Stroke(width = RimWidth.toPx() * 2))
+    drawOutline(outline, Color.White.copy(alpha = 0.15f), style = Stroke(width = RimWidth.toPx() * 2))
 }
 
 /** The face inside a facet [inset] wide: the panel's outline, shrunk by that much. */

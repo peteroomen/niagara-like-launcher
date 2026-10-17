@@ -29,7 +29,7 @@ class GlassEdge(sharp: ImageBitmap) {
      * Bezel glass: a thick pane with a flat facet cut round its rim. Through the facet everything
      * shifts inwards by the same amount (a flat cut, not a curve), with a hard step where it meets
      * the face, and looks a little darker and richer, as through thicker glass. The face is softly
-     * blurred and very slightly magnified. Lighting is drawn over it separately.
+     * blurred and magnified by about 5%. Lighting is drawn over it separately.
      */
     fun bezelShaderFor(
         size: Size,
@@ -134,8 +134,8 @@ class GlassEdge(sharp: ImageBitmap) {
 
                 // 1 on the facet, 0 on the face, with a one-pixel edge so the cut is crisp but not jagged
                 float onFacet = 1.0 - smoothstep(facet - 0.75, facet + 0.75, inside);
-                // The face very slightly magnified (thick glass), the facet a flat shift inwards
-                float2 base = halfSize + p * mix(0.985, 1.0, onFacet) - off;
+                // The face magnified about 5% (thick glass), the facet a flat shift inwards
+                float2 base = halfSize + p * mix(0.951, 1.0, onFacet) - off;
                 float bend = shift * onFacet;
 
                 half3 c;
