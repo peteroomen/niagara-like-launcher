@@ -1,5 +1,6 @@
 package io.github.peteroomen.keyboard
 
+import android.content.Intent
 import android.graphics.PixelFormat
 import android.graphics.drawable.ColorDrawable
 import android.inputmethodservice.InputMethodService
@@ -217,6 +218,11 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
 
     override fun pickKeyboard() {
         getSystemService(InputMethodManager::class.java).showInputMethodPicker()
+    }
+
+    override fun openSettings() {
+        requestHideSelf(0)
+        startActivity(Intent(this, SetupActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
     override fun feedback(kind: Feedback) {

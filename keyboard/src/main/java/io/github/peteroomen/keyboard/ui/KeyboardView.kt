@@ -91,6 +91,7 @@ interface KeyboardActions {
     fun page(page: Page)
     fun hide()
     fun pickKeyboard()
+    fun openSettings()
     fun feedback(kind: Feedback)
 }
 
@@ -149,7 +150,7 @@ fun KeyboardScreen(state: KeyboardState, actions: KeyboardActions) {
                 drawRect(look.edge, size = size.copy(height = 1.dp.toPx()))
             },
         ) {
-            Strip(look, onHide = { act.hide() })
+            Strip(look, act)
             Box(
                 Modifier
                     .padding(horizontal = SidePadding)
@@ -332,7 +333,7 @@ fun KeyboardScreen(state: KeyboardState, actions: KeyboardActions) {
                     },
             ) {
                 for (p in placed) {
-                    KeyCap(p, state, look, held = p in pressed)
+                    KeyCap(p, state, look, held = p in pressed, bottomRow = p.row == layout.rows.lastIndex)
                 }
             }
         }
@@ -360,26 +361,37 @@ fun KeyboardScreen(state: KeyboardState, actions: KeyboardActions) {
     }
 }
 
-/** The strip above the keys: room for the bubbles over the top row, and a button to put the keyboard away. */
+/**
+ * The toolbar above the keys, laid out like Gboard's: settings and switch keyboard on the left,
+ * hide on the right. It also gives the bubbles over the top row room to rise into.
+ */
 @Composable
-private fun Strip(look: Look, onHide: () -> Unit) {
-    Row(Modifier.fillMaxWidth().height(StripHeight), verticalAlignment = Alignment.CenterVertically) {
+private fun Strip(look: Look, actions: KeyboardActions) {
+    Row(Modifier.fillMaxWidth().height(StripHeight).padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        ToolbarButton(R.drawable.ic_settings, look) { actions.openSettings() }
+        ToolbarButton(R.drawable.ic_keyboard, look) { actions.pickKeyboard() }
         Spacer(Modifier.weight(1f))
-        Box(Modifier.size(StripHeight).clickable(onClick = onHide), contentAlignment = Alignment.Center) {
-            Icon(R.drawable.ic_keyboard_hide, look.hint, 24.dp)
-        }
-        Spacer(Modifier.width(4.dp))
+        ToolbarButton(R.drawable.ic_keyboard_hide, look) { actions.hide() }
     }
 }
 
 @Composable
-private fun KeyCap(p: Placed, state: KeyboardState, look: Look, held: Boolean) {
+private fun ToolbarButton(@DrawableRes icon: Int, look: Look, onClick: () -> Unit) {
+    Box(Modifier.size(StripHeight).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+        Icon(icon, look.hint, 22.dp)
+    }
+}
+
+@Composable
+private fun KeyCap(p: Placed, state: KeyboardState, look: Look, held: Boolean, bottomRow: Boolean) {
     val density = LocalDensity.current
     val key = p.key
     val action = (key as? ActionKey)?.action
     val accent = action == Action.ENTER || (action == Action.SHIFT && state.shift == Shift.LOCKED)
     val fill = when {
         accent -> look.accent
+        // Like Gboard, the punctuation beside the space bar is coloured as a function key
+        key is CharKey && bottomRow && state.page != Page.NUMBERS -> look.functionFill
         key is CharKey || action == Action.SPACE -> look.keyFill
         else -> look.functionFill
     }

@@ -52,6 +52,7 @@ A keyboard of frosted glass, in `keyboard/`, built as its own app (`keyboard-deb
 - Enter matches the app: Search, Send, Go, Next or Done, or a new line.
 - Two quick spaces after a word type a full stop. Hold backspace to keep deleting.
 - Slide along the space bar to move the cursor. Hold it to switch keyboards.
+- A toolbar above the keys, laid out like Gboard's: settings and switch keyboard on the left, hide on the right.
 - Vibration (on) and click sounds (off), and light, dark or system glass, in the **Glass Keyboard** app.
 
 To set it up, open **Glass Keyboard**, tap **Turn on Glass Keyboard** and switch it on in Android's list, then **Switch to Glass Keyboard**.
