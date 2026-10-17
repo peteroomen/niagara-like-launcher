@@ -10,7 +10,7 @@
     <string name="sound">Sound on key press</string>
     <string name="suggestions">Suggestions as you type</string>
     <string name="autocorrect">Autocorrect</string>
-    <string name="suggestions_note">Suggestions come from Android\'s spell checker (Settings → System → Languages → Spell checker), and autocorrect only fixes a word it\'s sure is a typo. Backspace straight after undoes it.</string>
+    <string name="suggestions_note">Suggestions come from Android\'s own open-source keyboard engine and its English dictionary, and use where you touched each key. It learns the words you use and what you tend to type next, all on this phone. Autocorrect only fixes a word it\'s sure is a typo; backspace straight after undoes it, and teaches it the word you meant.</string>
     <string name="look">Look</string>
     <string name="look_system">Follow the system (light or dark)</string>
     <string name="look_light">Light glass</string>

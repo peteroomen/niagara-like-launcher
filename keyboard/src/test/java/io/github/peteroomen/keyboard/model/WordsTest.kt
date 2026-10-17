@@ -70,4 +70,12 @@ class WordsTest {
         assertNull(now.autocorrect)
         assertEquals(listOf(null, "a", null), Words.typing(null, "a").slots)
     }
+
+    @Test
+    fun predictionsPutTheBestInTheMiddle() {
+        assertEquals(listOf("you", "the", "a"), Words.predictions(listOf("the", "you", "a")).slots)
+        assertEquals(listOf(null, "the", null), Words.predictions(listOf("the")).slots)
+        // Typing after a prediction starts the strip afresh
+        assertEquals(listOf(null, "w", null), Words.typing(Words.predictions(listOf("the", "you", "a")), "w").slots)
+    }
 }

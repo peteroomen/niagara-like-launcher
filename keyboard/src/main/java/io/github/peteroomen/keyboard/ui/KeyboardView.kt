@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -91,7 +92,8 @@ enum class Feedback { KEY, DELETE, SPACE, RETURN, TICK }
 
 /** What the keys do: the service turns these into edits in the app being typed in. */
 interface KeyboardActions {
-    fun type(text: String)
+    /** Types [text]; [x], [y] is where the key was touched, in keyboard pixels (NaN if not from a touch). */
+    fun type(text: String, x: Float = Float.NaN, y: Float = Float.NaN)
     fun backspace()
     fun space()
     fun enter()
@@ -100,6 +102,8 @@ interface KeyboardActions {
     /** Shift was held while letters were typed, and let go: back to lowercase. */
     fun shiftHeldAndReleased()
     fun page(page: Page)
+    /** The keys as laid out now: for the suggestion engine, which works from where they are. */
+    fun keysPlaced(page: Page, keys: List<Placed>, width: Float, height: Float, keyWidth: Float, rowHeight: Float)
     fun hide()
     fun pickKeyboard()
     fun openSettings()
@@ -133,6 +137,9 @@ private class AltPopup(val key: Placed, val options: List<String>, val cells: Li
 
 /** One finger on the keys. */
 private class Press(var placed: Placed, var downAt: Long, val downX: Float) {
+    /** Where the finger is now, to tell the engine where the key was touched */
+    var x = downX
+    var y = 0f
     /** Already acted on (typed by a following key, used for the keyboard picker): nothing on release */
     var done = false
     var popup: AltPopup? = null
@@ -158,6 +165,9 @@ fun KeyboardScreen(state: KeyboardState, actions: KeyboardActions) {
         var preview by remember(placed) { mutableStateOf<Placed?>(null) }
         var popup by remember(placed) { mutableStateOf<AltPopup?>(null) }
         val unit = keysWidth / Layouts.ROW_WIDTH
+        LaunchedEffect(placed) {
+            act.keysPlaced(state.page, placed, keysWidth, rowHeight * layout.rows.size, unit, rowHeight)
+        }
 
         Column(
             Modifier.fillMaxWidth().drawBehind {
@@ -210,7 +220,7 @@ fun KeyboardScreen(state: KeyboardState, actions: KeyboardActions) {
                             val key = press.placed.key
                             when {
                                 press.popup != null -> act.type(press.popup!!.let { it.options[it.selected] })
-                                key is CharKey -> act.type(state.label(key))
+                                key is CharKey -> act.type(state.label(key), press.x, press.y)
                                 key is ActionKey -> when (key.action) {
                                     Action.SPACE -> if (!press.sliding) act.space()
                                     Action.ENTER -> act.enter()
@@ -277,7 +287,7 @@ fun KeyboardScreen(state: KeyboardState, actions: KeyboardActions) {
                                                 pressed.remove(it.placed)
                                                 if (preview == it.placed) preview = null
                                             }
-                                            val p = Press(hit, now, x)
+                                            val p = Press(hit, now, x).also { it.y = y }
                                             presses[change.id] = p
                                             pressed.add(hit)
                                             val key = hit.key
@@ -301,6 +311,8 @@ fun KeyboardScreen(state: KeyboardState, actions: KeyboardActions) {
                                             }
                                         }
                                         change.pressed && press != null && !press.done -> {
+                                            press.x = x
+                                            press.y = y
                                             val key = press.placed.key
                                             val popupNow = press.popup
                                             when {
@@ -388,7 +400,11 @@ fun KeyboardScreen(state: KeyboardState, actions: KeyboardActions) {
 private fun Strip(state: KeyboardState, look: Look, actions: KeyboardActions) {
     val suggestions = state.suggestions
     if (suggestions != null && !state.emoji) {
-        SuggestionStrip(suggestions, look) { actions.pickSuggestion(it) }
+        Row(Modifier.fillMaxWidth().height(StripHeight).padding(start = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            // Emoji stay one tap away while suggestions fill the toolbar
+            ToolbarButton(R.drawable.ic_emoji, look) { actions.showEmoji(true) }
+            Box(Modifier.weight(1f)) { SuggestionStrip(suggestions, look) { actions.pickSuggestion(it) } }
+        }
         return
     }
     Row(Modifier.fillMaxWidth().height(StripHeight).padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {

@@ -18,6 +18,9 @@ android {
         val build = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
         versionCode = (build ?: 0) + 1
         versionName = "0.1.${build ?: 0}"
+        ndk {
+            abiFilters += listOf("arm64-v8a", "x86_64")
+        }
     }
 
     // CI signs with the shared debug key it's given, so updates install over the app on the phone
@@ -31,6 +34,20 @@ android {
         release {
             isMinifyEnabled = false
         }
+    }
+
+    // The suggestion engine (AOSP LatinIME's, in C++): for phones (arm64) and emulators (x86_64)
+    ndkVersion = "27.0.12077973"
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
+
+    // The engine reads its dictionary straight out of the APK, so it's stored uncompressed
+    androidResources {
+        noCompress += "dict"
     }
 
     buildFeatures {
