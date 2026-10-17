@@ -60,11 +60,16 @@ object Words {
         }
     }
 
+    /** Next-word predictions, best first, laid out as Gboard does: the best in the middle. */
+    fun predictions(next: List<String>) = Strip("", listOf(next.getOrNull(1), next.getOrNull(0), next.getOrNull(2)), autocorrect = null)
+
     /**
      * The strip the moment [typed] changes, before the spell checker answers: the typed word in the
      * middle, the last suggestions either side (so the strip doesn't blink), and no autocorrect yet.
      */
     fun typing(last: Strip?, typed: String): Strip {
+        // Predictions (nothing typed) aren't suggestions for this word: start afresh
+        val last = last?.takeIf { it.typed.isNotEmpty() }
         val left = last?.slots?.getOrNull(0)?.takeIf { it != last.typed }
         val right = last?.slots?.getOrNull(2)
         return Strip(typed, listOf(left, typed, right), autocorrect = null)

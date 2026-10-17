@@ -33,14 +33,19 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import io.github.peteroomen.keyboard.engine.Engine
+import io.github.peteroomen.keyboard.model.CharKey
 import io.github.peteroomen.keyboard.model.Clip
 import io.github.peteroomen.keyboard.model.ClipHistory
 import io.github.peteroomen.keyboard.model.Emoji
+import io.github.peteroomen.keyboard.model.EngineKey
 import io.github.peteroomen.keyboard.model.EnterAction
 import io.github.peteroomen.keyboard.model.FieldKind
 import io.github.peteroomen.keyboard.model.Fields
 import io.github.peteroomen.keyboard.model.Layouts
 import io.github.peteroomen.keyboard.model.Page
+import io.github.peteroomen.keyboard.model.Placed
+import io.github.peteroomen.keyboard.model.Prediction
 import io.github.peteroomen.keyboard.model.Shift
 import io.github.peteroomen.keyboard.model.ShiftLogic
 import io.github.peteroomen.keyboard.model.Text
@@ -50,6 +55,7 @@ import io.github.peteroomen.keyboard.ui.KeyboardActions
 import io.github.peteroomen.keyboard.ui.KeyboardScreen
 import io.github.peteroomen.keyboard.ui.KeyboardState
 import io.github.peteroomen.keyboard.ui.Look
+import java.util.concurrent.Executors
 import java.util.function.Consumer
 
 /**
@@ -83,6 +89,24 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
 
     /** The word under way: composing text in the app, provisional until it's finished */
     private val word = StringBuilder()
+    /** Where each of its letters was touched, in keyboard pixels (-1 where not known) */
+    private val touchXs = ArrayList<Int>()
+    private val touchYs = ArrayList<Int>()
+
+    /**
+     * The suggestion engine (AOSP LatinIME's), on its own thread: it isn't thread-safe and a query
+     * takes a few milliseconds. Null until it's open, or if it can't run; then the spell checker
+     * is used instead.
+     */
+    private val engineThread = Executors.newSingleThreadExecutor()
+    @Volatile private var engine: Engine? = null
+    /** Bumped for every query, so an answer that's been overtaken is dropped */
+    private var engineRequest = 0
+
+    /** Runs [work] on the engine's thread, unless the keyboard is shutting down. */
+    private fun onEngineThread(work: () -> Unit) {
+        if (!engineThread.isShutdown) engineThread.execute(work)
+    }
     /** This field gets composing text and suggestions (plain text, not passwords or addresses) */
     private var composes = false
     private var suggests = false
@@ -142,6 +166,7 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
             mainExecutor.execute { state.emojiCategories = categories }
         }.start()
         clipboard.addPrimaryClipChangedListener(clipListener)
+        onEngineThread { engine = Engine.open(this) }
     }
 
     override fun onCreateInputView(): View {
@@ -190,17 +215,27 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
             currentInputConnection?.finishComposingText()
             forgetWord()
         }
-        if (!ours) correction = null
+        if (!ours) {
+            correction = null
+            if (word.isEmpty()) state.suggestions = null
+        }
         autoCapitalise()
     }
 
     override fun onFinishInput() {
         super.onFinishInput()
         forgetWord()
+        state.suggestions = null
         correction = null
+        onEngineThread { engine?.flush() }
     }
 
     override fun onDestroy() {
+        onEngineThread {
+            engine?.close()
+            engine = null
+        }
+        engineThread.shutdown()
         spell?.close()
         clipboard.removePrimaryClipChangedListener(clipListener)
         getSystemService(WindowManager::class.java).removeCrossWindowBlurEnabledListener(blurListener)
@@ -242,11 +277,56 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
         }.getOrNull()
     }
 
-    private fun askSpellChecker() {
+    /** The text before the word under way, as context for the engine. */
+    private fun textBeforeWord(): String {
+        val before = currentInputConnection?.getTextBeforeCursor(64 + word.length, 0)?.toString() ?: ""
+        return before.dropLast(word.length)
+    }
+
+    /** Suggestions for the word under way: from the engine, or the spell checker if it can't run. */
+    private fun askForSuggestions() {
         if (!suggests || word.isEmpty()) return
         val asking = word.toString()
         // The strip shows the word straight away, keeping the last suggestions until new ones come
         state.suggestions = Words.typing(state.suggestions, asking)
+        val engine = engine ?: return askSpellChecker(asking)
+        val request = ++engineRequest
+        val xs = touchXs.toIntArray()
+        val ys = touchYs.toIntArray()
+        val context = Prediction.context(textBeforeWord())
+        onEngineThread {
+            val found = engine.suggest(asking, xs, ys, context)
+            mainExecutor.execute {
+                if (request != engineRequest || word.toString() != asking) return@execute
+                state.suggestions = Words.strip(asking, found.words, looksLikeTypo = found.autocorrect != null, recommended = found.autocorrect != null)
+            }
+        }
+    }
+
+    /** After a word and a space: the likeliest next words, in the strip. */
+    private fun askForPredictions() {
+        val engine = engine ?: return
+        if (!suggests) return
+        val request = ++engineRequest
+        val context = Prediction.context(textBeforeWord())
+        onEngineThread {
+            val next = engine.predict(context)
+            mainExecutor.execute {
+                if (request != engineRequest || word.isNotEmpty()) return@execute
+                state.suggestions = if (next.isEmpty()) null else Words.predictions(next)
+            }
+        }
+    }
+
+    /** Teaches the engine a finished word, with the text that came before it. */
+    private fun learn(finished: String, before: String, deliberate: Boolean) {
+        val engine = engine ?: return
+        if (!suggests) return
+        val context = Prediction.context(before)
+        onEngineThread { engine.learn(finished, context, deliberate) }
+    }
+
+    private fun askSpellChecker(asking: String) {
         val session = spell ?: return
         spellRequest++
         spellWords[spellRequest] = asking
@@ -255,6 +335,9 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
 
     private fun forgetWord() {
         word.clear()
+        touchXs.clear()
+        touchYs.clear()
+        engineRequest++
         spellWords.clear()
         state.suggestions = null
     }
@@ -267,22 +350,26 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
         if (word.isEmpty()) return null
         val ic = currentInputConnection
         val typed = word.toString()
+        val before = textBeforeWord()
         val fix = state.suggestions?.takeIf { autocorrect && prefs.autocorrect && it.typed == typed }?.autocorrect
         if (fix != null) ic?.commitText(fix, 1) else ic?.finishComposingText()
         lastEditAt = SystemClock.uptimeMillis()
         forgetWord()
+        learn(fix ?: typed, before, deliberate = false)
         return fix
     }
 
-    override fun type(text: String) {
+    override fun type(text: String, x: Float, y: Float) {
         val ic = currentInputConnection ?: return
         lastEditAt = SystemClock.uptimeMillis()
         correction = null
         val c = text.singleOrNull()
         if (composes && c != null && Words.isWordChar(c, word.isNotEmpty())) {
             word.append(text)
+            touchXs += if (x.isNaN()) -1 else x.toInt()
+            touchYs += if (y.isNaN()) -1 else y.toInt()
             ic.setComposingText(word, 1)
-            askSpellChecker()
+            askForSuggestions()
         } else {
             val typed = word.toString()
             val fix = finishWord(autocorrect = c != null && Words.endsSentenceOrClause(c))
@@ -296,10 +383,15 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
     override fun pickSuggestion(suggestion: String) {
         val ic = currentInputConnection ?: return
         lastEditAt = SystemClock.uptimeMillis()
+        val typed = word.toString()
+        val before = textBeforeWord()
         ic.commitText("$suggestion ", 1)
         forgetWord()
         correction = null
         lastSpace = 0L
+        // Keeping the word as typed says it's a real word: it's learned as one straight away
+        learn(suggestion, before, deliberate = suggestion == typed)
+        askForPredictions()
         autoCapitalise()
     }
 
@@ -312,8 +404,17 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
         }
         if (word.isNotEmpty()) {
             word.setLength(word.length - Text.lastCharacterLength(word))
+            while (touchXs.size > word.length) {
+                touchXs.removeAt(touchXs.lastIndex)
+                touchYs.removeAt(touchYs.lastIndex)
+            }
             ic.setComposingText(word, 1)
-            if (word.isEmpty()) forgetWord() else askSpellChecker()
+            if (word.isEmpty()) {
+                forgetWord()
+                state.suggestions = null
+            } else {
+                askForSuggestions()
+            }
             autoCapitalise()
             return
         }
@@ -325,6 +426,11 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
             if (ic.getTextBeforeCursor(fixed.length, 0)?.toString() == fixed) {
                 ic.deleteSurroundingText(fixed.length, 0)
                 ic.commitText(restored, 1)
+                // Undoing a fix says the word was meant: learned as a real word straight away
+                val meant = restored.takeWhile { Words.isWordChar(it, inWord = true) }
+                val before = ic.getTextBeforeCursor(64 + restored.length, 0)?.toString()?.dropLast(restored.length) ?: ""
+                learn(meant, before, deliberate = true)
+                state.suggestions = null
                 autoCapitalise()
                 return
             }
@@ -359,6 +465,7 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
         correction = fix?.let { "$it " to typed }
         // Like Gboard: a space after symbols goes back to the letters
         if (state.page == Page.SYMBOLS || state.page == Page.MORE_SYMBOLS) state.page = Page.LETTERS
+        if (composes) askForPredictions() else state.suggestions = null
         autoCapitalise()
     }
 
@@ -366,6 +473,7 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
         val ic = currentInputConnection ?: return
         finishWord(autocorrect = false)
         correction = null
+        state.suggestions = null
         if (state.enter == EnterAction.RETURN) {
             sendDownUpKeyEvents(KeyEvent.KEYCODE_ENTER)
         } else {
@@ -395,6 +503,16 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
         val numeric = state.field == FieldKind.NUMBER || state.field == FieldKind.PHONE
         state.page = if (page == Page.LETTERS && numeric) Page.NUMBERS else page
         if (state.page == Page.LETTERS) autoCapitalise()
+    }
+
+    override fun keysPlaced(page: Page, keys: List<Placed>, width: Float, height: Float, keyWidth: Float, rowHeight: Float) {
+        if (page != Page.LETTERS) return
+        // The letter keys, and their cells (the touch areas the engine works from)
+        val letters = keys.mapNotNull { p ->
+            val c = (p.key as? CharKey)?.text?.singleOrNull()?.takeIf { it.isLetter() } ?: return@mapNotNull null
+            EngineKey(c.code, p.cell)
+        }
+        onEngineThread { engine?.setKeys(letters, width.toInt(), height.toInt(), keyWidth.toInt(), rowHeight.toInt()) }
     }
 
     override fun hide() {
