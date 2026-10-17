@@ -261,6 +261,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                         .onGloballyPositioned { stripTop = it.positionInRoot().y },
                     hidden = state.appearance.hideLetters,
                     shown = overlay == Overlay.ALL_APPS,
+                    onGlass = overlay != Overlay.NONE && sheetLists,
                 )
 
                 pie?.let { PieMenu(state, it, pieSlots) }

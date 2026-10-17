@@ -110,6 +110,8 @@ fun AzStrip(
     /** Only show the letters while the strip is touched, or while [shown] (the app list is open). */
     hidden: Boolean = false,
     shown: Boolean = false,
+    /** The strip sits over the glass list sheet, so its pill is a flat fill, not more glass. */
+    onGlass: Boolean = false,
 ) {
     val palette = LocalPalette.current
     val haptics = LocalHapticFeedback.current
@@ -193,6 +195,20 @@ fun AzStrip(
     ) {
         val slot = height.toFloat() / AzLetters.size
         val spread = height * 0.2f // how far up and down the bend reaches
+        // With liquid glass, a slim pill of glass behind the letters while they're touched; the
+        // letters bend out of it towards the finger
+        if (palette.glass) {
+            CompositionLocalProvider(LocalOnGlass provides onGlass) {
+                Box(
+                    Modifier
+                        .align(Alignment.CenterEnd)
+                        .width(30.dp)
+                        .fillMaxHeight()
+                        .graphicsLayer { this.alpha = focus }
+                        .panel(SearchCapsule, palette.text.copy(alpha = 0.1f), lens = 0.5f),
+                )
+            }
+        }
         Column(Modifier.align(Alignment.CenterEnd).width(30.dp).fillMaxHeight()) {
             AzLetters.forEachIndexed { i, letter ->
                 Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {

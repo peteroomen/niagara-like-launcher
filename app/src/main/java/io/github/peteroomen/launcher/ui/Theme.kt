@@ -127,9 +127,13 @@ private val RimBrush = Brush.linearGradient(
  *
  * The tint adapts to the wallpaper behind each panel: it's measured there, and the tint is made
  * just strong enough for the text colour to read on its brightest (or darkest) parts.
+ *
+ * A panel holding only [largeText] (the clock) is clearer: big text reads with less contrast, so
+ * clear glass keeps its light tint and only eases down the brightest parts behind it (or lifts
+ * the darkest, under dark text) instead of tinting the whole panel for them.
  */
 @Composable
-fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false, bendScale: Float = 1f): Modifier {
+fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false, bendScale: Float = 1f, largeText: Boolean = false): Modifier {
     val backdrop = LocalGlassBackdrop.current
     val position = remember { mutableStateOf(Offset.Zero) }
     // What's behind: the darkest and brightest of it (10th and 90th percentile luminance)
@@ -182,11 +186,14 @@ fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false, bendS
                         extendLeft = away,
                         extendRight = away,
                         extendBottom = away,
+                        // Big text reads at about 3:1: light text over at most 0.3 luminance, dark over at least 0.25
+                        ceiling = if (largeText && !palette.darkText) 0.3f else 1f,
+                        floor = if (largeText && palette.darkText) 0.25f else 0f,
                     )
                     if (shader != null) {
                         drawRect(ShaderBrush(shader))
                         // A light tint keeps text and icons readable over clear glass
-                        drawRect(adaptiveTint(palette, palette.glassTint, behind.value))
+                        drawRect(if (largeText) palette.glassTint else adaptiveTint(palette, palette.glassTint, behind.value))
                         clearDrawn = true
                     }
                 }
@@ -280,15 +287,16 @@ fun OnGlass(content: @Composable () -> Unit) {
 /**
  * A panel behind something: liquid glass when that's switched on, otherwise a flat [fill]. A
  * [sheet] sits against the sides and bottom of the screen, so only its top edge is a glass edge.
- * [lens] scales how strongly clear glass bends at its rim (1 = the music card).
+ * [lens] scales how strongly clear glass bends at its rim (1 = the music card). [largeText]: it
+ * holds only big text, so clear glass can stay clearer (see [glass]).
  */
 @Composable
-fun Modifier.panel(shape: Shape, fill: Color, sheet: Boolean = false, lens: Float = 1f): Modifier {
+fun Modifier.panel(shape: Shape, fill: Color, sheet: Boolean = false, lens: Float = 1f, largeText: Boolean = false): Modifier {
     val palette = LocalPalette.current
     return when {
         palette.loud -> loudPanel(shape, fill, palette.text, sheet)
         palette.glass && LocalOnGlass.current -> clip(shape).background(fill)
-        palette.glass -> glass(shape, palette, sheet, lens)
+        palette.glass -> glass(shape, palette, sheet, lens, largeText)
         else -> clip(shape).background(fill)
     }
 }

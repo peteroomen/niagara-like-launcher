@@ -150,7 +150,7 @@ private fun ClockPanel(background: ClockBackground, content: @Composable () -> U
         }
     }
     CompositionLocalProvider(LocalPalette provides palette) {
-        Box(Modifier.panel(RoundedCornerShape(26.dp), palette.card).padding(horizontal = 22.dp, vertical = 16.dp)) {
+        Box(Modifier.panel(RoundedCornerShape(26.dp), palette.card, largeText = true).padding(horizontal = 22.dp, vertical = 16.dp)) {
             content()
         }
     }

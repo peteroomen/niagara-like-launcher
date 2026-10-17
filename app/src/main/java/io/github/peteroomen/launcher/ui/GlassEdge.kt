@@ -67,6 +67,10 @@ class GlassEdge(sharp: ImageBitmap) {
     /**
      * [extendLeft], [extendTop], [extendRight] and [extendBottom] push edges out past the panel, so
      * they don't bend: for a sheet whose sides and bottom sit against the screen.
+     *
+     * [ceiling] and [floor] keep what's seen through the glass below and above those luminances,
+     * easing the brightest (or darkest) parts in rather than tinting the whole panel: light text
+     * stays readable over a white wall while the rest of the glass stays clear. 1 and 0 leave it be.
      */
     fun clearShaderFor(
         size: Size,
@@ -81,8 +85,12 @@ class GlassEdge(sharp: ImageBitmap) {
         extendTop: Float = 0f,
         extendRight: Float = 0f,
         extendBottom: Float = 0f,
+        ceiling: Float = 1f,
+        floor: Float = 0f,
     ): Shader? {
         val clear = clear ?: return null
+        clear.setFloatUniform("highest", ceiling)
+        clear.setFloatUniform("lowest", floor)
         clear.setFloatUniform("extend", extendLeft, extendTop, extendRight, extendBottom)
         clear.setFloatUniform("size", size.width, size.height)
         clear.setFloatUniform("radius", radius.coerceAtMost(minOf(size.width, size.height) / 2))
@@ -162,6 +170,15 @@ class GlassEdge(sharp: ImageBitmap) {
             uniform float2 imageOrigin;
             uniform float imageScale;
             uniform float4 extend; // left, top, right, bottom: edges pushed out of sight
+            uniform float highest; // the ceiling and floor (floor() is built in, so not that name)
+            uniform float lowest;
+
+            // Luminance eased in above 60% of [limit], never quite reaching it
+            float eased(float l, float limit) {
+                float knee = limit * 0.6;
+                if (l <= knee) return l;
+                return knee + (limit - knee) * (1.0 - exp(-(l - knee) / (limit - knee)));
+            }
 
             float edgeDistance(float2 p, float2 halfSize, float r) {
                 float2 q = abs(p) - halfSize + r;
@@ -196,6 +213,12 @@ class GlassEdge(sharp: ImageBitmap) {
 
                 half lum = dot(c, half3(0.2126, 0.7152, 0.0722));
                 c = mix(half3(lum), c, 1.2);
+
+                // Bright parts brought down under light text, dark parts lifted under dark text
+                lum = dot(c, half3(0.2126, 0.7152, 0.0722));
+                float l = float(lum);
+                if (highest < 1.0) c *= half(eased(l, highest) / max(l, 0.0001));
+                if (lowest > 0.0) c = 1.0 - (1.0 - c) * half(eased(1.0 - l, 1.0 - lowest) / max(1.0 - l, 0.0001));
 
                 // Light catching the rim, brightest where it faces the top-left or bottom-right
                 float facing = abs(dot(n, float2(-0.7071, -0.7071)));
