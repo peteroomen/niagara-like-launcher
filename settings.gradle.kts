@@ -14,3 +14,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "niagara-like-launcher"
 include(":app")
+include(":keyboard")

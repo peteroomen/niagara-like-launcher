@@ -41,6 +41,11 @@ jobs:
         with:
           name: launcher-debug
           path: launcher-*.apk
+      # The glass keyboard is its own app, built alongside (not in releases yet)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: keyboard-debug
+          path: keyboard/build/outputs/apk/debug/keyboard-debug.apk
       # Each push to main becomes a release, so Obtainium can offer it as an update. Only with the
       # shared key: an APK signed with a throwaway key wouldn't install over the one on the phone.
       - name: Publish release

@@ -42,6 +42,20 @@ The design came from the interactive prototype in [`prototype/index.html`](proto
 
 Requires Android 12 or later.
 
+## Glass Keyboard
+
+A keyboard of frosted glass, in `keyboard/`, built as its own app (`keyboard-debug` in the **Build** workflow's artifacts), so it works with any launcher. Its window asks Android to blur whatever app is behind it (Android 12+ window blur), and the keys are frosted caps with a lit rim and a soft glow along their tops, after the launcher's frosted glass. Android never lets an app see other apps' pixels, so it can blur them but not bend them like the launcher's clear glass. Battery Saver turns the blur off; the keyboard then turns nearly solid so the keys stay readable.
+
+- QWERTY with shift (tap once for a capital, twice for caps lock), automatic capitals at the start of sentences, and two pages of symbols.
+- Hold a letter for accents, macrons first (ā ē ī ō ū), or a top-row letter for its number. Hold `.` for more punctuation.
+- Number and phone fields open on a number pad. Email and web address fields swap the comma for `@` or `/`.
+- Enter matches the app: Search, Send, Go, Next or Done, or a new line.
+- Two quick spaces after a word type a full stop. Hold backspace to keep deleting.
+- Slide along the space bar to move the cursor. Hold it to switch keyboards.
+- Vibration (on) and click sounds (off), and light, dark or system glass, in the **Glass Keyboard** app.
+
+To set it up, open **Glass Keyboard**, tap **Turn on Glass Keyboard** and switch it on in Android's list, then **Switch to Glass Keyboard**.
+
 ## Code
 
 | Path | What |
@@ -51,6 +65,7 @@ Requires Android 12 or later.
 | `system/` | Notification listener for dots, media sessions for the music widget, wallpaper colours, system intents |
 | `ui/` | Compose UI: home screen, icons and folders, widgets, A–Z list and search, hold menus |
 | `SettingsActivity.kt` | Setup and appearance settings |
+| `keyboard/` | The glass keyboard: `model/` holds the layouts, shift and Enter logic and touch-to-key geometry (unit tested); `ui/` draws it; `GlassKeyboardService.kt` types into the app |
 
 ```sh
 ./gradlew testDebugUnitTest assembleDebug
