@@ -60,6 +60,7 @@ import io.github.peteroomen.keyboard.model.Layouts
 import io.github.peteroomen.keyboard.model.Page
 import io.github.peteroomen.keyboard.model.Placed
 import io.github.peteroomen.keyboard.model.Shift
+import io.github.peteroomen.keyboard.model.Strip
 import io.github.peteroomen.keyboard.model.Text as TextLogic
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -76,6 +77,8 @@ class KeyboardState {
     var emoji by mutableStateOf(false)
     var emojiCategories by mutableStateOf<List<EmojiCategory>>(emptyList())
     var recentEmoji by mutableStateOf<List<String>>(emptyList())
+    /** Suggestions for the word being typed, shown in the toolbar in place of its buttons */
+    var suggestions by mutableStateOf<Strip?>(null)
     /** Recent copies, newest first, offered in the toolbar */
     var clips by mutableStateOf<List<Clip>>(emptyList())
 
@@ -103,6 +106,7 @@ interface KeyboardActions {
     fun showEmoji(show: Boolean)
     fun typeEmoji(emoji: String)
     fun paste(clip: Clip)
+    fun pickSuggestion(suggestion: String)
     fun forgetClip(clip: Clip)
     fun feedback(kind: Feedback)
 }
@@ -382,6 +386,11 @@ fun KeyboardScreen(state: KeyboardState, actions: KeyboardActions) {
  */
 @Composable
 private fun Strip(state: KeyboardState, look: Look, actions: KeyboardActions) {
+    val suggestions = state.suggestions
+    if (suggestions != null && !state.emoji) {
+        SuggestionStrip(suggestions, look) { actions.pickSuggestion(it) }
+        return
+    }
     Row(Modifier.fillMaxWidth().height(StripHeight).padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         ToolbarButton(R.drawable.ic_emoji, look, on = state.emoji) { actions.showEmoji(!state.emoji) }
         ToolbarButton(R.drawable.ic_settings, look) { actions.openSettings() }

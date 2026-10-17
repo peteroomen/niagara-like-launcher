@@ -51,6 +51,7 @@ import io.github.peteroomen.keyboard.R
 import io.github.peteroomen.keyboard.model.Clip
 import io.github.peteroomen.keyboard.model.ClipHistory
 import io.github.peteroomen.keyboard.model.EmojiCategory
+import io.github.peteroomen.keyboard.model.Strip
 import kotlinx.coroutines.launch
 
 private const val RecentName = "Recent"
@@ -218,6 +219,40 @@ fun ClipChips(clips: List<Clip>, look: Look, actions: KeyboardActions, modifier:
                 Icon(R.drawable.ic_paste, ink, 14.dp)
                 Spacer(Modifier.width(6.dp))
                 Text(ClipHistory.label(clip), color = ink, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+/**
+ * Gboard's suggestion strip, in place of the toolbar while a word is typed: three slots split by
+ * hairlines. The one a space will put in (a sure fix, or the word as typed) is in bold.
+ */
+@Composable
+fun SuggestionStrip(strip: Strip, look: Look, onPick: (String) -> Unit) {
+    val onSpace = strip.autocorrect ?: strip.typed
+    Row(Modifier.fillMaxWidth().height(StripHeight).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        strip.slots.forEachIndexed { i, slot ->
+            if (i > 0) Box(Modifier.width(1.dp).height(20.dp).drawBehind { drawRect(look.keyEdge) })
+            Box(
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(10.dp))
+                    .then(if (slot != null) Modifier.clickable { onPick(slot) } else Modifier),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (slot != null) {
+                    Text(
+                        slot,
+                        color = look.text,
+                        fontSize = 16.sp,
+                        fontWeight = if (slot == onSpace) FontWeight.SemiBold else FontWeight.Normal,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = 6.dp),
+                    )
+                }
             }
         }
     }

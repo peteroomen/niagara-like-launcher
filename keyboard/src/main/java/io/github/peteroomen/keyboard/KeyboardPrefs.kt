@@ -18,6 +18,16 @@ class KeyboardPrefs(context: Context) {
         get() = prefs.getBoolean("sound", false)
         set(value) = prefs.edit { putBoolean("sound", value) }
 
+    /** Suggestions from the spell checker as you type */
+    var suggestions: Boolean
+        get() = prefs.getBoolean("suggestions", true)
+        set(value) = prefs.edit { putBoolean("suggestions", value) }
+
+    /** A sure fix goes in on space */
+    var autocorrect: Boolean
+        get() = prefs.getBoolean("autocorrect", true)
+        set(value) = prefs.edit { putBoolean("autocorrect", value) }
+
     var look: LookChoice
         get() = runCatching { LookChoice.valueOf(prefs.getString("look", null) ?: "") }.getOrDefault(LookChoice.SYSTEM)
         set(value) = prefs.edit { putString("look", value.name) }
