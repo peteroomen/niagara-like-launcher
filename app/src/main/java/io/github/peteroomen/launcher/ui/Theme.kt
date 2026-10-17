@@ -249,12 +249,15 @@ fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false, bendS
                     // A sheet's sides and bottom sit against the screen: only its top edge is cut
                     val away = 40.dp.toPx()
                     val wide = shape.createOutline(Size(size.width + away * 2, size.height + away), layoutDirection, this)
-                    translate(-away, 0f) { bezelEdges(wide, palette, sheet = true) }
+                    translate(-away, 0f) { bezelEdges(wide, palette) }
                 } else {
-                    bezelEdges(outline, palette, sheet = false)
+                    bezelEdges(outline, palette)
                 }
             }
-            if (!clearDrawn) {
+            if (palette.glassBezel && !clearDrawn) {
+                // Bezel glass is evenly lit: an even rim, no top glow
+                bezelRim(outline)
+            } else if (!clearDrawn) {
                 // Clear glass lights its own rim; frosted gets a faint top glow and a hairline rim
                 drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.2f), 1f to Color.Transparent, endY = GlowDepth.toPx()))
                 drawOutline(outline, RimBrush, style = Stroke(width = RimWidth.toPx() * 2)) // half of it falls outside the clip
@@ -299,58 +302,30 @@ private val BezelFacet = 6.dp
 private val BezelShift = 3.dp
 
 /**
- * Bezel glass's cut edge, lit from the top left like the rim: the facet is bright where it faces
- * the light and shaded where it faces away, with a faint warm and cool split across it; a crisp
- * ridge where it meets the face; and a soft shadow just inside, the thickness of the glass. A
- * [sheet] only shows its top edge, so it's lit from above.
+ * Bezel glass's cut edge, in even, ambient light: a lighter band over the facet all round, a
+ * crisp ridge where it meets the face (a bright hairline with a faint dark line just inside),
+ * and a soft shadow on the face just inside that, the thickness of the glass. No light
+ * direction: the facet's shifted, richer view of the wallpaper (the shader) does the rest.
  */
-private fun DrawScope.bezelEdges(outline: Outline, palette: Palette, sheet: Boolean, panel: Size = size) {
+private fun DrawScope.bezelEdges(outline: Outline, palette: Palette) {
     val facet = BezelFacet.toPx()
-    val lightEnd = if (sheet) Offset(0f, facet * 2) else Offset(panel.width, panel.height)
-    val lift = if (palette.darkText) 0.55f else 0.4f
-    // The facet: lit, then shaded round the panel (centred on the edge, so only the inner half shows)
-    drawOutline(
-        outline,
-        Brush.linearGradient(
-            0f to Color.White.copy(alpha = lift),
-            0.45f to Color.White.copy(alpha = lift * 0.25f),
-            0.55f to Color.Black.copy(alpha = 0.06f),
-            1f to Color.Black.copy(alpha = 0.28f),
-            start = Offset.Zero,
-            end = lightEnd,
-        ),
-        style = Stroke(width = facet * 2),
-    )
-    // Light split through the cut: warm on the lit side, cool on the shaded side
-    drawOutline(
-        outline,
-        Brush.linearGradient(
-            0f to Color(0xFFFFC27A).copy(alpha = 0.1f),
-            0.5f to Color.Transparent,
-            1f to Color(0xFF7AD3FF).copy(alpha = 0.12f),
-            start = Offset.Zero,
-            end = lightEnd,
-        ),
-        style = Stroke(width = facet * 2),
-    )
+    // The facet: centred on the edge, so only the inner half shows
+    drawOutline(outline, Color.White.copy(alpha = if (palette.darkText) 0.4f else 0.16f), style = Stroke(width = facet * 2))
     val face = faceOutline(outline, facet) ?: return
-    // The ridge: dark where the lit facet turns to the face, bright where the shaded one does
-    drawOutline(
-        face,
-        Brush.linearGradient(
-            0f to Color.Black.copy(alpha = 0.3f),
-            0.5f to Color.White.copy(alpha = 0.12f),
-            1f to Color.White.copy(alpha = 0.55f),
-            start = Offset.Zero,
-            end = lightEnd,
-        ),
-        style = Stroke(width = 1.dp.toPx()),
-    )
+    val hairline = 1.dp.toPx()
+    // The ridge
+    drawOutline(face, Color.White.copy(alpha = if (palette.darkText) 0.6f else 0.42f), style = Stroke(width = hairline))
+    faceOutline(outline, facet + hairline)?.let { drawOutline(it, Color.Black.copy(alpha = 0.14f), style = Stroke(width = hairline)) }
     // The thickness: a soft shadow on the face just inside the ridge
     clipPath(Path().apply { addOutline(face) }) {
         drawOutline(face, Color.Black.copy(alpha = 0.1f), style = Stroke(width = 8.dp.toPx()))
         drawOutline(face, Color.Black.copy(alpha = 0.06f), style = Stroke(width = 16.dp.toPx()))
     }
+}
+
+/** Bezel glass's outer rim: the same all round, in keeping with its even light. */
+private fun DrawScope.bezelRim(outline: Outline) {
+    drawOutline(outline, Color.White.copy(alpha = 0.5f), style = Stroke(width = RimWidth.toPx() * 2))
 }
 
 /** The face inside a facet [inset] wide: the panel's outline, shrunk by that much. */
@@ -456,8 +431,8 @@ fun Modifier.underGlass(image: ImageBitmap, panelSize: IntSize, panelCorner: Dp)
                         scale(scale, pivot = Offset.Zero) { drawImage(image, filterQuality = FilterQuality.High) }
                     }
                 }
-                bezelEdges(outline, palette, sheet = false, panel = panel)
-                drawOutline(outline, RimBrush, style = Stroke(width = RimWidth.toPx() * 2))
+                bezelEdges(outline, palette)
+                bezelRim(outline)
             } else if (shader != null) {
                 drawRect(ShaderBrush(shader))
                 drawRect(palette.glassTint.copy(alpha = palette.glassTint.alpha * 0.5f))
