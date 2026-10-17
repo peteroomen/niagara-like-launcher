@@ -3,15 +3,19 @@ package io.github.peteroomen.launcher.ui
 import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.toSize
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -108,18 +112,29 @@ private val RimBrush = Brush.linearGradient(
  * 13+), under a light tint so text and icons stay readable. Otherwise panels are frosted: the
  * wallpaper blurred and more vivid under a light tint, with a faint glow at the top and a hairline
  * rim. Every panel gets the same recipe, whatever its size.
+ *
+ * Big sheets are always frosted, with a heavier tint: like iOS, clear glass is for small things
+ * over the wallpaper, and a sheet full of text needs to read as a surface.
+ *
+ * The tint adapts to the wallpaper behind each panel: it's measured there, and the tint is made
+ * just strong enough for the text colour to read on its brightest (or darkest) parts.
  */
 @Composable
 fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false, bendScale: Float = 1f): Modifier {
     val backdrop = LocalGlassBackdrop.current
     val position = remember { mutableStateOf(Offset.Zero) }
+    // What's behind: the darkest and brightest of it (10th and 90th percentile luminance)
+    val behind = remember { mutableStateOf<Pair<Float, Float>?>(null) }
     val sharp = backdrop?.sharp
-    val lens = remember(sharp, palette.glassClear) {
+    val lens = remember(sharp, palette.glassClear, sheet) {
         // The shader compiles on the phone; if that ever fails, fall back to frosted glass
-        if (sharp != null && palette.glassClear && Build.VERSION.SDK_INT >= 33) runCatching { GlassEdge(sharp) }.getOrNull() else null
+        if (!sheet && sharp != null && palette.glassClear && Build.VERSION.SDK_INT >= 33) runCatching { GlassEdge(sharp) }.getOrNull() else null
     }
     return this
-        .onGloballyPositioned { position.value = it.positionOnScreen() }
+        .onGloballyPositioned {
+            position.value = it.positionOnScreen()
+            if (backdrop != null) behind.value = luminanceBehind(backdrop, position.value, it.size)
+        }
         .clip(shape)
         .drawBehind {
             val outline = shape.createOutline(size, layoutDirection, this)
@@ -137,7 +152,7 @@ fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false, bendS
                     (backdrop.screen.width - sharpImage.width * sharpScale) / 2,
                     (backdrop.screen.height - sharpImage.height * sharpScale) / 2,
                 )
-                if (palette.glassClear && lens != null && Build.VERSION.SDK_INT >= 33) {
+                if (lens != null && Build.VERSION.SDK_INT >= 33) {
                     val shortest = size.minDimension
                     // A sheet's sides and bottom sit against the screen: push them out so only its top bends
                     val away = if (sheet) 40.dp.toPx() else 0f
@@ -160,7 +175,7 @@ fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false, bendS
                     if (shader != null) {
                         drawRect(ShaderBrush(shader))
                         // A light tint keeps text and icons readable over clear glass
-                        drawRect(palette.glassTint)
+                        drawRect(adaptiveTint(palette, palette.glassTint, behind.value))
                         clearDrawn = true
                     }
                 }
@@ -175,7 +190,8 @@ fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false, bendS
                             drawImage(image, colorFilter = Vibrancy, filterQuality = FilterQuality.High)
                         }
                     }
-                    drawRect(palette.glassFrostedTint)
+                    val frostedTint = if (sheet) palette.glassFrostedTint.copy(alpha = palette.glassFrostedTint.alpha * 2.2f) else palette.glassFrostedTint
+                    drawRect(adaptiveTint(palette, frostedTint, behind.value))
                 }
             } else {
                 drawRect(palette.glassTintNoBlur)
@@ -216,19 +232,85 @@ fun Modifier.panel(shape: Shape, fill: Color, sheet: Boolean = false, lens: Floa
     }
 }
 
+/** Luminance below which, and above which, a tenth of the wallpaper behind this rectangle lies. */
+private fun luminanceBehind(backdrop: GlassBackdrop, position: Offset, size: IntSize): Pair<Float, Float>? {
+    if (size.width <= 0 || size.height <= 0) return null
+    val bitmap = backdrop.frosted.asAndroidBitmap()
+    val scale = max(backdrop.screen.width / bitmap.width, backdrop.screen.height / bitmap.height)
+    val left = (backdrop.screen.width - bitmap.width * scale) / 2
+    val top = (backdrop.screen.height - bitmap.height * scale) / 2
+    val samples = ArrayList<Float>(SampleGrid * SampleGrid)
+    for (i in 0 until SampleGrid) for (j in 0 until SampleGrid) {
+        val x = ((position.x + size.width * (i + 0.5f) / SampleGrid - left) / scale).toInt().coerceIn(0, bitmap.width - 1)
+        val y = ((position.y + size.height * (j + 0.5f) / SampleGrid - top) / scale).toInt().coerceIn(0, bitmap.height - 1)
+        samples += Color(bitmap.getPixel(x, y)).luminance()
+    }
+    samples.sort()
+    return samples[samples.size / 10] to samples[samples.size * 9 / 10]
+}
+
+private const val SampleGrid = 12
+
 /**
- * The glass's lit rim and a soft glow just inside it, drawn over something that runs to a glass
- * panel's edge (the music card's album art), so its edges read as the panel's glass. [shape] is
- * the panel's corners where they meet this; [openEnd] pushes the right-hand edge out of sight,
- * where the content carries on into the panel.
+ * [base], made just strong enough for the text to read on what's [behind]: light text needs the
+ * brightest parts darkened below about 0.18 luminance, dark text the darkest lifted above 0.4.
  */
-fun Modifier.glassEdgeOver(shape: Shape, openEnd: Dp = 0.dp): Modifier = drawWithContent {
-    drawContent()
-    val outline = shape.createOutline(Size(size.width + openEnd.toPx(), size.height), layoutDirection, this)
-    // Half of each stroke falls outside: only the inner half shows
-    clipRect {
-        drawOutline(outline, Color.White.copy(alpha = 0.12f), style = Stroke(width = 10.dp.toPx()))
-        drawOutline(outline, RimBrush, style = Stroke(width = RimWidth.toPx() * 3))
+private fun adaptiveTint(palette: Palette, base: Color, behind: Pair<Float, Float>?): Color {
+    if (behind == null) return base
+    val (darkest, brightest) = behind
+    val needed = if (palette.darkText) {
+        if (darkest >= 0.4f) 0f else (0.4f - darkest) / (1f - darkest)
+    } else {
+        if (brightest <= 0.18f) 0f else 1f - 0.18f / brightest
+    }
+    return base.copy(alpha = needed.coerceIn(base.alpha, if (palette.darkText) 0.85f else 0.75f))
+}
+
+/**
+ * Draws [image], centre-cropped to fill this element, as if it lay under the glass of the panel it
+ * sits in: this element must sit at the panel's top-left, and [panelSize] and [panelCorner] are
+ * the panel's. Clear glass bends it at the panel's rim with the same lens and lit rim as the
+ * wallpaper, under a lighter tint; frosted glass gives it the tint, top glow and hairline rim.
+ */
+@Composable
+fun Modifier.underGlass(image: ImageBitmap, panelSize: IntSize, panelCorner: Dp): Modifier {
+    val palette = LocalPalette.current
+    val lens = remember(image, palette.glassClear) {
+        if (palette.glassClear && Build.VERSION.SDK_INT >= 33) runCatching { GlassEdge(image) }.getOrNull() else null
+    }
+    return drawBehind {
+        val scale = max(size.width / image.width, size.height / image.height)
+        val origin = Offset((size.width - image.width * scale) / 2, (size.height - image.height * scale) / 2)
+        val panel = if (panelSize.width > 0 && panelSize.height > 0) panelSize.toSize() else size
+        val shortest = panel.minDimension
+        clipRect {
+            val shader = if (lens != null && Build.VERSION.SDK_INT >= 33) {
+                lens.clearShaderFor(
+                    size = panel,
+                    radius = panelCorner.toPx(),
+                    bevel = minOf(shortest * 0.25f, 16.dp.toPx()),
+                    strength = minOf(shortest * 0.16f, 9.dp.toPx()),
+                    zoom = 1f,
+                    panelOrigin = Offset.Zero,
+                    imageOrigin = origin,
+                    imageScale = scale,
+                )
+            } else {
+                null
+            }
+            if (shader != null) {
+                drawRect(ShaderBrush(shader))
+                drawRect(palette.glassTint.copy(alpha = palette.glassTint.alpha * 0.5f))
+            } else {
+                translate(origin.x, origin.y) {
+                    scale(scale, pivot = Offset.Zero) { drawImage(image, filterQuality = FilterQuality.High) }
+                }
+                drawRect(palette.glassFrostedTint.copy(alpha = palette.glassFrostedTint.alpha * 0.5f))
+                drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.2f), 1f to Color.Transparent, endY = GlowDepth.toPx()))
+                val outline = RoundedCornerShape(panelCorner).createOutline(panel, layoutDirection, this)
+                drawOutline(outline, RimBrush, style = Stroke(width = RimWidth.toPx() * 2))
+            }
+        }
     }
 }
 

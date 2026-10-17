@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
@@ -507,11 +508,18 @@ fun SearchOverlay(
                     .then(
                         when {
                             palette.loud -> Modifier.panel(SearchCapsule, palette.card)
-                            // Inside the glass sheet, like iOS: no glass on glass, just a faint capsule
-                            sheet -> Modifier.background(
-                                if (palette.darkText) Color.Black.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.12f),
-                                SearchCapsule,
-                            )
+                            // Inside the glass sheet, like iOS: no glass on glass, but a capsule that
+                            // clearly stands out from the sheet, with a hairline edge
+                            sheet -> Modifier
+                                .background(
+                                    if (palette.darkText) Color.White.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.2f),
+                                    SearchCapsule,
+                                )
+                                .border(
+                                    1.dp,
+                                    if (palette.darkText) Color.Black.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.3f),
+                                    SearchCapsule,
+                                )
                             // Straight on the wallpaper it's the one glass thing, like the music card
                             else -> Modifier.panel(RoundedCornerShape(14.dp), ink.copy(alpha = 0.1f))
                         },
