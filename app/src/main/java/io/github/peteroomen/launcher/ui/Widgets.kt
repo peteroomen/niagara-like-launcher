@@ -53,6 +53,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.peteroomen.launcher.R
@@ -223,11 +225,13 @@ fun MusicWidget(nowPlaying: NowPlaying?, hasAccess: Boolean, appLabel: String?, 
     val palette = LocalPalette.current
     val context = LocalContext.current
     val shape = RoundedCornerShape(CardCorner)
+    var cardSize by remember { mutableStateOf(IntSize.Zero) }
     Column(
         Modifier
             .widthIn(max = 480.dp) // the full width on a phone; not stretched across a tablet
             .fillMaxWidth()
             .panel(shape, palette.card)
+            .onSizeChanged { cardSize = it }
             .quietClick {
                 when {
                     !hasAccess -> onNeedAccess()
@@ -245,7 +249,7 @@ fun MusicWidget(nowPlaying: NowPlaying?, hasAccess: Boolean, appLabel: String?, 
         val image = remember(art) { art?.asImageBitmap() }
         val hasProgress = nowPlaying != null && nowPlaying.durationMs > 0
         Row(verticalAlignment = Alignment.CenterVertically) {
-            AlbumArt(image, artSize, hasProgress)
+            AlbumArt(image, artSize, cardSize)
             Row(
                 Modifier.weight(1f).onSizeChanged { contentHeight = it.height }.padding(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -296,31 +300,18 @@ private fun Modifier.fadeOutEnd(): Modifier = graphicsLayer { compositingStrateg
     }
 
 @Composable
-private fun AlbumArt(image: ImageBitmap?, size: Dp, hasProgress: Boolean) {
+private fun AlbumArt(image: ImageBitmap?, size: Dp, cardSize: IntSize) {
     val palette = LocalPalette.current
-    // On glass, the card's lit rim and glow carry over the art's outer edges (the card's corners,
-    // and the bottom corner only when there's no progress line under it), not the whole card
-    val edges = if (palette.glass) {
-        Modifier.glassEdgeOver(
-            RoundedCornerShape(topStart = CardCorner, bottomStart = if (hasProgress) 0.dp else CardCorner),
-            openEnd = 40.dp,
-        )
+    if (image != null && palette.glass) {
+        // Under the card's glass: bent and lit at the card's edges like the wallpaper is, and
+        // fading into the rest of the glass on its inner side
+        Box(Modifier.size(size).fadeOutEnd().underGlass(image, cardSize, CardCorner))
+    } else if (image != null) {
+        Image(image, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(size))
     } else {
-        Modifier
-    }
-    if (image != null) {
-        Image(
-            image,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(size)
-                // On glass, the art's inner edge fades into the glass instead of stopping hard
-                .then(if (palette.glass) Modifier.fadeOutEnd() else Modifier)
-                .then(edges),
-        )
-    } else {
-        Box(Modifier.size(size).background(palette.tileBg).then(edges), contentAlignment = Alignment.Center) {
+        // No cover: on glass just a faint tile under it, so nothing solid sits on the glass
+        val tile = if (palette.glass) palette.tileBg.copy(alpha = palette.tileBg.alpha * 0.35f) else palette.tileBg
+        Box(Modifier.size(size).background(tile), contentAlignment = Alignment.Center) {
             Icon(painterResource(R.drawable.ic_music_note), contentDescription = null, tint = palette.tileFg, modifier = Modifier.size(24.dp))
         }
     }
