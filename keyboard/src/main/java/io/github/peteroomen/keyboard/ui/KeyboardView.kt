@@ -108,7 +108,7 @@ interface KeyboardActions {
 }
 
 internal val StripHeight = 44.dp
-internal val RowHeight = 54.dp
+internal val RowHeight = 58.dp
 private val SidePadding = 3.dp
 private val GapX = 3.dp
 private val GapY = 5.dp
@@ -424,7 +424,7 @@ private fun KeyCap(p: Placed, state: KeyboardState, look: Look, held: Boolean, b
         when {
             key is CharKey -> {
                 val big = state.page == Page.LETTERS || state.page == Page.NUMBERS
-                Text(state.label(key), color = ink, fontSize = if (big) 23.sp else 20.sp)
+                Text(state.label(key), color = ink, fontSize = if (big) 24.sp else 21.sp)
                 // The number a held top-row letter gives, in its corner
                 val digit = key.alternates.firstOrNull()?.takeIf { state.page == Page.LETTERS && it.length == 1 && it[0].isDigit() }
                 if (digit != null) {
@@ -459,19 +459,18 @@ private fun enterIcon(action: EnterAction) = when (action) {
     EnterAction.RETURN -> R.drawable.ic_return
 }
 
-/** A frosted key: its fill, a glow along the top, a lit rim; brighter while held. */
+/** A flat key: its fill and a hairline edge, darker or lighter while held. */
 internal fun Modifier.keyGlass(look: Look, fill: Color, held: Boolean, corner: Dp = KeyCorner) = drawBehind {
-    val corner = CornerRadius(corner.toPx())
-    drawRoundRect(fill, cornerRadius = corner)
-    drawRoundRect(Brush.verticalGradient(0f to look.glow, 1f to Color.Transparent, endY = size.height * 0.6f), cornerRadius = corner)
-    if (held) drawRoundRect(look.pressed, cornerRadius = corner)
-    val rim = 1.dp.toPx()
+    val radius = CornerRadius(corner.toPx())
+    drawRoundRect(fill, cornerRadius = radius)
+    if (held) drawRoundRect(look.pressed, cornerRadius = radius)
+    val edge = 1.dp.toPx()
     drawRoundRect(
-        look.rim,
-        topLeft = Offset(rim / 2, rim / 2),
-        size = size.copy(width = size.width - rim, height = size.height - rim),
-        cornerRadius = CornerRadius(corner.x - rim / 2),
-        style = Stroke(rim),
+        look.keyEdge,
+        topLeft = Offset(edge / 2, edge / 2),
+        size = size.copy(width = size.width - edge, height = size.height - edge),
+        cornerRadius = CornerRadius(radius.x - edge / 2),
+        style = Stroke(edge),
     )
 }
 
@@ -485,7 +484,7 @@ private fun Bubble(look: Look, left: Float, top: Float, width: Float, height: Fl
             .drawBehind {
                 val corner = CornerRadius(12.dp.toPx())
                 drawRoundRect(fill, cornerRadius = corner)
-                if (rimmed) drawRoundRect(look.rim, cornerRadius = corner, style = Stroke(1.dp.toPx()))
+                if (rimmed) drawRoundRect(look.keyEdge, cornerRadius = corner, style = Stroke(1.dp.toPx()))
             },
         contentAlignment = Alignment.Center,
     ) { content() }

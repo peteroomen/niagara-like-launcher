@@ -1,12 +1,10 @@
 package io.github.peteroomen.keyboard.ui
 
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
 /**
  * The keyboard's glass. The system blurs whatever app is behind the keyboard's window (Android
- * calls it cross-window blur); this is the tint over that blur, and the keys drawn on it: frosted
- * caps with a lit rim and a soft glow along their tops, after the launcher's frosted glass.
+ * calls it cross-window blur); this is the tint over that blur, and the keys drawn on it.
  * Without the blur (Battery Saver turns it off) the tint gets much heavier, so keys stay readable.
  */
 class Look(val dark: Boolean, val blur: Boolean, val accent: Color) {
@@ -20,29 +18,18 @@ class Look(val dark: Boolean, val blur: Boolean, val accent: Color) {
     val text: Color = if (dark) Color.White.copy(alpha = 0.95f) else Color(0xFF16191D)
     val hint: Color = text.copy(alpha = 0.45f)
 
-    val keyFill: Color = if (dark) Color.White.copy(alpha = 0.13f) else Color.White.copy(alpha = 0.55f)
-    val functionFill: Color = if (dark) Color.White.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.24f)
+    // Keys are flat, as the launcher draws things sitting on its glass sheet (its search box): a
+    // translucent fill with a hairline edge, no glow or lit rim, since glass isn't stacked on glass
+    val keyFill: Color = if (dark) Color.White.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.7f)
+    val functionFill: Color = if (dark) Color.White.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.4f)
+    val keyEdge: Color = if (dark) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.1f)
     /** Laid over a key while it's held */
     val pressed: Color = if (dark) Color.White.copy(alpha = 0.22f) else Color.Black.copy(alpha = 0.08f)
 
     /** Enter and caps lock: the system accent, with a glyph that reads on it */
     val onAccent: Color = if (dark) Color(0xFF0E1216) else Color.White
 
-    /** A rim lit from the top left, with a fainter catch at the bottom right, like the launcher's glass. */
-    val rim: Brush = if (dark) {
-        Brush.linearGradient(
-            0f to Color.White.copy(alpha = 0.5f),
-            0.35f to Color.White.copy(alpha = 0.12f),
-            0.7f to Color.White.copy(alpha = 0.05f),
-            1f to Color.White.copy(alpha = 0.3f),
-        )
-    } else {
-        Brush.linearGradient(
-            0f to Color.White,
-            0.5f to Color.White.copy(alpha = 0.6f),
-            1f to Color.Black.copy(alpha = 0.08f),
-        )
-    }
+    /** Just under the keyboard's top edge */
     val glow: Color = Color.White.copy(alpha = if (dark) 0.1f else 0.35f)
 
     /** The keyboard's own top edge: a hairline catching the light */

@@ -199,6 +199,8 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
             ic.commitText(" ", 1)
             lastSpace = now
         }
+        // Like Gboard: a space after symbols goes back to the letters
+        if (state.page == Page.SYMBOLS || state.page == Page.MORE_SYMBOLS) state.page = Page.LETTERS
         autoCapitalise()
     }
 
