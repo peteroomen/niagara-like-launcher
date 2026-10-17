@@ -92,6 +92,7 @@ object PaletteSource {
             // Frosted glass, as tuned in the prototype: a lighter tint, since the blur does more of the work
             glassFrostedTint = if (darkText) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.12f),
             glassClear = a.glassStyle == GlassStyle.CLEAR,
+            glassBezel = a.glassStyle == GlassStyle.BEZEL,
             glassTintNoBlur = if (darkText) Color.White.copy(alpha = 0.62f) else Color.Black.copy(alpha = 0.42f),
             loud = a.accent.loud,
         )

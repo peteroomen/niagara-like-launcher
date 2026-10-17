@@ -144,8 +144,10 @@
     <string name="panels_glass">Glass</string>
     <string name="panels_blur">Blur</string>
     <string name="panels_flat">Flat</string>
+    <string name="panels_bezel">Bezel</string>
     <string name="panels_glass_summary">Icon tiles, folders, the music card, search and the pie are liquid glass, like Apple\'s: a lens over the wallpaper, barely blurred and bent at the rim, under a light tint so text stays readable.</string>
     <string name="panels_blur_summary">Icon tiles, folders, the music card, search and the pie blur the wallpaper behind them under a light tint.</string>
+    <string name="panels_bezel_summary">Icon tiles, folders, the music card, search and the pie are panes of softly blurred glass: a darker middle, framed by a lighter band just inside a bright rim.</string>
     <string name="panels_flat_summary">Icon tiles, folders, the music card, search and the pie sit on plain see-through panels.</string>
     <string name="glass_source_checking">Checking whether glass can see your wallpaper…</string>
     <string name="glass_source_system">Glass is blurring your wallpaper.</string>
@@ -167,7 +169,7 @@
     <string name="page_icons">Icons</string>
     <string name="page_icons_summary">Style, shape and size</string>
     <string name="page_look">Colours and glass</string>
-    <string name="page_look_summary">Accent colour, Glass, Blur or Flat panels</string>
+    <string name="page_look_summary">Accent colour, Glass, Blur, Bezel or Flat panels</string>
     <string name="page_list">App list and search</string>
     <string name="page_list_summary">A–Z letters, list style, hidden apps</string>
     <string name="page_setup">Setup</string>
