@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Glass Keyboard</string>
+    <string name="subtype_en">English</string>
+    <string name="setup_intro">A keyboard of frosted glass: whatever app you type in shows through it, blurred. Hold a letter for accents and macrons, or a top-row letter for its number. Slide along the space bar to move the cursor, and hold it to change keyboards.</string>
+    <string name="step_enable">Turn on Glass Keyboard</string>
+    <string name="step_switch">Switch to Glass Keyboard</string>
+    <string name="try_it">Try it here</string>
+    <string name="settings">Settings</string>
+    <string name="vibrate">Vibrate on key press</string>
+    <string name="sound">Sound on key press</string>
+    <string name="look">Look</string>
+    <string name="look_system">Follow the system (light or dark)</string>
+    <string name="look_light">Light glass</string>
+    <string name="look_dark">Dark glass</string>
+    <string name="blur_note">The blur is Android\'s window blur. Battery Saver turns it off, and the keyboard turns nearly solid until it\'s back.</string>
+</resources>

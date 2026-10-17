@@ -29,18 +29,27 @@ jobs:
           echo "DEBUG_KEYSTORE_FILE=$RUNNER_TEMP/debug.keystore" >> "$GITHUB_ENV"
       - run: ./gradlew testDebugUnitTest assembleDebug
       # Never publish an APK that wouldn't install over the one on the phone
-      - name: Check the APK is signed with the shared key
+      - name: Check the APKs are signed with the shared key
         if: env.DEBUG_KEYSTORE != ''
         run: |
           apksigner="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner"
-          "$apksigner" verify --print-certs app/build/outputs/apk/debug/app-debug.apk | tee certs.txt
-          grep -qi "SHA-256 digest: 5b6973b159eafc40f5509ae8f4dcf0125a66110236303319ee7f6c73778deae1" certs.txt
-      - name: Name the APK after its version
-        run: cp app/build/outputs/apk/debug/app-debug.apk launcher-0.1.${{ github.run_number }}.apk
+          for apk in app/build/outputs/apk/debug/app-debug.apk keyboard/build/outputs/apk/debug/keyboard-debug.apk; do
+            "$apksigner" verify --print-certs "$apk" | tee certs.txt
+            grep -qi "SHA-256 digest: 5b6973b159eafc40f5509ae8f4dcf0125a66110236303319ee7f6c73778deae1" certs.txt
+          done
+      # Named so Obtainium can tell them apart: filter on "launcher-" or "glass-keyboard-"
+      - name: Name the APKs after their version
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk launcher-0.1.${{ github.run_number }}.apk
+          cp keyboard/build/outputs/apk/debug/keyboard-debug.apk glass-keyboard-0.1.${{ github.run_number }}.apk
       - uses: actions/upload-artifact@v4
         with:
           name: launcher-debug
           path: launcher-*.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: keyboard-debug
+          path: glass-keyboard-*.apk
       # Each push to main becomes a release, so Obtainium can offer it as an update. Only with the
       # shared key: an APK signed with a throwaway key wouldn't install over the one on the phone.
       - name: Publish release
@@ -50,4 +59,6 @@ jobs:
           tag_name: v0.1.${{ github.run_number }}
           name: 0.1.${{ github.run_number }}
           body: Built from ${{ github.sha }}.
-          files: launcher-0.1.${{ github.run_number }}.apk
+          files: |
+            launcher-0.1.${{ github.run_number }}.apk
+            glass-keyboard-0.1.${{ github.run_number }}.apk

@@ -29,7 +29,8 @@ object WallpaperBackdrop {
     private const val RADIUS = 3
     private const val SHARP_WIDTH = 720
 
-    enum class Source { SYSTEM, PICKED, NONE }
+    /** [LIVE]: a live wallpaper, which no app can see, and no picked photo to use instead. */
+    enum class Source { SYSTEM, PICKED, LIVE, NONE }
 
     @Volatile private var ownChangeAt = 0L
 
@@ -45,8 +46,11 @@ object WallpaperBackdrop {
     fun source(context: Context): Source = when {
         systemWallpaper(context) != null -> Source.SYSTEM
         pickedFile(context).exists() -> Source.PICKED
+        isLive(context) -> Source.LIVE
         else -> Source.NONE
     }
+
+    private fun isLive(context: Context) = WallpaperManager.getInstance(context).wallpaperInfo != null
 
     /**
      * Two copies of the wallpaper for glass: [frosted] is blurred for frosted panels; [sharp] is
@@ -88,10 +92,14 @@ object WallpaperBackdrop {
         pickedFile(context).delete()
     }
 
+    /**
+     * The home screen wallpaper's image. Not for a live wallpaper: Android hands back its built-in
+     * default wallpaper then, and glass would show a picture that isn't on screen.
+     */
     @Suppress("MissingPermission")
     private fun systemWallpaper(context: Context): Drawable? =
         try {
-            WallpaperManager.getInstance(context).drawable
+            if (isLive(context)) null else WallpaperManager.getInstance(context).drawable
         } catch (e: SecurityException) {
             null
         } catch (e: RuntimeException) {

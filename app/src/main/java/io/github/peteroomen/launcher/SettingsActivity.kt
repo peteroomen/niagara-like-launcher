@@ -477,13 +477,15 @@ private fun GlassSource(vm: LauncherViewModel, resumes: Int) {
             when (source) {
                 WallpaperBackdrop.Source.SYSTEM -> R.string.glass_source_system
                 WallpaperBackdrop.Source.PICKED -> R.string.glass_source_picked
+                WallpaperBackdrop.Source.LIVE -> R.string.glass_source_live
                 WallpaperBackdrop.Source.NONE -> R.string.glass_source_none
                 null -> R.string.glass_source_checking
             },
         ),
     )
     if (source != null && source != WallpaperBackdrop.Source.SYSTEM) {
-        ListItem(
+        // Access doesn't help with a live wallpaper: no app can see one
+        if (source != WallpaperBackdrop.Source.LIVE) ListItem(
             headlineContent = { Text(stringResource(R.string.glass_allow_access)) },
             supportingContent = { Text(stringResource(R.string.glass_access_note)) },
             modifier = Modifier.clickable {

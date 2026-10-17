@@ -12,7 +12,7 @@ The design came from the interactive prototype in [`prototype/index.html`](proto
 - **Icons:** themed (the app's monochrome icon tinted with wallpaper colours, Android 13+), colour or greyscale. Three sizes and three shapes (rounded, circle, square).
 - **Readability:** text shadow from off to strong, an optional fade or dim behind the text, and text colour from the wallpaper or forced light or dark.
 - **Look:** accent colour (from the wallpaper, a fixed colour, or one of the Loud launcher's eight palettes: Taxi, Riso, Acid, Night Brutal, Candy, Pop Garden, Baby Blue or Rave, which go fully Loud: themed icon tiles get the combo colours, and glass and blur give way to solid outlined panels with hard shadows everywhere), font (system, condensed, serif, mono), and clock size and weight.
-- **Liquid glass** (setting): on Android 13+ the edges bend the wallpaper like a lens and fade into a frosted middle ("Bend edges", on by default). Icon tiles, folders, the music card, folder rows, the pie, the big A–Z letter bubble (with a gentler lens), the search box when lists sit on the wallpaper, and the search panel (80% of the screen tall) show the wallpaper behind them blurred and slightly more vivid, under a light tint for contrast, with a hairline rim. Glass is never stacked on glass: icons inside folders, the folder row, the pie and the search/A–Z sheet are flat tinted tiles. On the music card the album art lies under the glass: bent and lit at the card's edges like the wallpaper, fading into the rest of the card. The search and A–Z sheet is always frosted with a heavier tint, and every panel's tint adapts to the wallpaper behind it so its text stays readable. To blur the real wallpaper the launcher needs to read it: allow wallpaper access (Android calls it "All files access"), or pick your wallpaper photo in Launcher settings, which sets it as the wallpaper and keeps a copy. Without either, glass uses a frosted tint. The whole wallpaper also blurs behind search, the A–Z list and the pie on phones that support window blur.
+- **Liquid glass** (setting): on Android 13+ the edges bend the wallpaper like a lens and fade into a frosted middle ("Bend edges", on by default). Icon tiles, folders, the music card, folder rows, the pie, the big A–Z letter bubble (with a gentler lens), the search box when lists sit on the wallpaper, the search panel (80% of the screen tall), the hold menus for apps, folders and empty space, and a slim pill behind the A–Z letters while you touch them show the wallpaper behind them blurred and slightly more vivid, under a light tint for contrast, with a hairline rim. Glass is never stacked on glass: icons inside folders, the folder row, the pie, the search/A–Z sheet and the A–Z pill over that sheet are flat tinted tiles. The clock's glass panel stays clearer: big text reads with less contrast, so instead of tinting the whole panel for the brightest thing behind it, the glass only eases bright parts down (or dark parts up, under dark text). On the music card the album art lies under the glass: bent and lit at the card's edges like the wallpaper, fading into the rest of the card. The search and A–Z sheet is always frosted with a heavier tint, and every panel's tint adapts to the wallpaper behind it so its text stays readable. To blur the real wallpaper the launcher needs to read it: allow wallpaper access (Android calls it "All files access"), or pick your wallpaper photo in Launcher settings, which sets it as the wallpaper and keeps a copy. Without either, or with a live wallpaper (which no app can see), glass uses a frosted tint. The whole wallpaper also blurs behind search, the A–Z list and the pie on phones that support window blur.
 - **Bezel panels** (setting, next to Glass, Blur and Flat): every panel is a thick pane of softly blurred, slightly magnifying glass with a cut edge, in even, ambient light. A flat 5dp facet round the rim shifts what's behind it (Android 13+) under a lighter band, with a crisp ridge where it meets the face and a soft shadow just inside.
 - **Portrait lock:** the home screen stays upright by default; turn it off in settings.
 - **Notification dots:** on icons and folders, respecting each app's dot setting.
@@ -42,6 +42,23 @@ The design came from the interactive prototype in [`prototype/index.html`](proto
 
 Requires Android 12 or later.
 
+## Glass Keyboard
+
+A keyboard of frosted glass, in `keyboard/`, built as its own app (`keyboard-debug` in the **Build** workflow's artifacts), so it works with any launcher. Its window asks Android to blur whatever app is behind it (Android 12+ window blur), and the keys are frosted caps with a lit rim and a soft glow along their tops, after the launcher's frosted glass. Android never lets an app see other apps' pixels, so it can blur them but not bend them like the launcher's clear glass. Battery Saver turns the blur off; the keyboard then turns nearly solid so the keys stay readable.
+
+- QWERTY with shift (tap once for a capital, twice for caps lock), automatic capitals at the start of sentences, and two pages of symbols.
+- Hold a letter for accents, macrons first (ā ē ī ō ū), or a top-row letter for its number. Hold `.` for more punctuation.
+- Number and phone fields open on a number pad. Email and web address fields swap the comma for `@` or `/`.
+- Enter matches the app: Search, Send, Go, Next or Done, or a new line.
+- Two quick spaces after a word type a full stop. Hold backspace to keep deleting.
+- Slide along the space bar to move the cursor. Hold it to switch keyboards.
+- A toolbar above the keys, laid out like Gboard's: emoji, settings and switch keyboard on the left, hide on the right.
+- **Emoji:** tap the smiley for emoji in place of the keys, like Gboard's: one scrolling grid, recently used first, with category tabs between ABC and backspace. Emoji the phone's font can't draw are left out. The list comes from Unicode (`keyboard/scripts/build_emoji.py`).
+- **Clipboard strip:** whatever you copy shows as a chip in the toolbar; tap it to paste, hold it to forget it. Something copied in the last minute is highlighted. Copies last an hour and are only kept in memory, and anything an app marks sensitive (like a password) shows as dots.
+- Vibration (on) and click sounds (off), and light, dark or system glass, in the **Glass Keyboard** app.
+
+To set it up, open **Glass Keyboard**, tap **Turn on Glass Keyboard** and switch it on in Android's list, then **Switch to Glass Keyboard**.
+
 ## Code
 
 | Path | What |
@@ -51,6 +68,7 @@ Requires Android 12 or later.
 | `system/` | Notification listener for dots, media sessions for the music widget, wallpaper colours, system intents |
 | `ui/` | Compose UI: home screen, icons and folders, widgets, A–Z list and search, hold menus |
 | `SettingsActivity.kt` | Setup and appearance settings |
+| `keyboard/` | The glass keyboard: `model/` holds the layouts, shift and Enter logic and touch-to-key geometry (unit tested); `ui/` draws it; `GlassKeyboardService.kt` types into the app |
 
 ```sh
 ./gradlew testDebugUnitTest assembleDebug

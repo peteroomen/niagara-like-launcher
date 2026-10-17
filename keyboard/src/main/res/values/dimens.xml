@@ -1,0 +1,4 @@
+<resources>
+    <!-- How strongly the app behind the keyboard is blurred -->
+    <dimen name="blur_radius">32dp</dimen>
+</resources>
