@@ -16,9 +16,6 @@ object Prediction {
     const val MAX_PROXIMITY_CHARS = 16
     const val NOT_A_CODE = -1
 
-    /** AOSP's "modest" autocorrect: a fix whose normalised score is at least this goes in. */
-    const val AUTOCORRECT_THRESHOLD = 0.185f
-
     private const val SENTENCE_ENDS = ".!?"
 
     /** Reads the words before the cursor from [before] (the text up to it, not the word being typed). */

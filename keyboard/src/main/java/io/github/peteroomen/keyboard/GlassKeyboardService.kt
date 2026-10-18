@@ -34,6 +34,7 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import io.github.peteroomen.keyboard.engine.Engine
+import io.github.peteroomen.keyboard.engine.Found
 import io.github.peteroomen.keyboard.model.CharKey
 import io.github.peteroomen.keyboard.model.Clip
 import io.github.peteroomen.keyboard.model.ClipHistory
@@ -55,7 +56,9 @@ import io.github.peteroomen.keyboard.ui.KeyboardActions
 import io.github.peteroomen.keyboard.ui.KeyboardScreen
 import io.github.peteroomen.keyboard.ui.KeyboardState
 import io.github.peteroomen.keyboard.ui.Look
+import java.util.concurrent.Callable
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import java.util.function.Consumer
 
 /**
@@ -77,6 +80,11 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
     private lateinit var prefs: KeyboardPrefs
     private var view: View? = null
     private var blurOn = true
+    /** The window's background has been set at least once */
+    private var lookSet = false
+    /** The app being typed in, for its colour */
+    private var appPackage: String? = null
+    private val appAccents = HashMap<String, Int?>()
     private val blurListener = Consumer<Boolean> { on ->
         blurOn = on
         refreshLook()
@@ -102,6 +110,8 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
     @Volatile private var engine: Engine? = null
     /** Bumped for every query, so an answer that's been overtaken is dropped */
     private var engineRequest = 0
+    /** The word the strip's suggestions are the engine's answer for (not just the word shown while it thinks) */
+    private var answered: String? = null
 
     /** Runs [work] on the engine's thread, unless the keyboard is shutting down. */
     private fun onEngineThread(work: () -> Unit) {
@@ -186,10 +196,20 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
 
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        appPackage = info.packageName
+        state.emojiKey = prefs.emojiKey
+        state.keyPopup = prefs.keyPopup
         refreshLook()
-        // Whatever was left provisional is kept as it is, so the next letter can't replace it
-        currentInputConnection?.finishComposingText()
-        forgetWord()
+        // Apps restart input on their own while you type (a Compose field whose text round-trips
+        // through the app's state can do it on every change). The word under way carries on if
+        // it's still just before the cursor; finishing it there split words in two mid-typing, and
+        // the app re-checked and redrew the text around them. Otherwise whatever was left
+        // provisional is kept as it is, so the next letter can't replace it.
+        val carryOn = restarting && info.initialSelStart == info.initialSelEnd && resumeWord(info.initialSelEnd)
+        if (!carryOn) {
+            currentInputConnection?.finishComposingText()
+            forgetWord()
+        }
         composes = Words.composes(info.inputType)
         suggests = Words.suggests(info.inputType) && prefs.suggestions
         if (suggests && spell == null) spell = openSpellChecker()
@@ -211,7 +231,9 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
         // as it is. Updates just after our own edits are those edits arriving, not a move.
         val ours = SystemClock.uptimeMillis() - lastEditAt < 250
         val offWord = candidatesStart < 0 || newSelStart != newSelEnd || newSelEnd != candidatesEnd
-        if (word.isNotEmpty() && !ours && offWord) {
+        // The app dropped the provisional word without the cursor moving: take it up again
+        val dropped = word.isNotEmpty() && !ours && candidatesStart < 0 && newSelStart == newSelEnd && resumeWord(newSelEnd)
+        if (word.isNotEmpty() && !ours && offWord && !dropped) {
             currentInputConnection?.finishComposingText()
             forgetWord()
         }
@@ -243,10 +265,34 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
         super.onDestroy()
     }
 
-    /** Colours for the current light or dark choice and whether blur is on; the tint is the window's own background. */
+    /**
+     * If the word under way is still just before [cursor] (the app dropped its composing region,
+     * or restarted input), makes it provisional again, so typing carries on with it. False if
+     * it isn't there.
+     */
+    private fun resumeWord(cursor: Int): Boolean {
+        if (word.isEmpty() || cursor < word.length) return false
+        val ic = currentInputConnection ?: return false
+        if (ic.getTextBeforeCursor(word.length, 0)?.toString() != word.toString()) return false
+        ic.setComposingRegion(cursor - word.length, cursor)
+        lastEditAt = SystemClock.uptimeMillis()
+        return true
+    }
+
+    /**
+     * Colours for the current light or dark choice and whether blur is on; the tint is the window's
+     * own background. The accent is the app's own colour if it has one (and that's chosen), else
+     * the system's.
+     */
     private fun refreshLook() {
         val dark = prefs.dark(this)
-        val accent = Color(getColor(if (dark) android.R.color.system_accent1_200 else android.R.color.system_accent1_600))
+        val app = appPackage?.takeIf { prefs.accent == AccentChoice.APP && it != packageName }
+            ?.let { appAccents.getOrPut(it) { AppColour.of(this, it) } }
+        val accent = Color(app ?: getColor(if (dark) android.R.color.system_accent1_200 else android.R.color.system_accent1_600))
+        // Unchanged (input restarts as you type, in some apps): left alone, so the keys don't redraw
+        val now = state.look
+        if (now.dark == dark && now.blur == blurOn && now.accent == accent && lookSet) return
+        lookSet = true
         val look = Look(dark, blurOn, accent)
         state.look = look
         window.window?.setBackgroundDrawable(ColorDrawable(look.tint.toArgb()))
@@ -294,13 +340,40 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
         val xs = touchXs.toIntArray()
         val ys = touchYs.toIntArray()
         val context = Prediction.context(textBeforeWord())
+        val threshold = prefs.autocorrect.threshold
         onEngineThread {
-            val found = engine.suggest(asking, xs, ys, context)
+            val found = engine.suggest(asking, xs, ys, context, threshold)
             mainExecutor.execute {
                 if (request != engineRequest || word.toString() != asking) return@execute
-                state.suggestions = Words.strip(asking, found.words, looksLikeTypo = found.autocorrect != null, recommended = found.autocorrect != null)
+                state.suggestions = engineStrip(asking, found)
+                answered = asking
             }
         }
+    }
+
+    private fun engineStrip(typed: String, found: Found) =
+        Words.strip(typed, found.words, looksLikeTypo = found.autocorrect != null, recommended = found.autocorrect != null)
+
+    /**
+     * The fix a space or punctuation puts in for [typed], if any. Typing fast, the space often
+     * comes before the engine has answered for the last letter; then it's asked here and waited
+     * for (it takes a few milliseconds), so every word gets checked, as in Gboard.
+     */
+    private fun fixFor(typed: String): String? {
+        if (prefs.autocorrect == AutocorrectLevel.OFF) return null
+        val strip = state.suggestions?.takeIf { it.typed == typed }
+        val engine = engine ?: return strip?.autocorrect // the spell checker's answer, if it's come
+        if (!suggests) return null
+        if (answered == typed) return strip?.autocorrect
+        engineRequest++ // whatever is on its way is overtaken
+        val xs = touchXs.toIntArray()
+        val ys = touchYs.toIntArray()
+        val context = Prediction.context(textBeforeWord())
+        val threshold = prefs.autocorrect.threshold
+        val found = runCatching {
+            engineThread.submit(Callable { engine.suggest(typed, xs, ys, context, threshold) }).get(FIX_WAIT_MS, TimeUnit.MILLISECONDS)
+        }.getOrNull() ?: return null
+        return engineStrip(typed, found).autocorrect
     }
 
     /** After a word and a space: the likeliest next words, in the strip. */
@@ -339,6 +412,7 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
         touchYs.clear()
         engineRequest++
         spellWords.clear()
+        answered = null
         state.suggestions = null
     }
 
@@ -351,7 +425,7 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
         val ic = currentInputConnection
         val typed = word.toString()
         val before = textBeforeWord()
-        val fix = state.suggestions?.takeIf { autocorrect && prefs.autocorrect && it.typed == typed }?.autocorrect
+        val fix = if (autocorrect) fixFor(typed) else null
         if (fix != null) ic?.commitText(fix, 1) else ic?.finishComposingText()
         lastEditAt = SystemClock.uptimeMillis()
         forgetWord()
@@ -372,8 +446,11 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
             askForSuggestions()
         } else {
             val typed = word.toString()
+            // One edit as the app sees it: it redraws once, not with the word and then the punctuation
+            ic.beginBatchEdit()
             val fix = finishWord(autocorrect = c != null && Words.endsSentenceOrClause(c))
             ic.commitText(text, 1)
+            ic.endBatchEdit()
             if (fix != null) correction = fix + text to typed + text
         }
         state.shift = ShiftLogic.afterTyping(state.shift)
@@ -423,12 +500,16 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
         correction = null
         if (undo != null) {
             val (fixed, restored) = undo
-            if (ic.getTextBeforeCursor(fixed.length, 0)?.toString() == fixed) {
+            val around = ic.getTextBeforeCursor(64 + fixed.length, 0)?.toString() ?: ""
+            if (around.endsWith(fixed)) {
+                // Read before the edits: an app may only apply them at the end of the batch
+                val before = around.dropLast(fixed.length)
+                ic.beginBatchEdit()
                 ic.deleteSurroundingText(fixed.length, 0)
                 ic.commitText(restored, 1)
+                ic.endBatchEdit()
                 // Undoing a fix says the word was meant: learned as a real word straight away
                 val meant = restored.takeWhile { Words.isWordChar(it, inWord = true) }
-                val before = ic.getTextBeforeCursor(64 + restored.length, 0)?.toString()?.dropLast(restored.length) ?: ""
                 learn(meant, before, deliberate = true)
                 state.suggestions = null
                 autoCapitalise()
@@ -449,10 +530,14 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
     override fun space() {
         val ic = currentInputConnection ?: return
         val typed = word.toString()
+        // Read before the edits (an app may only apply them at the end of the batch). With a word
+        // under way there's no space just before the cursor, so no double-space full stop.
+        val before = if (typed.isEmpty()) ic.getTextBeforeCursor(2, 0) ?: "" else ""
+        // The word, its fix and the space reach the app as one edit, so it redraws once
+        ic.beginBatchEdit()
         val fix = finishWord(autocorrect = true)
         lastEditAt = SystemClock.uptimeMillis()
         val now = SystemClock.uptimeMillis()
-        val before = ic.getTextBeforeCursor(2, 0) ?: ""
         val textField = state.field == FieldKind.TEXT
         if (textField && now - lastSpace < 600 && Text.doubleSpacePeriod(before)) {
             ic.deleteSurroundingText(1, 0)
@@ -462,6 +547,7 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
             ic.commitText(" ", 1)
             lastSpace = now
         }
+        ic.endBatchEdit()
         correction = fix?.let { "$it " to typed }
         // Like Gboard: a space after symbols goes back to the letters
         if (state.page == Page.SYMBOLS || state.page == Page.MORE_SYMBOLS) state.page = Page.LETTERS
@@ -599,5 +685,7 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
 
     private companion object {
         const val EPOCH_2020 = 1_577_836_800_000L
+        /** The longest a space waits for the engine's verdict on the word before it */
+        const val FIX_WAIT_MS = 250L
     }
 }

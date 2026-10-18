@@ -28,6 +28,13 @@ object WallpaperBackdrop {
     private const val WIDTH = 360
     private const val RADIUS = 3
     private const val SHARP_WIDTH = 720
+    /**
+     * The thick copy, for sheets and menus: about 3.3dp per pixel, so three passes of radius 4
+     * come to a heavy blur, about 15dp, like Apple's thick materials, where nothing behind is
+     * recognisable and text reads on it.
+     */
+    private const val THICK_WIDTH = 120
+    private const val THICK_RADIUS = 4
 
     /** [LIVE]: a live wallpaper, which no app can see, and no picked photo to use instead. */
     enum class Source { SYSTEM, PICKED, LIVE, NONE }
@@ -53,10 +60,11 @@ object WallpaperBackdrop {
     private fun isLive(context: Context) = WallpaperManager.getInstance(context).wallpaperInfo != null
 
     /**
-     * Two copies of the wallpaper for glass: [frosted] is blurred for frosted panels; [sharp] is
-     * larger and only lightly softened, for clear glass to show through.
+     * Copies of the wallpaper for glass: [frosted] is blurred for frosted panels; [sharp] is
+     * larger and only lightly softened, for clear glass to show through; [thick] is small and
+     * heavily blurred, for sheets.
      */
-    class Images(val frosted: ImageBitmap, val sharp: ImageBitmap)
+    class Images(val frosted: ImageBitmap, val sharp: ImageBitmap, val thick: ImageBitmap)
 
     /** The wallpaper copies, or null if we can't see it (no access, or a live wallpaper). */
     fun load(context: Context): Images? {
@@ -67,6 +75,7 @@ object WallpaperBackdrop {
         return Images(
             frosted = scaledAndBlurred(drawable, WIDTH, RADIUS, passes = 3),
             sharp = scaledAndBlurred(drawable, SHARP_WIDTH, radius = 1, passes = 2), // a light blur, as seen through clear glass
+            thick = scaledAndBlurred(drawable, THICK_WIDTH, THICK_RADIUS, passes = 3),
         )
     }
 

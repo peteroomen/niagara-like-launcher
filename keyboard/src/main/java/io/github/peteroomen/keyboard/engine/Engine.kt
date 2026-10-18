@@ -51,9 +51,10 @@ class Engine private constructor(private val main: Long, private val historyFile
 
     /**
      * Suggestions for [typed], where each letter was touched at [xs], [ys] (keyboard pixels, or
-     * -1 where not known), after [context].
+     * -1 where not known), after [context]. A fix goes in only if its normalised score is at least
+     * [threshold] (AOSP's autocorrect strength).
      */
-    fun suggest(typed: String, xs: IntArray, ys: IntArray, context: WordContext): Found {
+    fun suggest(typed: String, xs: IntArray, ys: IntArray, context: WordContext, threshold: Float): Found {
         if (typed.isEmpty()) return Found(emptyList(), null)
         val codePoints = typed.codePoints().toArray()
         if (codePoints.size > MAX_WORD_LENGTH) return Found(emptyList(), null)
@@ -66,10 +67,11 @@ class Engine private constructor(private val main: Long, private val historyFile
         // Autocorrect as AOSP does: only for a word it may correct, to a fix marked fit for it whose
         // score, normalised against what was typed, clears the threshold
         val fix = first?.takeIf {
-            Prediction.mayAutocorrect(typed, known) &&
+            threshold != Float.MAX_VALUE &&
+                Prediction.mayAutocorrect(typed, known) &&
                 merged.firstOrNull() == it &&
                 it.type and KIND_FLAG_APPROPRIATE_FOR_AUTOCORRECTION != 0 &&
-                NativeDictionaryUtils.calcNormalizedScoreNative(codePoints, it.word.codePoints().toArray(), it.score) >= Prediction.AUTOCORRECT_THRESHOLD
+                NativeDictionaryUtils.calcNormalizedScoreNative(codePoints, it.word.codePoints().toArray(), it.score) >= threshold
         }?.word
         return Found(merged.map { it.word }, fix)
     }

@@ -8,6 +8,7 @@ import android.content.pm.ActivityInfo
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -61,6 +62,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.toSize
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
@@ -120,6 +122,10 @@ fun HomeScreen(vm: LauncherViewModel) {
     WallpaperBlur(on = state.appearance.glass && !state.appearance.accent.loud && ((overlay != Overlay.NONE && sheetLists) || pie != null || menu != null))
     // With "wallpaper only" lists, the rest of the home screen steps aside while they're open
     val homeAlpha by animateFloatAsState(if (overlay != Overlay.NONE && !sheetLists) 0f else 1f, label = "home")
+    // Like iOS, the home screen itself blurs behind a glass sheet or menu, not just the wallpaper:
+    // the clock and music card don't show through it and fight with its text
+    val underSheet = state.appearance.glass && !state.appearance.accent.loud && (menu != null || (overlay != Overlay.NONE && sheetLists))
+    val homeBlur by animateDpAsState(if (underSheet) 20.dp else 0.dp, label = "homeBlur")
 
     fun goHome() {
         overlay = Overlay.NONE
@@ -140,7 +146,7 @@ fun HomeScreen(vm: LauncherViewModel) {
         val fullScreen = remember(configuration) {
             (context as? Activity)?.windowManager?.currentWindowMetrics?.bounds?.let { Size(it.width().toFloat(), it.height().toFloat()) }
         }
-        val backdrop = glassImage?.let { images -> fullScreen?.let { GlassBackdrop(images.frosted, images.sharp, it) } }
+        val backdrop = glassImage?.let { images -> fullScreen?.let { GlassBackdrop(images.frosted, images.sharp, images.thick, it) } }
         CompositionLocalProvider(LocalPalette provides palette, LocalIconLoader provides vm, LocalGlassBackdrop provides backdrop) {
             Box(
                 Modifier
@@ -186,6 +192,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                     Modifier
                         .fillMaxSize()
                         .graphicsLayer { alpha = homeAlpha }
+                        .then(if (homeBlur > 0.dp) Modifier.blur(homeBlur) else Modifier)
                         .systemBarsPadding()
                         // Room on the right for the A–Z letters, unless they're hidden
                         .padding(start = 24.dp, end = if (state.appearance.hideLetters) 24.dp else 48.dp, top = 28.dp, bottom = 16.dp),

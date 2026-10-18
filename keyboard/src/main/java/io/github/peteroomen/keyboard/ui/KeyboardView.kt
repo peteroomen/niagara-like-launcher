@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Image
 import androidx.compose.material3.Text
 import androidx.compose.ui.graphics.ColorFilter
+import io.github.peteroomen.keyboard.KeyPopup
 import io.github.peteroomen.keyboard.R
 import io.github.peteroomen.keyboard.model.Action
 import io.github.peteroomen.keyboard.model.ActionKey
@@ -82,6 +83,10 @@ class KeyboardState {
     var suggestions by mutableStateOf<Strip?>(null)
     /** Recent copies, newest first, offered in the toolbar */
     var clips by mutableStateOf<List<Clip>>(emptyList())
+    /** An emoji key on the bottom row */
+    var emojiKey by mutableStateOf(true)
+    /** The bubble over the key under your finger */
+    var keyPopup by mutableStateOf(KeyPopup.LARGE)
 
     /** What a character key types right now: capitals while shifted. */
     fun label(key: CharKey) = if (page == Page.LETTERS && shift != Shift.OFF) TextLogic.shifted(key.text) else key.text
@@ -159,7 +164,7 @@ fun KeyboardScreen(state: KeyboardState, actions: KeyboardActions) {
         val rowHeight = with(density) { RowHeight.toPx() }
         val stripHeight = with(density) { StripHeight.toPx() }
         val keysWidth = constraints.maxWidth - side * 2
-        val layout = remember(state.page, state.field) { Layouts.build(state.page, state.field) }
+        val layout = remember(state.page, state.field, state.emojiKey) { Layouts.build(state.page, state.field, state.emojiKey) }
         val placed = remember(layout, keysWidth, rowHeight) { Geometry.place(layout, keysWidth, rowHeight) }
         val pressed = remember(placed) { mutableStateListOf<Placed>() }
         var preview by remember(placed) { mutableStateOf<Placed?>(null) }
@@ -227,6 +232,7 @@ fun KeyboardScreen(state: KeyboardState, actions: KeyboardActions) {
                                     Action.SYMBOLS -> act.page(Page.SYMBOLS)
                                     Action.MORE_SYMBOLS -> act.page(Page.MORE_SYMBOLS)
                                     Action.LETTERS -> act.page(Page.LETTERS)
+                                    Action.EMOJI -> act.showEmoji(true)
                                     Action.SHIFT -> if (press.typedWhileHeld) act.shiftHeldAndReleased()
                                     Action.BACKSPACE -> Unit
                                 }
@@ -369,15 +375,22 @@ fun KeyboardScreen(state: KeyboardState, actions: KeyboardActions) {
         }
 
         // Over everything: the bubble over a held key, or the row of accents
-        preview?.let { p ->
+        preview?.takeIf { state.keyPopup != KeyPopup.OFF }?.let { p ->
             val key = p.key as CharKey
+            val large = state.keyPopup == KeyPopup.LARGE
             val keyWidth = p.cell.width - with(density) { GapX.toPx() } * 2
-            val width = keyWidth * 1.3f
-            val height = rowHeight
+            val width = keyWidth * if (large) 1.6f else 1.3f
+            val height = rowHeight * if (large) 1.75f else 1f
+            val keyTop = stripHeight + p.cell.top + with(density) { GapY.toPx() }
             val left = (side + p.cell.centerX - width / 2).coerceIn(0f, constraints.maxWidth - width)
-            val top = (stripHeight + p.cell.top + rowHeight * 0.3f - height).coerceAtLeast(0f)
-            Bubble(look, left, top, width, height) {
-                Text(state.label(key), color = look.text, fontSize = 30.sp)
+            // It reaches only a little way down the key, so the letter shows above the finger
+            val top = (keyTop + rowHeight * (if (large) 0.1f else 0.25f) - height).coerceAtLeast(0f)
+            // The letter sits in the part above the key (the top row's bubble can only rise into the toolbar)
+            val above = maxOf(keyTop - top, rowHeight * 0.6f)
+            Bubble(look, left, top, width, height, contentAlignment = Alignment.TopCenter) {
+                Box(Modifier.height(with(density) { above.toDp() }), contentAlignment = Alignment.Center) {
+                    Text(state.label(key), color = look.text, fontSize = if (large) 40.sp else 30.sp)
+                }
             }
         }
         popup?.let { alt ->
@@ -401,8 +414,8 @@ private fun Strip(state: KeyboardState, look: Look, actions: KeyboardActions) {
     val suggestions = state.suggestions
     if (suggestions != null && !state.emoji) {
         Row(Modifier.fillMaxWidth().height(StripHeight).padding(start = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            // Emoji stay one tap away while suggestions fill the toolbar
-            ToolbarButton(R.drawable.ic_emoji, look) { actions.showEmoji(true) }
+            // Emoji stay one tap away while suggestions fill the toolbar (unless there's an emoji key)
+            if (!state.emojiKey) ToolbarButton(R.drawable.ic_emoji, look) { actions.showEmoji(true) }
             Box(Modifier.weight(1f)) { SuggestionStrip(suggestions, look) { actions.pickSuggestion(it) } }
         }
         return
@@ -459,6 +472,7 @@ private fun KeyCap(p: Placed, state: KeyboardState, look: Look, held: Boolean, b
             action == Action.SHIFT -> ShiftGlyph(state.shift, ink)
             action == Action.BACKSPACE -> Icon(R.drawable.ic_backspace, ink, 22.dp)
             action == Action.ENTER -> Icon(enterIcon(state.enter), ink, 22.dp)
+            action == Action.EMOJI -> Icon(R.drawable.ic_emoji, ink, 22.dp)
             action == Action.SPACE -> Unit
             else -> Text(
                 when (action) {
@@ -500,7 +514,17 @@ internal fun Modifier.keyGlass(look: Look, fill: Color, held: Boolean, corner: D
 }
 
 @Composable
-private fun Bubble(look: Look, left: Float, top: Float, width: Float, height: Float, fill: Color = look.bubble, rimmed: Boolean = true, content: @Composable () -> Unit) {
+private fun Bubble(
+    look: Look,
+    left: Float,
+    top: Float,
+    width: Float,
+    height: Float,
+    fill: Color = look.bubble,
+    rimmed: Boolean = true,
+    contentAlignment: Alignment = Alignment.Center,
+    content: @Composable () -> Unit,
+) {
     val density = LocalDensity.current
     Box(
         Modifier
@@ -511,7 +535,7 @@ private fun Bubble(look: Look, left: Float, top: Float, width: Float, height: Fl
                 drawRoundRect(fill, cornerRadius = corner)
                 if (rimmed) drawRoundRect(look.keyEdge, cornerRadius = corner, style = Stroke(1.dp.toPx()))
             },
-        contentAlignment = Alignment.Center,
+        contentAlignment = contentAlignment,
     ) { content() }
 }
 
