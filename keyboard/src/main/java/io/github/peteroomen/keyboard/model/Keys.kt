@@ -1,7 +1,7 @@
 package io.github.peteroomen.keyboard.model
 
 /** What a key that doesn't type a character does. */
-enum class Action { SHIFT, BACKSPACE, ENTER, SPACE, SYMBOLS, MORE_SYMBOLS, LETTERS }
+enum class Action { SHIFT, BACKSPACE, ENTER, SPACE, SYMBOLS, MORE_SYMBOLS, LETTERS, EMOJI }
 
 /** A key, [width] in key units: a letter is 1, and every row is 10 wide. */
 sealed interface Key {
@@ -77,7 +77,8 @@ object Layouts {
         CharKey(s, letterAlternates[s] ?: symbolAlternates[s] ?: emptyList())
     }
 
-    private fun bottomRow(page: Page, field: FieldKind): Row {
+    /** The bottom row: ?123, then (with [emojiKey]) an emoji key as in Gboard, the comma, space, full stop and Enter. */
+    private fun bottomRow(page: Page, field: FieldKind, emojiKey: Boolean): Row {
         val switch = if (page == Page.LETTERS) Action.SYMBOLS else Action.LETTERS
         // Email and web addresses get the key they need most next to the space bar
         val left = when (field) {
@@ -85,33 +86,34 @@ object Layouts {
             FieldKind.URI -> CharKey("/")
             else -> CharKey(",")
         }
-        return Row(listOf(
+        return Row(listOfNotNull(
             ActionKey(switch, 1.5f),
+            if (emojiKey) ActionKey(Action.EMOJI, 1f) else null,
             left,
-            ActionKey(Action.SPACE, 5f),
+            ActionKey(Action.SPACE, if (emojiKey) 4f else 5f),
             CharKey(".", symbolAlternates["."].orEmpty()),
             ActionKey(Action.ENTER, 1.5f),
         ))
     }
 
-    fun build(page: Page, field: FieldKind): Layout = when (page) {
+    fun build(page: Page, field: FieldKind, emojiKey: Boolean = false): Layout = when (page) {
         Page.LETTERS -> Layout(listOf(
             Row(chars("qwertyuiop")),
             Row(chars("asdfghjkl"), indent = 0.5f),
             Row(listOf(ActionKey(Action.SHIFT, 1.5f)) + chars("zxcvbnm") + ActionKey(Action.BACKSPACE, 1.5f)),
-            bottomRow(page, field),
+            bottomRow(page, field, emojiKey),
         ))
         Page.SYMBOLS -> Layout(listOf(
             Row(chars("1234567890")),
             Row(chars("@#\$_&-+()/")),
             Row(listOf(ActionKey(Action.MORE_SYMBOLS, 1.5f)) + chars("*\"':;!?") + ActionKey(Action.BACKSPACE, 1.5f)),
-            bottomRow(page, field),
+            bottomRow(page, field, emojiKey),
         ))
         Page.MORE_SYMBOLS -> Layout(listOf(
             Row(chars("~`|•√π÷×¶∆")),
             Row(chars("£¢€¥^°={}\\")),
             Row(listOf(ActionKey(Action.SYMBOLS, 1.5f)) + chars("%©®™✓[]") + ActionKey(Action.BACKSPACE, 1.5f)),
-            bottomRow(page, field),
+            bottomRow(page, field, emojiKey),
         ))
         // A number pad: four wide columns
         Page.NUMBERS -> {

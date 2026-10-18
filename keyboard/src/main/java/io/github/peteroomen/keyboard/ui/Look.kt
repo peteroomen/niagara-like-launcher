@@ -1,6 +1,7 @@
 package io.github.peteroomen.keyboard.ui
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 
 /**
  * The keyboard's glass. The system blurs whatever app is behind the keyboard's window (Android
@@ -26,8 +27,8 @@ class Look(val dark: Boolean, val blur: Boolean, val accent: Color) {
     /** Laid over a key while it's held */
     val pressed: Color = if (dark) Color.White.copy(alpha = 0.22f) else Color.Black.copy(alpha = 0.08f)
 
-    /** Enter and caps lock: the system accent, with a glyph that reads on it */
-    val onAccent: Color = if (dark) Color(0xFF0E1216) else Color.White
+    /** Enter and caps lock: the accent (the app's or the system's), with a glyph that reads on it */
+    val onAccent: Color = if (accent.luminance() > 0.4f) Color(0xFF0E1216) else Color.White
 
     /** Just under the keyboard's top edge */
     val glow: Color = Color.White.copy(alpha = if (dark) 0.1f else 0.35f)

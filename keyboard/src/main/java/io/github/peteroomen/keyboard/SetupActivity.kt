@@ -36,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
@@ -74,6 +75,9 @@ private fun Setup() {
     var suggestions by remember { mutableStateOf(prefs.suggestions) }
     var autocorrect by remember { mutableStateOf(prefs.autocorrect) }
     var look by remember { mutableStateOf(prefs.look) }
+    var emojiKey by remember { mutableStateOf(prefs.emojiKey) }
+    var keyPopup by remember { mutableStateOf(prefs.keyPopup) }
+    var accent by remember { mutableStateOf(prefs.accent) }
     var trial by remember { mutableStateOf("") }
 
     Column(
@@ -101,22 +105,35 @@ private fun Setup() {
         Toggle(stringResource(R.string.vibrate), vibrate) { vibrate = it; prefs.vibrate = it }
         Toggle(stringResource(R.string.sound), sound) { sound = it; prefs.sound = it }
         Toggle(stringResource(R.string.suggestions), suggestions) { suggestions = it; prefs.suggestions = it }
-        Toggle(stringResource(R.string.autocorrect), autocorrect, enabled = suggestions) { autocorrect = it; prefs.autocorrect = it }
+        Text(stringResource(R.string.autocorrect), style = MaterialTheme.typography.titleSmall)
+        Choices(
+            listOf(
+                AutocorrectLevel.OFF to R.string.autocorrect_off,
+                AutocorrectLevel.MODEST to R.string.autocorrect_modest,
+                AutocorrectLevel.AGGRESSIVE to R.string.autocorrect_aggressive,
+                AutocorrectLevel.VERY_AGGRESSIVE to R.string.autocorrect_very_aggressive,
+            ),
+            autocorrect,
+            enabled = suggestions,
+        ) { autocorrect = it; prefs.autocorrect = it }
         Text(stringResource(R.string.suggestions_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Toggle(stringResource(R.string.emoji_key), emojiKey) { emojiKey = it; prefs.emojiKey = it }
+        Text(stringResource(R.string.key_popup), style = MaterialTheme.typography.titleSmall)
+        Choices(
+            listOf(KeyPopup.LARGE to R.string.key_popup_large, KeyPopup.NORMAL to R.string.key_popup_normal, KeyPopup.OFF to R.string.key_popup_off),
+            keyPopup,
+        ) { keyPopup = it; prefs.keyPopup = it }
+        Text(stringResource(R.string.accent), style = MaterialTheme.typography.titleSmall)
+        Choices(listOf(AccentChoice.APP to R.string.accent_app, AccentChoice.SYSTEM to R.string.accent_system), accent) { accent = it; prefs.accent = it }
         Text(stringResource(R.string.look), style = MaterialTheme.typography.titleSmall)
-        listOf(
-            LookChoice.SYSTEM to R.string.look_system,
-            LookChoice.LIGHT to R.string.look_light,
-            LookChoice.DARK to R.string.look_dark,
-        ).forEach { (choice, label) ->
-            Row(
-                Modifier.fillMaxWidth().clickable { look = choice; prefs.look = choice },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                RadioButton(selected = look == choice, onClick = { look = choice; prefs.look = choice })
-                Text(stringResource(label))
-            }
-        }
+        Choices(
+            listOf(
+                LookChoice.SYSTEM to R.string.look_system,
+                LookChoice.LIGHT to R.string.look_light,
+                LookChoice.DARK to R.string.look_dark,
+            ),
+            look,
+        ) { look = it; prefs.look = it }
         Text(stringResource(R.string.blur_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -129,6 +146,20 @@ private fun Step(number: Int, text: String, done: Boolean, available: Boolean = 
             OutlinedButton(onClick = onClick, enabled = available, modifier = Modifier.weight(1f)) { Text(text) }
         } else {
             Button(onClick = onClick, enabled = available, modifier = Modifier.weight(1f)) { Text(text) }
+        }
+    }
+}
+
+/** One of a few [options], as radio buttons. */
+@Composable
+private fun <T> Choices(options: List<Pair<T, Int>>, selected: T, enabled: Boolean = true, onPick: (T) -> Unit) {
+    options.forEach { (choice, label) ->
+        Row(
+            Modifier.fillMaxWidth().clickable(enabled = enabled) { onPick(choice) },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RadioButton(selected = selected == choice, onClick = { onPick(choice) }, enabled = enabled)
+            Text(stringResource(label), color = if (enabled) Color.Unspecified else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f))
         }
     }
 }

@@ -11,11 +11,20 @@ class KeyboardModelTest {
 
     @Test
     fun everyRowFillsTheKeyboard() {
-        for (page in Page.entries) for (field in FieldKind.entries) {
-            Layouts.build(page, field).rows.forEachIndexed { i, row ->
-                assertEquals("$page $field row $i", Layouts.ROW_WIDTH, row.width, 0.001f)
+        for (page in Page.entries) for (field in FieldKind.entries) for (emojiKey in listOf(false, true)) {
+            Layouts.build(page, field, emojiKey).rows.forEachIndexed { i, row ->
+                assertEquals("$page $field $emojiKey row $i", Layouts.ROW_WIDTH, row.width, 0.001f)
             }
         }
+    }
+
+    @Test
+    fun theEmojiKeySitsBesideTheSymbolsKey() {
+        val bottom = Layouts.build(Page.LETTERS, FieldKind.TEXT, emojiKey = true).rows[3].keys
+        assertEquals(Action.SYMBOLS, (bottom[0] as ActionKey).action)
+        assertEquals(Action.EMOJI, (bottom[1] as ActionKey).action)
+        assertEquals(",", (bottom[2] as CharKey).text)
+        assertTrue(Layouts.build(Page.LETTERS, FieldKind.TEXT).rows[3].keys.none { (it as? ActionKey)?.action == Action.EMOJI })
     }
 
     @Test
