@@ -20,21 +20,23 @@ class Look(val dark: Boolean, val blur: Boolean, val accent: Color) {
     val hint: Color = text.copy(alpha = 0.45f)
 
     // Keys are flat, as the launcher draws things sitting on its glass sheet (its search box): a
-    // translucent fill with a hairline edge, no glow or lit rim, since glass isn't stacked on glass
-    val keyFill: Color = if (dark) Color.White.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.7f)
-    val functionFill: Color = if (dark) Color.White.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.4f)
-    val keyEdge: Color = if (dark) Color.White.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.1f)
+    // translucent fill with a hairline edge, no glow or lit rim, since glass isn't stacked on glass.
+    // Dark keys are kept gentle, as Gboard's are: over a black app the glass is nearly black too,
+    // and brighter keys and rims stood out harshly from it.
+    val keyFill: Color = if (dark) Color.White.copy(alpha = 0.13f) else Color.White.copy(alpha = 0.7f)
+    val functionFill: Color = if (dark) Color.White.copy(alpha = 0.07f) else Color.White.copy(alpha = 0.4f)
+    val keyEdge: Color = if (dark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.1f)
     /** Laid over a key while it's held */
-    val pressed: Color = if (dark) Color.White.copy(alpha = 0.22f) else Color.Black.copy(alpha = 0.08f)
+    val pressed: Color = if (dark) Color.White.copy(alpha = 0.16f) else Color.Black.copy(alpha = 0.08f)
 
     /** Enter and caps lock: the accent (the app's or the system's), with a glyph that reads on it */
     val onAccent: Color = if (accent.luminance() > 0.4f) Color(0xFF0E1216) else Color.White
 
     /** Just under the keyboard's top edge */
-    val glow: Color = Color.White.copy(alpha = if (dark) 0.1f else 0.35f)
+    val glow: Color = Color.White.copy(alpha = if (dark) 0.06f else 0.35f)
 
     /** The keyboard's own top edge: a hairline catching the light */
-    val edge: Color = Color.White.copy(alpha = if (dark) 0.28f else 0.9f)
+    val edge: Color = Color.White.copy(alpha = if (dark) 0.16f else 0.9f)
 
     /** The bubble over a held key and the accents row: nearly solid, since it sits over other keys */
     val bubble: Color = if (dark) Color(0xFF262B31).copy(alpha = 0.97f) else Color.White.copy(alpha = 0.98f)
