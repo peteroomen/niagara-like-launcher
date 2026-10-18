@@ -6,7 +6,7 @@ The design came from the interactive prototype in [`prototype/index.html`](proto
 
 ## Features
 
-- **Favourites:** a column of icons centred on the left. Names are optional. Folders show their first four apps and open as a row beside the folder.
+- **Favourites:** a column of icons centred on the left. Names are optional. Folders show their first four apps and open as a row beside the folder, moving like the pie: the folder grows a touch, the row grows out of its side and the apps swoop out one after another, and closing tucks them back in (stamped and punched out with a Loud accent).
 - **Pie mode** (setting): no column. Hold anywhere on empty space and your first 8 favourites (apps or folders) appear in a ring around your finger. Slide towards one and let go to open it, or let go in the middle for the home menu. With a Loud combo accent (Pop Garden, Baby Blue or Rave) the pie is stamped down instead: the disc lands oversized and tilted with a hard ink shadow and outline, and icons punch straight out like slapped-on stickers. Slide onto a folder and its apps fan out in an arc beyond it; keep going outward and sweep along the arc to pick one.
 - **Edit favourites:** tick apps on and off and drag the handles to reorder. Each folder's apps are listed under it, with buttons to move one out or remove it; tap a folder to rename it. Drop an app on a folder to add it, or on another app to make a new folder, or use **New folder** to name one and tick its apps. It's in the hold menus for apps and for empty space.
 - **Icons:** themed (the app's monochrome icon tinted with wallpaper colours, Android 13+), colour or greyscale. Three sizes and three shapes (rounded, circle, square).

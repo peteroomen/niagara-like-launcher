@@ -57,23 +57,25 @@ private val PieIconSize = 50.dp
 private val ArcIconSize = 42.dp
 
 /** Each icon starts swinging out this long after the one before it, clockwise from the top. */
-private const val StaggerMs = 16L
+internal const val StaggerMs = 16L
 /** How far round (degrees, anticlockwise) an icon starts before it swings into place. */
 private const val SwoopDegrees = 40.0
 /** A little overshoot, so icons spring past their spot and settle back. */
-private val SwoopSpring = spring<Float>(dampingRatio = 0.62f, stiffness = 380f)
-private val SelectSpring = spring<Float>(dampingRatio = 0.55f, stiffness = 600f)
+internal val SwoopSpring = spring<Float>(dampingRatio = 0.62f, stiffness = 380f)
+internal val SelectSpring = spring<Float>(dampingRatio = 0.55f, stiffness = 600f)
+/** The disc growing out from the finger: settles without much bounce. (Folder rows open with it too.) */
+internal val DiscSpring = spring<Float>(dampingRatio = 0.8f, stiffness = 500f)
 
 /*
  * Loud motion, with a Loud combo accent: the disc is stamped down (it lands big and tilted and
  * bounces to size), and icons punch straight out with a big overshoot, slapped
  * on like stickers from a tilt. Nothing fades: things are either there or not.
  */
-private val LoudStampSpring = spring<Float>(dampingRatio = 0.42f, stiffness = 700f)
-private val LoudPunchSpring = spring<Float>(dampingRatio = 0.4f, stiffness = 520f)
-private val LoudSelectSpring = spring<Float>(dampingRatio = 0.35f, stiffness = 900f)
-private const val LoudStaggerMs = 28L
-private const val LoudTiltDegrees = -18f
+internal val LoudStampSpring = spring<Float>(dampingRatio = 0.42f, stiffness = 700f)
+internal val LoudPunchSpring = spring<Float>(dampingRatio = 0.4f, stiffness = 520f)
+internal val LoudSelectSpring = spring<Float>(dampingRatio = 0.35f, stiffness = 900f)
+internal const val LoudStaggerMs = 28L
+internal const val LoudTiltDegrees = -18f
 
 /**
  * Up to eight favourites in a ring around the finger; the one it's on grows and gets a ring. A
@@ -96,7 +98,7 @@ fun PieMenu(state: HomeUiState, pie: PieState, slots: List<Fav>) {
     val disc = remember { Animatable(0f) }
     val ring = remember { List(Pie.SLOTS) { Animatable(0f) } }
     LaunchedEffect(Unit) {
-        launch { disc.animateTo(1f, if (loud) LoudStampSpring else spring(dampingRatio = 0.8f, stiffness = 500f)) }
+        launch { disc.animateTo(1f, if (loud) LoudStampSpring else DiscSpring) }
         ring.forEachIndexed { i, a -> launch { delay(i * stagger); a.animateTo(1f, swoop) } }
     }
 
