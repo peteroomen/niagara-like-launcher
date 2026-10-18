@@ -97,12 +97,17 @@ data class Palette(
 
 val LocalPalette = staticCompositionLocalOf<Palette> { error("No palette") }
 
-/** The wallpaper copies and the screen they're drawn across, for glass panels to show through. */
-class GlassBackdrop(val frosted: ImageBitmap, val sharp: ImageBitmap, val screen: Size)
+/**
+ * The wallpaper copies and the screen they're drawn across, for glass panels to show through:
+ * [thick] is the heavily blurred one sheets use.
+ */
+class GlassBackdrop(val frosted: ImageBitmap, val sharp: ImageBitmap, val thick: ImageBitmap, val screen: Size)
 
 val LocalGlassBackdrop = staticCompositionLocalOf<GlassBackdrop?> { null }
 
 private val Vibrancy = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(1.5f) })
+/** Thick glass is more vivid still: the heavy blur greys colours out, and Apple's materials push them back */
+private val ThickVibrancy = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(1.8f) })
 
 /** Every glass panel's rim, and the depth of the frosted top glow, the same whatever the panel's size. */
 private val RimWidth = 1.dp
@@ -122,8 +127,11 @@ private val RimBrush = Brush.linearGradient(
  * wallpaper blurred and more vivid under a light tint, with a faint glow at the top and a hairline
  * rim. Every panel gets the same recipe, whatever its size.
  *
- * Big sheets are always frosted, with a heavier tint: like iOS, clear glass is for small things
- * over the wallpaper, and a sheet full of text needs to read as a surface.
+ * Big sheets (search, the A–Z list, hold menus) are always thick frosted glass, after Apple's
+ * thick material: the wallpaper heavily blurred, so nothing behind it competes with the text,
+ * more vivid, under a heavier tint. Like iOS, clear glass is for small things over the
+ * wallpaper, and a sheet full of text needs to read as a surface. Without the wallpaper to blur,
+ * a sheet gets a near-solid tint.
  *
  * The tint adapts to the wallpaper behind each panel: it's measured there, and the tint is made
  * just strong enough for the text colour to read on its brightest (or darkest) parts.
@@ -235,21 +243,21 @@ fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false, bendS
                     }
                     drawRect(adaptiveTint(palette, bezelMiddle(palette), behind.value))
                 } else if (!clearDrawn) {
-                    // Frosted: the blurred copy, shifted so this panel shows the part behind it
-                    val image = backdrop.frosted
+                    // Frosted: the blurred copy (heavily blurred for a sheet), shifted so this panel shows the part behind it
+                    val image = if (sheet) backdrop.thick else backdrop.frosted
                     val scale = max(backdrop.screen.width / image.width, backdrop.screen.height / image.height)
                     val left = (backdrop.screen.width - image.width * scale) / 2 - position.value.x
                     val top = (backdrop.screen.height - image.height * scale) / 2 - position.value.y
                     translate(left, top) {
                         scale(scale, pivot = Offset.Zero) {
-                            drawImage(image, colorFilter = Vibrancy, filterQuality = FilterQuality.High)
+                            drawImage(image, colorFilter = if (sheet) ThickVibrancy else Vibrancy, filterQuality = FilterQuality.High)
                         }
                     }
                     val frostedTint = if (sheet) palette.glassFrostedTint.copy(alpha = palette.glassFrostedTint.alpha * 2.2f) else palette.glassFrostedTint
                     drawRect(adaptiveTint(palette, frostedTint, behind.value))
                 }
             } else {
-                drawRect(palette.glassTintNoBlur)
+                drawRect(if (sheet) palette.glassTintNoBlur.copy(alpha = sheetTintNoBlur(palette)) else palette.glassTintNoBlur)
             }
             if (palette.glassBezel && !clearDrawn) {
                 if (sheet) {
@@ -312,6 +320,12 @@ fun Modifier.onGlassField(shape: Shape): Modifier {
         .background(if (palette.darkText) Color.White.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.2f), shape)
         .border(1.dp, if (palette.darkText) Color.Black.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.3f), shape)
 }
+
+/**
+ * A sheet's tint when the wallpaper can't be seen: nearly solid, since whatever is behind it (the
+ * real wallpaper, unblurred, and the home screen) would otherwise show straight through its text.
+ */
+private fun sheetTintNoBlur(palette: Palette) = if (palette.darkText) 0.86f else 0.78f
 
 /** Bezel glass's darker middle: dark under light text; under dark text it has to stay light. */
 private fun bezelMiddle(palette: Palette) =
