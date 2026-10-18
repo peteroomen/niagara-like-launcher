@@ -22,11 +22,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,6 +51,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import io.github.peteroomen.launcher.HomeUiState
 import io.github.peteroomen.launcher.R
 import io.github.peteroomen.launcher.data.Appearance
@@ -173,6 +180,11 @@ fun FavouriteApp(key: String, state: HomeUiState, modifier: Modifier = Modifier)
 /**
  * A folder: its first four apps in a little grid. When open, its apps slide out as a row of icons
  * beside it, over the wallpaper.
+ *
+ * It moves like the pie: the folder grows a little while it's open, the row grows out of the
+ * folder's side, and its apps swoop out from the folder one after another, overshooting a touch
+ * and settling. Closing tucks everything back into the folder. With a Loud accent the row is
+ * stamped down and the apps punch out tilted, like stickers, and closing is instant.
  */
 @Composable
 fun FolderEntry(
@@ -188,15 +200,44 @@ fun FolderEntry(
     val appearance = state.appearance
     val size = appearance.iconSizeDp.dp
     val density = LocalDensity.current
+    val loud = palette.loud
+    val stagger = (if (loud) LoudStaggerMs else StaggerMs) * 3 / 2
+    val row = remember { Animatable(0f) }
+    val apps = remember(folder.apps.size) { List(folder.apps.size) { Animatable(0f) } }
+    // The row stays up while it tucks away, after the folder has closed
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(open, apps) {
+        if (open) {
+            shown = true
+            launch { row.animateTo(1f, if (loud) LoudStampSpring else DiscSpring) }
+            apps.forEachIndexed { i, a -> launch { delay(i * stagger); a.animateTo(1f, if (loud) LoudPunchSpring else SwoopSpring) } }
+        } else if (shown) {
+            if (!loud) coroutineScope {
+                launch { row.animateTo(0f, CloseTween) }
+                apps.forEach { launch { it.animateTo(0f, CloseTween) } }
+            }
+            row.snapTo(0f)
+            apps.forEach { it.snapTo(0f) }
+            shown = false
+        }
+    }
+    val grow by animateFloatAsState(
+        if (open) (if (loud) 1.15f else 1.08f) else 1f,
+        if (loud) LoudSelectSpring else SelectSpring,
+        label = "folder open",
+    )
+    // How far each app travels out of the folder: from the folder's middle to its place in the row
+    val step = with(density) { ((if (appearance.showNames) 52.dp else 40.dp) + 10.dp).toPx() }
+    val fromFolder = with(density) { (size / 2 + 12.dp + 12.dp + 20.dp).toPx() }
     Box {
         Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-            FolderIcon(folder, state, size, open)
+            Box(Modifier.graphicsLayer { scaleX = grow; scaleY = grow }) { FolderIcon(folder, state, size, open) }
             if (appearance.showNames) {
                 Spacer(Modifier.width(12.dp))
                 NameLabel(folder.name, appearance)
             }
         }
-        if (open) {
+        if (shown) {
             Popup(
                 alignment = Alignment.CenterStart,
                 offset = IntOffset(with(density) { (size + 12.dp).roundToPx() }, 0),
@@ -205,6 +246,21 @@ fun FolderEntry(
             ) {
                 Column(
                     Modifier
+                        .graphicsLayer {
+                            // Grows out of the folder's side, as the pie's disc grows from the finger
+                            val p = row.value
+                            transformOrigin = TransformOrigin(0f, 0.5f)
+                            if (loud) {
+                                scaleX = 1.3f - 0.3f * p
+                                scaleY = 1.3f - 0.3f * p
+                                rotationZ = LoudTiltDegrees / 2 * (1 - p)
+                                alpha = if (p > 0.02f) 1f else 0f
+                            } else {
+                                scaleX = 0.4f + 0.6f * p
+                                scaleY = 0.4f + 0.6f * p
+                                alpha = p.coerceIn(0f, 1f)
+                            }
+                        }
                         .panel(RoundedCornerShape(18.dp), palette.pill)
                         .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 10.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -215,10 +271,32 @@ fun FolderEntry(
                         style = palette.style(10.5.sp, FontWeight.SemiBold, 1.sp).copy(shadow = null),
                     )
                     OnGlass { Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        folder.apps.forEach { key ->
+                        folder.apps.forEachIndexed { i, key ->
                             val label = state.label(key)
+                            val p = apps.getOrNull(i)
                             Column(
-                                Modifier.pressable(label, { onLaunch(key) }, { onAppLongClick(key) }),
+                                Modifier
+                                    .graphicsLayer {
+                                        val t = p?.value ?: 1f
+                                        if (loud) {
+                                            // Punched out where it lands, tilted until it does
+                                            val scale = 0.6f + 0.4f * t
+                                            scaleX = scale
+                                            scaleY = scale
+                                            rotationZ = LoudTiltDegrees * (1 - t)
+                                            alpha = if (t > 0.02f) 1f else 0f
+                                        } else {
+                                            // Out of the folder along a gentle curve, springing a touch past its place
+                                            val back = 1 - t
+                                            translationX = -back * (fromFolder + i * step)
+                                            translationY = back * back * 10.dp.toPx()
+                                            val scale = 0.35f + 0.65f * t
+                                            scaleX = scale
+                                            scaleY = scale
+                                            alpha = t.coerceIn(0f, 1f)
+                                        }
+                                    }
+                                    .pressable(label, { onLaunch(key) }, { onAppLongClick(key) }),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
                                 AppIcon(key, appearance.iconStyle, 40.dp, badge = state.hasDot(key))
@@ -242,6 +320,9 @@ fun FolderEntry(
         }
     }
 }
+
+/** Closing tucks a folder's row away quickly, without the opening's overshoot. */
+private val CloseTween = tween<Float>(durationMillis = 160)
 
 @Composable
 fun FolderIcon(folder: Fav.Folder, state: HomeUiState, size: Dp, open: Boolean = false) {
