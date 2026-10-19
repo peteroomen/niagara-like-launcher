@@ -263,6 +263,7 @@ private fun SettingsScreen(vm: LauncherViewModel) {
                 Page.ICONS -> {
                     ChoiceItem(stringResource(R.string.icon_style), a.iconStyle, listOf(
                         IconStyle.THEMED to R.string.icons_themed, IconStyle.COLOUR to R.string.icons_colour, IconStyle.GREYSCALE to R.string.icons_greyscale,
+                        IconStyle.GLASS to R.string.icons_glass,
                     )) { set(a.copy(iconStyle = it)) }
                     ChoiceItem(stringResource(R.string.icon_shape), a.iconShape, listOf(
                         IconShape.ROUNDED to R.string.shape_rounded, IconShape.CIRCLE to R.string.shape_circle, IconShape.SQUARE to R.string.shape_square,
