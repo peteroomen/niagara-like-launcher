@@ -282,20 +282,25 @@ fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false, bendS
 }
 
 /**
- * Glass that's selected (an open folder, the pie's icon under the finger): it catches more light,
+ * Glass that's selected (an open folder, the pie's icon under the finger): it takes on the
+ * [accent], a tint over the whole shape as iOS shows a selected control, and catches more light,
  * a bright rim lit from the top-left and a soft glow just inside it, as if lifted towards you.
  * It reads on any wallpaper, where an accent outline could match the glass's own tint and vanish.
  * Drawn over the content, cut to [shape].
  */
-fun Modifier.litRim(shape: Shape): Modifier = clip(shape).drawWithContent {
+fun Modifier.litRim(shape: Shape, accent: Color): Modifier = clip(shape).drawWithContent {
     drawContent()
     val outline = shape.createOutline(size, layoutDirection, this)
+    drawOutline(outline, accent.copy(alpha = SelectedTint))
     // The glow inside: wide, faint strokes centred on the edge, so only their inner halves show
     drawOutline(outline, Color.White.copy(alpha = 0.1f), style = Stroke(width = 18.dp.toPx()))
     drawOutline(outline, Color.White.copy(alpha = 0.12f), style = Stroke(width = 9.dp.toPx()))
     // The rim: bright, brightest where it faces the light (half of it falls outside the clip)
     drawOutline(outline, LitRimBrush, style = Stroke(width = 3.dp.toPx()))
 }
+
+/** How strongly selected glass takes on the accent. */
+private const val SelectedTint = 0.3f
 
 private val LitRimBrush = Brush.linearGradient(
     0f to Color.White.copy(alpha = 0.95f),

@@ -411,7 +411,7 @@ fun FolderIcon(folder: Fav.Folder, state: HomeUiState, size: Dp, open: Boolean =
                 .then(
                     when {
                         !open -> Modifier
-                        palette.glass -> Modifier.litRim(shape)
+                        palette.glass -> Modifier.litRim(shape, palette.accent)
                         else -> Modifier.border(2.dp, palette.accent, shape)
                     },
                 )
