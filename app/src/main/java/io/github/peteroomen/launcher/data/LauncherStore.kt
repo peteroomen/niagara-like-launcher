@@ -14,7 +14,7 @@ import io.github.peteroomen.launcher.model.Fav
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-/** [GLASS]: the colour icon frosted under glass, like the music card's album art, with the app's glyph sharp on top. */
+/** [GLASS]: the colour icon with only its edges lensed, like the music card's album art in clear glass. */
 enum class IconStyle { THEMED, COLOUR, GREYSCALE, GLASS }
 enum class IconShape { ROUNDED, CIRCLE, SQUARE }
 enum class TextShadow { OFF, SOFT, MEDIUM, STRONG }
