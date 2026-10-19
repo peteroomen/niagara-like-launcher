@@ -159,9 +159,9 @@ private fun GlassIcon(icons: IconCache.Icons, size: Dp) {
                     lens.clearShaderFor(
                         size = this.size,
                         radius = corner,
-                        // The same proportions as the music card's: a thin bevel, so the middle is the icon as it is
-                        bevel = minOf(shortest * 0.25f, 16.dp.toPx()),
-                        strength = minOf(shortest * 0.16f, 9.dp.toPx()),
+                        // A thinner bevel than the music card's, hugging the rim, so more of the icon is as it is
+                        bevel = minOf(shortest * 0.14f, 10.dp.toPx()),
+                        strength = minOf(shortest * 0.1f, 6.dp.toPx()),
                         zoom = 1f,
                         panelOrigin = Offset.Zero,
                         imageOrigin = Offset.Zero,

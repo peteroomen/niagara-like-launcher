@@ -442,7 +442,7 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
             word.append(text)
             touchXs += if (x.isNaN()) -1 else x.toInt()
             touchYs += if (y.isNaN()) -1 else y.toInt()
-            ic.setComposingText(word, 1)
+            ic.setComposingText(word.toString(), 1)
             askForSuggestions()
         } else {
             val typed = word.toString()
@@ -485,7 +485,7 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
                 touchXs.removeAt(touchXs.lastIndex)
                 touchYs.removeAt(touchYs.lastIndex)
             }
-            ic.setComposingText(word, 1)
+            ic.setComposingText(word.toString(), 1)
             if (word.isEmpty()) {
                 forgetWord()
                 state.suggestions = null
