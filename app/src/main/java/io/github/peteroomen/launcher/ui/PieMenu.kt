@@ -139,7 +139,15 @@ fun PieMenu(state: HomeUiState, pie: PieState, slots: List<Fav>) {
                 },
         ) {
             content()
-            if (selected) Box(Modifier.fillMaxSize().border(if (loud) 3.dp else 2.dp, palette.accent, palette.iconShape))
+            // Selected: on glass it lights up, like an open folder; otherwise (and with Loud) an accent outline
+            if (selected) {
+                Box(
+                    Modifier.fillMaxSize().then(
+                        if (palette.glass) Modifier.litRim(palette.iconShape, palette.accent)
+                        else Modifier.border(if (loud) 3.dp else 2.dp, palette.accent, palette.iconShape),
+                    ),
+                )
+            }
         }
     }
 
