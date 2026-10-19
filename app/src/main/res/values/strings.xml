@@ -123,6 +123,7 @@
     <string name="icons">Icons</string>
     <string name="icon_style">Icon style</string>
     <string name="icons_greyscale">Greyscale</string>
+    <string name="icons_glass">Glass</string>
     <string name="icon_shape">Icon shape</string>
     <string name="shape_rounded">Rounded</string>
     <string name="shape_circle">Circle</string>

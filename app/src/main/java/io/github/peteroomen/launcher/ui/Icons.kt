@@ -36,6 +36,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
+import android.graphics.Bitmap
+import io.github.peteroomen.launcher.model.BoxBlur
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -89,6 +98,8 @@ fun AppIcon(key: String, style: IconStyle, size: Dp, badge: Boolean, modifier: M
     Box(modifier.size(size)) {
         when {
             icons == null -> Box(Modifier.fillMaxSize().panel(shape, palette.tileBg))
+            // Loud has no glass: its icons stay solid colour
+            style == IconStyle.GLASS && !palette.loud && (icons.fullBleed || icons.mono != null) -> GlassIcon(icons, size)
             style == IconStyle.THEMED && icons.mono != null -> Box(Modifier.fillMaxSize().panel(shape, palette.tileBg)) {
                 Image(icons.mono, contentDescription = null, modifier = Modifier.fillMaxSize(), colorFilter = ColorFilter.tint(palette.tileFg))
             }
@@ -116,6 +127,64 @@ fun AppIcon(key: String, style: IconStyle, size: Dp, badge: Boolean, modifier: M
             }
         }
         if (badge) NotificationDot(Modifier.align(Alignment.TopEnd).offset(3.dp, (-3).dp))
+    }
+}
+
+/**
+ * A glass icon: the app's colour icon lies under glass, as the music card's album art does (bent
+ * and lit at the rim in clear glass, tinted with a top glow and hairline rim in frosted). With a
+ * monochrome glyph (Android 13+ apps), the icon underneath is frosted to a wash of its colours and
+ * the glyph sits sharp on top, light or dark to read on it. Without one, the icon stays sharp
+ * under the glass so it's still recognisable. Cut to the theme's icon shape.
+ */
+@Composable
+private fun GlassIcon(icons: IconCache.Icons, size: Dp) {
+    val palette = LocalPalette.current
+    val shape = palette.iconShape
+    val density = LocalDensity.current
+    val sizePx = with(density) { size.roundToPx() }
+    val corner = with(density) {
+        when (val outline = shape.createOutline(androidx.compose.ui.geometry.Size(sizePx.toFloat(), sizePx.toFloat()), LayoutDirection.Ltr, this)) {
+            is Outline.Rounded -> outline.roundRect.topLeftCornerRadius.x.toDp()
+            is Outline.Rectangle -> 0.dp
+            is Outline.Generic -> size / 2
+        }
+    }
+    val mono = icons.mono
+    val frosted = remember(icons) { if (mono != null) GlassIcons.frost(icons.full) else null }
+    Box(
+        Modifier
+            .fillMaxSize()
+            .clip(shape)
+            .underGlass(frosted?.image ?: icons.full, IntSize(sizePx, sizePx), corner),
+    ) {
+        if (mono != null && frosted != null) {
+            Image(
+                mono,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                colorFilter = ColorFilter.tint(if (frosted.light) Color.Black.copy(alpha = 0.78f) else Color.White.copy(alpha = 0.95f)),
+            )
+        }
+    }
+}
+
+/** Frosting an icon for [GlassIcon]: a small, blurred copy, and whether it came out light. */
+private object GlassIcons {
+    class Frosted(val image: ImageBitmap, val light: Boolean)
+
+    fun frost(icon: ImageBitmap): Frosted {
+        val source = icon.asAndroidBitmap()
+        // A quarter of the size, blurred: drawn back up to size it's a soft wash of the icon's colours
+        val w = (source.width / 4).coerceAtLeast(4)
+        val h = (source.height / 4).coerceAtLeast(4)
+        val small = Bitmap.createScaledBitmap(source.copy(Bitmap.Config.ARGB_8888, false), w, h, true)
+        val pixels = IntArray(w * h)
+        small.getPixels(pixels, 0, w, 0, 0, w, h)
+        BoxBlur.blur(pixels, w, h, radius = 2, passes = 3)
+        val out = Bitmap.createBitmap(pixels, w, h, Bitmap.Config.ARGB_8888)
+        val luminance = pixels.map { Color(it).luminance() }.average()
+        return Frosted(out.asImageBitmap(), light = luminance > 0.6)
     }
 }
 
