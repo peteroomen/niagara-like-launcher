@@ -137,6 +137,8 @@ fun AppIcon(key: String, style: IconStyle, size: Dp, badge: Boolean, modifier: M
  * fringes, under a thin lit rim. No tint or frosting over it. Cut to the theme's icon shape.
  * Without the lens (before Android 13, or if it can't compile) it's the icon with a hairline rim.
  */
+private const val GlassIconAlpha = 0.8f
+
 @Composable
 private fun GlassIcon(icons: IconCache.Icons, size: Dp) {
     val shape = LocalPalette.current.iconShape
@@ -144,6 +146,8 @@ private fun GlassIcon(icons: IconCache.Icons, size: Dp) {
     Box(
         Modifier
             .fillMaxSize()
+            // A little see-through, so the wallpaper shows faintly through the glass
+            .graphicsLayer { alpha = GlassIconAlpha }
             .clip(shape)
             .drawBehind {
                 val outline = shape.createOutline(this.size, layoutDirection, this)
@@ -403,7 +407,14 @@ fun FolderIcon(folder: Fav.Folder, state: HomeUiState, size: Dp, open: Boolean =
                     if (onGlass) Modifier.clip(shape).onGlassField(shape)
                     else Modifier.panel(shape, if (style == IconStyle.THEMED) palette.tileBg else palette.pill),
                 )
-                .then(if (open) Modifier.border(2.dp, palette.accent, shape) else Modifier)
+                // Open: on glass, lit up (an accent outline can vanish into the glass's tint); otherwise outlined
+                .then(
+                    when {
+                        !open -> Modifier
+                        palette.glass -> Modifier.litRim(shape)
+                        else -> Modifier.border(2.dp, palette.accent, shape)
+                    },
+                )
                 .padding(padding),
             verticalArrangement = Arrangement.spacedBy(gap),
         ) {

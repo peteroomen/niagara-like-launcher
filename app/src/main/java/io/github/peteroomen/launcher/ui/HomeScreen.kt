@@ -197,7 +197,9 @@ fun HomeScreen(vm: LauncherViewModel) {
                         // Room on the right for the A–Z letters, unless they're hidden
                         .padding(start = 24.dp, end = if (state.appearance.hideLetters) 24.dp else 48.dp, top = 28.dp, bottom = 16.dp),
                 ) {
-                    ClockAndDate(state.appearance)
+                    // While a folder is open, everything else steps back, so it and its row stand out
+                    val folderFocus by animateFloatAsState(if (openFolder != null && !usePie) OpenFolderDim else 1f, label = "folder focus")
+                    Box(Modifier.fillMaxWidth().graphicsLayer { alpha = folderFocus }) { ClockAndDate(state.appearance) }
                     // Favourites sit centred on the left between the clock and the music player (unless they live in the pie)
                     if (usePie) {
                         Spacer(Modifier.weight(1f))
@@ -213,12 +215,14 @@ fun HomeScreen(vm: LauncherViewModel) {
                             )
                         }
                     }
-                    MusicWidget(
-                        nowPlaying = nowPlaying,
-                        hasAccess = hasNotificationAccess,
-                        appLabel = nowPlaying?.let { np -> state.apps.firstOrNull { it.packageName == np.packageName }?.label },
-                        onNeedAccess = { openNotificationAccess(context) },
-                    )
+                    Box(Modifier.fillMaxWidth().graphicsLayer { alpha = folderFocus }) {
+                        MusicWidget(
+                            nowPlaying = nowPlaying,
+                            hasAccess = hasNotificationAccess,
+                            appLabel = nowPlaying?.let { np -> state.apps.firstOrNull { it.packageName == np.packageName }?.label },
+                            onNeedAccess = { openNotificationAccess(context) },
+                        )
+                    }
                 }
 
                 AnimatedVisibility(overlay == Overlay.ALL_APPS, enter = fadeIn(), exit = fadeOut()) {
@@ -305,6 +309,9 @@ fun HomeScreen(vm: LauncherViewModel) {
     }
 }
 
+/** How far everything but an open folder fades back. */
+private const val OpenFolderDim = 0.45f
+
 /** Darkens (or lightens, for dark text) the wallpaper behind the launcher's text. */
 @Composable
 internal fun ReadabilityBackdrop(backdrop: Backdrop) {
@@ -333,11 +340,16 @@ internal fun Favourites(
     // Rows run the full width, so a favourite can be tapped anywhere along its line (right thumb too)
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         state.favs.forEach { fav ->
+            // The other favourites step back while a folder is open
+            val stepBack by animateFloatAsState(
+                if (openFolder != null && (fav as? Fav.Folder)?.id != openFolder) OpenFolderDim else 1f,
+                label = "favourite focus",
+            )
             when (fav) {
                 is Fav.App -> FavouriteApp(
                     key = fav.key,
                     state = state,
-                    modifier = Modifier.fillMaxWidth().pressable(state.label(fav.key), { onLaunch(fav.key) }, { onMenu(MenuTarget.App(fav.key)) }),
+                    modifier = Modifier.fillMaxWidth().graphicsLayer { alpha = stepBack }.pressable(state.label(fav.key), { onLaunch(fav.key) }, { onMenu(MenuTarget.App(fav.key)) }),
                 )
                 is Fav.Folder -> FolderEntry(
                     folder = fav,
@@ -346,7 +358,7 @@ internal fun Favourites(
                     onClose = onCloseFolder,
                     onLaunch = onLaunch,
                     onAppLongClick = { onMenu(MenuTarget.App(it)) },
-                    modifier = Modifier.fillMaxWidth().pressable(folderLabel(fav), { onToggleFolder(fav.id) }, { onMenu(MenuTarget.Folder(fav.id)) }),
+                    modifier = Modifier.fillMaxWidth().graphicsLayer { alpha = stepBack }.pressable(folderLabel(fav), { onToggleFolder(fav.id) }, { onMenu(MenuTarget.Folder(fav.id)) }),
                 )
             }
         }
