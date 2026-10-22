@@ -405,7 +405,7 @@ fun FolderIcon(folder: Fav.Folder, state: HomeUiState, size: Dp, open: Boolean =
                 .fillMaxSize()
                 .then(
                     if (onGlass) Modifier.clip(shape).onGlassField(shape)
-                    else Modifier.panel(shape, if (style == IconStyle.THEMED) palette.tileBg else palette.pill),
+                    else Modifier.panel(shape, if (style == IconStyle.THEMED) palette.tileBg else palette.pill, icons = true),
                 )
                 // Open: on glass, lit up (an accent outline can vanish into the glass's tint); otherwise outlined
                 .then(
