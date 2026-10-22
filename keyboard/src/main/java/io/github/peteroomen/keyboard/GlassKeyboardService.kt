@@ -97,11 +97,17 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
     private var lastSpace = 0L
 
     /**
-     * The app dropped the word's composing region (it restarted input, or reset its text) while
-     * the word is still there; the next edit to the word takes it up again
+     * Apps seen dropping the word's composing region mid-word (restarting input, or resetting
+     * their text). Such an app keeps its own copy of the text and redraws the field from it; with
+     * composing text that copy fell behind, and the field flashed back to old text as you typed.
+     * There words are typed as plain text, so every change is an ordinary one.
      */
-    private var composingLost = false
-    /** The word under way: composing text in the app, provisional until it's finished */
+    private val dropsComposing = HashSet<String>()
+    /** The word under way is plain text in the app, not composing text */
+    private var plain = false
+    /** Whatever the app kept of the word's composing region is let go with the next edit */
+    private var letGo = false
+    /** The word under way: composing text in the app (or plain text, see [plain]), provisional until it's finished */
     private val word = StringBuilder()
     /** Where each of its letters was touched, in keyboard pixels (-1 where not known) */
     private val touchXs = ArrayList<Int>()
@@ -206,14 +212,13 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
         state.emojiKey = prefs.emojiKey
         state.keyPopup = prefs.keyPopup
         refreshLook()
-        // Apps restart input on their own while you type (a Compose field whose text round-trips
-        // through the app's state can do it on every change). Nothing is sent back to the app
-        // here: an edit in reply to its restart started another round trip, and the field
-        // flashed between the old and new text, jumping in height as lines came and went. The
-        // word under way carries on if it's still just before the cursor (taken up again with the
-        // next key, as Gboard does); otherwise it's left as the app has it.
+        // Apps restart input on their own while you type (one that keeps its own copy of the text
+        // and sets it back on the field can do it on every change). Nothing is sent back to the
+        // app here: an edit in reply started another round trip. The word under way carries on,
+        // as plain text from now on in this app (see dropsComposing), if it's still just before
+        // the cursor; otherwise it's left as the app has it.
         val carryOn = restarting && info.initialSelStart == info.initialSelEnd && wordBeforeCursor()
-        if (carryOn) composingLost = true else forgetWord()
+        if (!carryOn) forgetWord() else if (!plain) composingDropped()
         composes = Words.composes(info.inputType)
         suggests = Words.suggests(info.inputType) && prefs.suggestions
         if (suggests && spell == null) spell = openSpellChecker()
@@ -234,14 +239,19 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
         // The cursor moved away from the word under way (a tap elsewhere in the text): leave the word
         // as it is. Updates just after our own edits are those edits arriving, not a move.
         val ours = SystemClock.uptimeMillis() - lastEditAt < 250
-        val offWord = candidatesStart < 0 || newSelStart != newSelEnd || newSelEnd != candidatesEnd
-        // The app dropped the provisional word without the cursor moving: it's taken up again with
-        // the next key, in the same edit, rather than with an edit of its own now
-        val dropped = word.isNotEmpty() && !ours && candidatesStart < 0 && newSelStart == newSelEnd && wordBeforeCursor()
-        if (dropped) composingLost = true
-        if (word.isNotEmpty() && !ours && offWord && !dropped) {
-            currentInputConnection?.finishComposingText()
-            forgetWord()
+        if (plain) {
+            // A plain word carries on while the cursor stays just after it
+            if (word.isNotEmpty() && !ours && (newSelStart != newSelEnd || !wordBeforeCursor())) forgetWord()
+        } else {
+            val offWord = candidatesStart < 0 || newSelStart != newSelEnd || newSelEnd != candidatesEnd
+            // The app dropped the provisional word without the cursor moving: it carries on as
+            // plain text, with nothing sent now
+            val dropped = word.isNotEmpty() && !ours && candidatesStart < 0 && newSelStart == newSelEnd && wordBeforeCursor()
+            if (dropped) composingDropped()
+            if (word.isNotEmpty() && !ours && offWord && !dropped) {
+                currentInputConnection?.finishComposingText()
+                forgetWord()
+            }
         }
         if (!ours) {
             correction = null
@@ -277,20 +287,35 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
         return currentInputConnection?.getTextBeforeCursor(word.length, 0)?.toString() == word.toString()
     }
 
+    /** The app dropped the word's composing region: this word, and words from now on in this app, are plain text. */
+    private fun composingDropped() {
+        plain = true
+        letGo = true
+        appPackage?.let { dropsComposing += it }
+    }
+
     /**
-     * Puts [text] in place of the word under way, which was [typedLength] long: as composing text,
-     * or committed if [commit]. If the app dropped the word's composing region, the word is
-     * removed and the new text put in, in one batch, so the app sees a single change.
+     * Puts [text] in place of the word under way, [old]: as composing text, or committed if
+     * [commit]. A plain word only has what changed sent (letters off its end, letters onto it).
+     * Always one batch, as Gboard sends it, so the app sees a single change.
      */
-    private fun replaceWord(ic: InputConnection, typedLength: Int, text: String, commit: Boolean) {
-        val lost = composingLost
-        composingLost = false
-        if (lost) {
-            ic.beginBatchEdit()
-            ic.deleteSurroundingText(typedLength, 0)
+    private fun replaceWord(ic: InputConnection, old: String, text: String, commit: Boolean) {
+        ic.beginBatchEdit()
+        if (letGo) {
+            // So the plain edits below can't land on a composing region the app still has
+            ic.finishComposingText()
+            letGo = false
         }
-        if (commit) ic.commitText(text, 1) else ic.setComposingText(text, 1)
-        if (lost) ic.endBatchEdit()
+        if (plain) {
+            val kept = old.commonPrefixWith(text).length
+            if (old.length > kept) ic.deleteSurroundingText(old.length - kept, 0)
+            if (text.length > kept) ic.commitText(text.substring(kept), 1)
+        } else if (commit) {
+            ic.commitText(text, 1)
+        } else {
+            ic.setComposingText(text, 1)
+        }
+        ic.endBatchEdit()
     }
 
     /**
@@ -426,7 +451,8 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
         touchYs.clear()
         engineRequest++
         spellWords.clear()
-        composingLost = false
+        plain = false
+        letGo = false
         answered = null
         state.suggestions = null
     }
@@ -441,7 +467,7 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
         val typed = word.toString()
         val before = textBeforeWord()
         val fix = if (autocorrect) fixFor(typed) else null
-        if (fix != null && ic != null) replaceWord(ic, typed.length, fix, commit = true) else ic?.finishComposingText()
+        if (fix != null && ic != null) replaceWord(ic, typed, fix, commit = true) else if (!plain || letGo) ic?.finishComposingText()
         lastEditAt = SystemClock.uptimeMillis()
         forgetWord()
         learn(fix ?: typed, before, deliberate = false)
@@ -454,11 +480,13 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
         correction = null
         val c = text.singleOrNull()
         if (composes && c != null && Words.isWordChar(c, word.isNotEmpty())) {
-            val typedLength = word.length
+            val old = word.toString()
+            // A new word is plain text in an app that drops composing text
+            if (old.isEmpty()) plain = appPackage in dropsComposing
             word.append(text)
             touchXs += if (x.isNaN()) -1 else x.toInt()
             touchYs += if (y.isNaN()) -1 else y.toInt()
-            replaceWord(ic, typedLength, word.toString(), commit = false)
+            replaceWord(ic, old, word.toString(), commit = false)
             askForSuggestions()
         } else {
             val typed = word.toString()
@@ -478,7 +506,7 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
         lastEditAt = SystemClock.uptimeMillis()
         val typed = word.toString()
         val before = textBeforeWord()
-        replaceWord(ic, typed.length, "$suggestion ", commit = true)
+        replaceWord(ic, typed, "$suggestion ", commit = true)
         forgetWord()
         correction = null
         lastSpace = 0L
@@ -496,13 +524,13 @@ class GlassKeyboardService : InputMethodService(), LifecycleOwner, SavedStateReg
             return
         }
         if (word.isNotEmpty()) {
-            val typedLength = word.length
+            val old = word.toString()
             word.setLength(word.length - Text.lastCharacterLength(word))
             while (touchXs.size > word.length) {
                 touchXs.removeAt(touchXs.lastIndex)
                 touchYs.removeAt(touchYs.lastIndex)
             }
-            replaceWord(ic, typedLength, word.toString(), commit = false)
+            replaceWord(ic, old, word.toString(), commit = false)
             if (word.isEmpty()) {
                 forgetWord()
                 state.suggestions = null

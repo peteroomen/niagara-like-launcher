@@ -140,9 +140,12 @@ private val RimBrush = Brush.linearGradient(
  * A panel holding only [largeText] (the clock) is clearer: big text reads with less contrast, so
  * clear glass keeps its light tint and only eases down the brightest parts behind it (or lifts
  * the darkest, under dark text) instead of tinting the whole panel for them.
+ *
+ * A panel holding only [icons] (a folder) keeps the same tint wherever it is: icons read on any
+ * glass, and folders side by side would otherwise look different, darker over brighter wallpaper.
  */
 @Composable
-fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false, bendScale: Float = 1f, largeText: Boolean = false): Modifier {
+fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false, bendScale: Float = 1f, largeText: Boolean = false, icons: Boolean = false): Modifier {
     val backdrop = LocalGlassBackdrop.current
     val position = remember { mutableStateOf(Offset.Zero) }
     // What's behind: the darkest and brightest of it (10th and 90th percentile luminance)
@@ -157,7 +160,7 @@ fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false, bendS
     return this
         .onGloballyPositioned {
             position.value = it.positionOnScreen()
-            if (backdrop != null) behind.value = luminanceBehind(backdrop, position.value, it.size)
+            if (backdrop != null && !icons) behind.value = luminanceBehind(backdrop, position.value, it.size)
         }
         .clip(shape)
         .drawBehind {
@@ -283,30 +286,29 @@ fun Modifier.glass(shape: Shape, palette: Palette, sheet: Boolean = false, bendS
 
 /**
  * Glass that's selected (an open folder, the pie's icon under the finger): it takes on the
- * [accent], a tint over the whole shape as iOS shows a selected control, and catches more light,
- * a bright rim lit from the top-left and a soft glow just inside it, as if lifted towards you.
- * It reads on any wallpaper, where an accent outline could match the glass's own tint and vanish.
- * Drawn over the content, cut to [shape].
+ * [accent] and catches more light, as if lifted towards you. Everything is a smooth gradient, no
+ * bands: the accent, strongest at the top-left and easing off across the shape (behind the
+ * content), a soft sheen of light falling from the top-left (over it), and a thin lit rim. It
+ * reads on any wallpaper, where an accent outline could match the glass's own tint and vanish.
+ * Cut to [shape].
  */
 fun Modifier.litRim(shape: Shape, accent: Color): Modifier = clip(shape).drawWithContent {
-    drawContent()
     val outline = shape.createOutline(size, layoutDirection, this)
-    drawOutline(outline, accent.copy(alpha = SelectedTint))
-    // The glow inside: wide, faint strokes centred on the edge, so only their inner halves show
-    drawOutline(outline, Color.White.copy(alpha = 0.1f), style = Stroke(width = 18.dp.toPx()))
-    drawOutline(outline, Color.White.copy(alpha = 0.12f), style = Stroke(width = 9.dp.toPx()))
-    // The rim: bright, brightest where it faces the light (half of it falls outside the clip)
-    drawOutline(outline, LitRimBrush, style = Stroke(width = 3.dp.toPx()))
+    val corner = Offset(size.width, size.height)
+    drawOutline(outline, Brush.linearGradient(0f to accent.copy(alpha = 0.45f), 1f to accent.copy(alpha = 0.12f), start = Offset.Zero, end = corner))
+    drawContent()
+    drawOutline(
+        outline,
+        Brush.radialGradient(0f to Color.White.copy(alpha = 0.24f), 1f to Color.Transparent, center = Offset.Zero, radius = size.maxDimension),
+    )
+    // The rim: brightest where it faces the light (half of it falls outside the clip)
+    drawOutline(outline, Brush.linearGradient(*LitRimStops, start = Offset.Zero, end = corner), style = Stroke(width = 2.5.dp.toPx()))
 }
 
-/** How strongly selected glass takes on the accent. */
-private const val SelectedTint = 0.3f
-
-private val LitRimBrush = Brush.linearGradient(
+private val LitRimStops = arrayOf(
     0f to Color.White.copy(alpha = 0.95f),
-    0.45f to Color.White.copy(alpha = 0.55f),
-    0.7f to Color.White.copy(alpha = 0.45f),
-    1f to Color.White.copy(alpha = 0.85f),
+    0.5f to Color.White.copy(alpha = 0.4f),
+    1f to Color.White.copy(alpha = 0.7f),
 )
 
 /**
@@ -325,15 +327,16 @@ fun OnGlass(content: @Composable () -> Unit) {
  * A panel behind something: liquid glass when that's switched on, otherwise a flat [fill]. A
  * [sheet] sits against the sides and bottom of the screen, so only its top edge is a glass edge.
  * [lens] scales how strongly clear glass bends at its rim (1 = the music card). [largeText]: it
- * holds only big text, so clear glass can stay clearer (see [glass]).
+ * holds only big text, so clear glass can stay clearer; [icons], only icons, so its tint doesn't
+ * vary with the wallpaper (see [glass]).
  */
 @Composable
-fun Modifier.panel(shape: Shape, fill: Color, sheet: Boolean = false, lens: Float = 1f, largeText: Boolean = false): Modifier {
+fun Modifier.panel(shape: Shape, fill: Color, sheet: Boolean = false, lens: Float = 1f, largeText: Boolean = false, icons: Boolean = false): Modifier {
     val palette = LocalPalette.current
     return when {
         palette.loud -> loudPanel(shape, fill, palette.text, sheet)
         palette.glass && LocalOnGlass.current -> clip(shape).background(fill)
-        palette.glass -> glass(shape, palette, sheet, lens, largeText)
+        palette.glass -> glass(shape, palette, sheet, lens, largeText, icons)
         else -> clip(shape).background(fill)
     }
 }
