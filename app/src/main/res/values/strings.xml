@@ -23,6 +23,8 @@
     <string name="unhide">Unhide</string>
     <string name="app_info">App info</string>
     <string name="uninstall">Uninstall</string>
+    <string name="remove_shortcut">Remove shortcut</string>
+    <string name="added_to_favourites">Added %1$s to favourites</string>
     <string name="put_in">Put %1$s in</string>
     <string name="new_folder">New folder</string>
     <string name="default_folder_name">Folder</string>

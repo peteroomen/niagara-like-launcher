@@ -57,6 +57,20 @@
             </intent-filter>
         </activity>
 
+        <!-- "Add to home screen" from other apps. Without this Android reports that pinning isn't
+             supported, and Chrome hides "Install app" and "Add to Home screen" for every site. -->
+        <activity
+            android:name=".system.PinShortcutActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.content.pm.action.CONFIRM_PIN_SHORTCUT" />
+            </intent-filter>
+        </activity>
+
         <!-- Draws the home screen into the wallpaper picker's preview; only for callers that can bind wallpapers -->
         <provider
             android:name=".system.HomePreviewProvider"

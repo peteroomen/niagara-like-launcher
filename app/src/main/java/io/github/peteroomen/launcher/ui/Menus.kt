@@ -39,6 +39,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import io.github.peteroomen.launcher.data.AppRepository
 import io.github.peteroomen.launcher.HomeUiState
 import io.github.peteroomen.launcher.LauncherViewModel
 import io.github.peteroomen.launcher.R
@@ -166,7 +167,7 @@ private fun AppActions(
     if (state.isFavourite(key)) MenuItem(stringResource(R.string.remove_favourite)) { done { vm.removeFavourite(key) } }
     // App info and Uninstall near the top, where they're seen without scrolling the menu
     MenuItem(stringResource(R.string.app_info)) { done { vm.openAppInfo(key) } }
-    MenuItem(stringResource(R.string.uninstall)) { done { vm.uninstall(key) } }
+    MenuItem(stringResource(if (AppRepository.isShortcut(key)) R.string.remove_shortcut else R.string.uninstall)) { done { vm.uninstall(key) } }
     MenuItem(stringResource(R.string.rename)) { go(Page.RENAME) }
     if (key in state.hidden) MenuItem(stringResource(R.string.unhide)) { done { vm.unhide(key) } }
     else MenuItem(stringResource(R.string.hide)) { done { vm.hide(key) } }

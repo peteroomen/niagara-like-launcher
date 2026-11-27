@@ -34,7 +34,12 @@ class IconCache(private val context: Context) {
 
     fun load(info: LauncherActivityInfo, key: String, sizePx: Int): Icons {
         cached(key, sizePx)?.let { return it }
-        val drawable = info.getIcon(context.resources.displayMetrics.densityDpi)
+        return load(info.getIcon(context.resources.displayMetrics.densityDpi), key, sizePx)
+    }
+
+    /** Any icon drawable, e.g. a pinned shortcut's. */
+    fun load(drawable: Drawable, key: String, sizePx: Int): Icons {
+        cached(key, sizePx)?.let { return it }
         val icons = if (drawable is AdaptiveIconDrawable) {
             val mono = if (Build.VERSION.SDK_INT >= 33) drawable.monochrome else null
             Icons(

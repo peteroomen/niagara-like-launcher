@@ -27,6 +27,8 @@ import io.github.peteroomen.launcher.ui.IconLoader
 import io.github.peteroomen.launcher.ui.Palette
 import java.text.Normalizer
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -123,6 +125,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             val apps = repo.apps.first { it.isNotEmpty() }
             store.update { if (it.seeded) it else it.copy(favs = DefaultFavourites.pick(app, apps), seeded = true) }
         }
+        // A website installed as an app (Chrome's "Install app") goes straight into favourites,
+        // the way other launchers put it on the home screen.
+        repo.added.filter(AppRepository::isWebApk).onEach { pkg ->
+            val apps = withTimeoutOrNull(15_000) { repo.apps.first { list -> list.any { it.packageName == pkg } } } ?: return@onEach
+            apps.filter { it.packageName == pkg && it.shortcutId == null }.forEach { addFavourite(it.key) }
+        }.launchIn(viewModelScope)
     }
 
     override fun onCleared() {
@@ -168,6 +176,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     override suspend fun load(key: String, sizePx: Int): IconCache.Icons? = withContext(Dispatchers.IO) {
         repo.activityInfo(key)?.let { iconCache.load(it, key, sizePx) }
+            ?: repo.shortcutInfo(key)?.let(repo::shortcutIcon)?.let { iconCache.load(it, key, sizePx) }
     }
 
     // ---- launching ----
@@ -183,8 +192,15 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         ui.value.byKey[key]?.let(repo::openAppInfo)
     }
 
+    /** Uninstalls an app; for a pinned shortcut, only takes the shortcut away (never the browser that made it). */
     fun uninstall(key: String) {
-        ui.value.byKey[key]?.let { SystemActions.uninstall(app, it.packageName) }
+        val info = ui.value.byKey[key] ?: return
+        if (info.shortcutId != null) {
+            repo.unpin(info)
+            removeFavourite(key)
+        } else {
+            SystemActions.uninstall(app, info.packageName)
+        }
     }
 
     // ---- editing ----
